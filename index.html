@@ -1,0 +1,2212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Horde Play</title>
+<meta name="description" content="Runs the Horde in Horde Magic: flips the deck, plays its cards, tracks its board, and takes damage as mill.">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Horde">
+<meta name="theme-color" content="#12100f">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Karla:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #12100f;
+    --bg-deep: #0b0a09;
+    --surface: #1c1917;
+    --surface-2: #262220;
+    --surface-3: #332d29;
+    --ink: #f2ece4;
+    --ink-soft: #cfc5b8;
+    --muted: #918477;
+    --line: #3a332e;
+    --accent: #c2410c;
+    --accent-hot: #ea580c;
+    --accent-ink: #fff4ec;
+    --good: #4d9a72;
+    --bad: #b4453a;
+    --token: #6d5bd0;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.45);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100%;
+  }
+
+  body {
+    font-family: "Karla", ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior-y: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+
+  h1, h2, h3, .display { font-family: "Cinzel", Georgia, serif; letter-spacing: .01em; }
+
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, [tabindex]:focus-visible, textarea:focus-visible, input:focus-visible {
+    outline: 2px solid var(--accent-hot);
+    outline-offset: 2px;
+  }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px 120px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .hidden { display: none !important; }
+
+  /* ---------- Buttons ---------- */
+
+  .btn {
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-weight: 700;
+    transition: background .12s ease, border-color .12s ease, transform .06s ease;
+  }
+  .btn:hover { background: var(--surface-3); }
+  .btn:active { transform: translateY(1px); }
+  .btn[disabled] { opacity: .4; cursor: not-allowed; }
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent-hot);
+    color: var(--accent-ink);
+  }
+  .btn.primary:hover { background: var(--accent-hot); }
+  .btn.ghost { background: transparent; }
+  .btn.ghost:hover { background: var(--surface-2); }
+  .btn.danger { color: #ffb4ab; border-color: #5c2a24; }
+  .btn.danger:hover { background: #3a1f1b; }
+  .btn.sm { padding: 6px 11px; font-size: 14px; border-radius: 10px; }
+  .btn.big {
+    width: 100%;
+    padding: 18px;
+    font-size: 19px;
+    font-family: "Cinzel", Georgia, serif;
+    border-radius: var(--radius);
+  }
+
+  /* ---------- Header ---------- */
+
+  header.app {
+    position: sticky; top: 0; z-index: 30;
+    background: linear-gradient(var(--bg) 72%, transparent);
+    padding: 12px 0 10px;
+  }
+  .bar { display: flex; align-items: center; gap: 12px; }
+  .brand {
+    display: flex; align-items: center; gap: 9px;
+    font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 18px;
+    margin: 0;
+  }
+  .brand svg { width: 26px; height: 26px; flex: none; }
+  .bar .spacer { flex: 1; }
+
+  /* ---------- Cards / panels ---------- */
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .panel + .panel { margin-top: 14px; }
+  .panel h2 { margin: 0 0 10px; font-size: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+  .muted { color: var(--muted); }
+  .small { font-size: 14px; }
+  .tiny { font-size: 12.5px; }
+
+  .note {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .note.warn { border-left-color: #b08a2e; }
+  .note.bad { border-left-color: var(--bad); }
+
+  /* ---------- Card faces ---------- */
+
+  .cardface {
+    position: relative;
+    aspect-ratio: 488 / 680;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    text-align: left;
+    width: 100%;
+  }
+  .cardface img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* generated (no-image) face */
+  .cardface.gen { padding: 30px 7% 8%; background: linear-gradient(160deg, var(--surface-3), var(--surface-2)); gap: 4%; }
+  .cardface.gen .cf-top { display: flex; gap: 6px; align-items: baseline; }
+  .cardface.gen .cf-name {
+    font-family: "Cinzel", Georgia, serif; font-weight: 700;
+    font-size: clamp(11px, 7.2cqw, 22px); line-height: 1.15; flex: 1;
+  }
+  .cardface.gen .cf-cost { font-size: clamp(9px, 5.4cqw, 15px); color: var(--muted); white-space: nowrap; }
+  .cardface.gen .cf-type {
+    font-size: clamp(8.5px, 4.9cqw, 14px); color: var(--ink-soft);
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 3% 0; line-height: 1.25;
+  }
+  .cardface.gen .cf-oracle {
+    flex: 1; min-height: 0; overflow: hidden;
+    font-size: clamp(8px, 4.5cqw, 13px); line-height: 1.32; color: var(--ink-soft);
+    white-space: pre-wrap;
+  }
+  .cardface.gen .cf-pt {
+    align-self: flex-end;
+    font-family: "Cinzel", Georgia, serif; font-weight: 700;
+    font-size: clamp(11px, 6.4cqw, 20px);
+    background: var(--bg-deep); border: 1px solid var(--line);
+    border-radius: 7px; padding: 1% 8%;
+  }
+  .cardface.c-W.gen { background: linear-gradient(160deg, #4a4438, #2b2822); }
+  .cardface.c-U.gen { background: linear-gradient(160deg, #26404f, #1b2a33); }
+  .cardface.c-B.gen { background: linear-gradient(160deg, #2b2529, #171416); }
+  .cardface.c-R.gen { background: linear-gradient(160deg, #4a2a22, #2c1a15); }
+  .cardface.c-G.gen { background: linear-gradient(160deg, #26402f, #1a2a20); }
+  .cardface.c-M.gen { background: linear-gradient(160deg, #4a4028, #2c261a); }
+
+  .cf-badge {
+    position: absolute; top: 6px; left: 6px; z-index: 2;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    padding: 3px 7px; border-radius: 6px;
+    background: rgba(10,9,8,.82); border: 1px solid var(--line); color: var(--ink-soft);
+    backdrop-filter: blur(3px);
+  }
+  .cf-badge.token { background: rgba(109,91,208,.9); border-color: #8f7ff0; color: #fff; }
+  .cf-count {
+    position: absolute; right: 6px; bottom: 6px; z-index: 2;
+    font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 17px;
+    min-width: 34px; text-align: center;
+    padding: 3px 8px; border-radius: 8px;
+    background: rgba(10,9,8,.88); border: 1px solid var(--line);
+    backdrop-filter: blur(3px);
+  }
+
+  .cardgrid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  .cardgrid .slot { container-type: inline-size; }
+  .cardgrid.lg { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+
+  /* ---------- Reveal stage ---------- */
+
+  .stage {
+    background: radial-gradient(120% 90% at 50% 0%, #24201d 0%, var(--bg-deep) 72%);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .stage-hero { display: flex; gap: 18px; align-items: flex-start; }
+  .stage-hero .slot { width: min(240px, 38vw); flex: none; container-type: inline-size; }
+  .stage-hero .meta { flex: 1; min-width: 0; }
+  .stage-title { font-size: clamp(20px, 3.6vw, 30px); margin: 0 0 4px; }
+  .stage-type { color: var(--ink-soft); margin: 0 0 10px; }
+  .stage-oracle { white-space: pre-wrap; color: var(--ink-soft); font-size: 15px; margin: 0 0 12px; }
+
+  .target {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: rgba(194,65,12,.16); border: 1px solid var(--accent);
+    border-radius: 12px; padding: 10px 14px; margin-bottom: 10px;
+  }
+  .target .who { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 19px; color: #ffb08a; }
+
+  @keyframes flipin { from { opacity: 0; transform: translateY(10px) scale(.94); } to { opacity: 1; transform: none; } }
+  .flipin { animation: flipin .22s ease both; }
+
+  /* ---------- Counters ---------- */
+
+  .counters { display: grid; grid-template-columns: repeat(auto-fit, minmax(94px, 1fr)); gap: 8px; }
+  .counter {
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 11px; padding: 9px 10px; text-align: center;
+  }
+  .counter .n { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 24px; line-height: 1.1; display: block; }
+  .counter .k { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+  .counter.hot .n { color: #ff9d6e; }
+
+  /* ---------- Players ---------- */
+
+  .players { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .player {
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px;
+  }
+  .player.dead { opacity: .45; }
+  .player .pname { font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .life-row { display: flex; align-items: center; gap: 8px; }
+  .life-row .life {
+    flex: 1; text-align: center;
+    font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 30px; line-height: 1.1;
+  }
+  .step {
+    width: 40px; height: 40px; flex: none; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--surface-3);
+    font-size: 20px; font-weight: 700; line-height: 1;
+    display: grid; place-items: center;
+  }
+  .step:hover { background: var(--surface); }
+
+  /* ---------- Numeric pad ---------- */
+
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .pad button {
+    padding: 14px 0; border-radius: 11px; border: 1px solid var(--line);
+    background: var(--surface-2); font-size: 19px; font-weight: 700;
+  }
+  .pad button:hover { background: var(--surface-3); }
+  .pad .wide { grid-column: span 3; }
+  .millout {
+    font-family: "Cinzel", Georgia, serif; font-weight: 700;
+    font-size: 34px; text-align: center; padding: 6px 0 10px;
+    color: #ff9d6e; min-height: 52px;
+  }
+
+  /* ---------- Import review ---------- */
+
+  textarea.paste {
+    width: 100%; min-height: 220px; resize: vertical;
+    background: var(--bg-deep); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 11px;
+    padding: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13.5px; line-height: 1.55;
+  }
+  input.txt {
+    background: var(--bg-deep); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 11px; font: inherit; width: 100%;
+  }
+  input.num { width: 84px; text-align: center; }
+  label.field { display: block; margin-bottom: 12px; }
+  label.field > span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; letter-spacing: .04em; text-transform: uppercase; }
+
+  .review-row {
+    display: grid; grid-template-columns: 62px 1fr auto; gap: 12px; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid var(--line);
+  }
+  .review-row:last-child { border-bottom: 0; }
+  .review-row .slot { container-type: inline-size; }
+  .review-row .rname { font-weight: 700; }
+  .toggle {
+    border: 1px solid var(--line); background: var(--surface-2);
+    border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 700;
+    letter-spacing: .07em; text-transform: uppercase; white-space: nowrap;
+  }
+  .toggle[aria-pressed="true"] { background: var(--token); border-color: #8f7ff0; color: #fff; }
+
+  .progress { height: 7px; background: var(--surface-3); border-radius: 999px; overflow: hidden; }
+  .progress > i { display: block; height: 100%; background: var(--accent-hot); transition: width .2s ease; }
+
+  /* ---------- Deck list ---------- */
+
+  .decklist { display: grid; gap: 10px; }
+  .deckrow {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 14px;
+  }
+  .deckrow .dname { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 17px; }
+
+  /* ---------- Log ---------- */
+
+  .log { max-height: 260px; overflow-y: auto; font-size: 14px; }
+  .log li { padding: 5px 0; border-bottom: 1px solid var(--line); color: var(--ink-soft); list-style: none; }
+  .log li:last-child { border-bottom: 0; }
+  .log .t { color: var(--muted); font-size: 12px; margin-right: 6px; }
+  ul.log { margin: 0; padding: 0; }
+
+  /* ---------- Layout helpers ---------- */
+
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .row.tight { gap: 6px; }
+  .grow { flex: 1; }
+  .cols { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .cols.two { grid-template-columns: 1.55fr 1fr; align-items: start; } }
+  .stack > * + * { margin-top: 10px; }
+
+  .sticky-action {
+    position: sticky; bottom: 0; z-index: 20;
+    padding: 12px 0 max(12px, env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, var(--bg) 34%);
+  }
+
+  dialog {
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px; max-width: 460px; width: calc(100% - 32px);
+    box-shadow: var(--shadow);
+  }
+  dialog::backdrop { background: rgba(0,0,0,.66); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    background: var(--surface-3); border: 1px solid var(--line);
+    border-radius: 999px; padding: 10px 18px; font-weight: 700;
+    box-shadow: var(--shadow); z-index: 60;
+    animation: flipin .18s ease both;
+  }
+
+  /* ---------- Wave / shared life ---------- */
+
+  .wave-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(194,65,12,.16); border: 1px solid var(--accent);
+    border-radius: 999px; padding: 5px 14px; margin-bottom: 10px;
+    font-family: "Cinzel", Georgia, serif; font-weight: 700;
+  }
+  .wave-chip .dots { display: inline-flex; gap: 4px; }
+  .wave-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--surface-3); border: 1px solid var(--line); }
+  .wave-chip .dot.on { background: var(--accent-hot); border-color: var(--accent-hot); }
+
+  .lifepool { text-align: center; padding: 4px 0 10px; }
+  .lifepool .n {
+    font-family: "Cinzel", Georgia, serif; font-weight: 700;
+    font-size: 54px; line-height: 1; display: block;
+  }
+  .lifepool .k { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+  .lifepool.low .n { color: #ff8a6e; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--surface-2);
+    border-radius: 999px; padding: 5px 11px; font-size: 13px; font-weight: 700;
+  }
+  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent-hot); color: var(--accent-ink); }
+
+  .kw {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 5px; margin-right: 4px;
+    background: var(--surface-3); border: 1px solid var(--line); color: var(--ink-soft);
+  }
+  .kw.def { background: #24405a; border-color: #3d6d96; color: #cfe6ff; }
+  .kw.leg { background: #4a3c18; border-color: #8a6f28; color: #ffe3a3; }
+
+  .cf-badge.rare { background: rgba(160,120,30,.92); border-color: #d3a63e; color: #fff6e0; }
+  .cf-badge.defender { left: auto; right: 6px; background: rgba(36,64,90,.92); border-color: #3d6d96; color: #cfe6ff; }
+
+  .cardface.defender { outline: 2px solid #3d6d96; outline-offset: -2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="app">
+    <div class="bar">
+      <h1 class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path fill="#c2410c" d="M16 2 3 8v9c0 7.4 5.3 12.3 13 15 7.7-2.7 13-7.6 13-15V8z"/>
+          <path fill="#12100f" d="M16 5.2 6 9.7v7.3c0 5.7 4 9.7 10 12 6-2.3 10-6.3 10-12V9.7z"/>
+          <circle fill="#ea580c" cx="12" cy="14" r="2.1"/>
+          <circle fill="#ea580c" cx="20" cy="14" r="2.1"/>
+          <path stroke="#ea580c" stroke-width="1.7" stroke-linecap="round" fill="none" d="M11 21h10M13 19v4M16 19v4M19 19v4"/>
+        </svg>
+        Horde Play
+      </h1>
+      <div class="spacer"></div>
+      <button class="btn sm ghost" id="btn-home" hidden>Decks</button>
+    </div>
+  </header>
+
+  <!-- ================= DECKS ================= -->
+  <section class="screen" id="screen-decks">
+    <div class="panel">
+      <h2>Horde decks</h2>
+      <div class="decklist" id="deck-list"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" id="btn-import">Import a decklist</button>
+        <button class="btn ghost" id="btn-resume" hidden>Resume game in progress</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>How the Horde works</h2>
+      <div class="stack small muted">
+        <p style="margin:0">
+          The Horde has infinite mana, no hand, and no decisions. Each turn it casts cards straight off
+          the top of its library in <strong>waves</strong> &mdash; a wave ends when it casts a
+          wave-ender, which is either a <strong>non-token card</strong> or an
+          <strong>uncommon/rare/mythic</strong>, depending on the deck.
+        </p>
+        <p style="margin:0">
+          Its creatures have haste and are goaded; only creatures with <strong>Defender</strong> can block.
+          Damage to the Horde <strong>mills that many cards</strong> and lifegain does nothing.
+          Survivors share one life total &mdash; 100, minus 15 for each player past the first.
+        </p>
+        <p style="margin:0">
+          You win when its library and its board are both empty. Triggered and activated abilities are
+          still yours to read and apply &mdash; the card is shown large for exactly that reason.
+        </p>
+        <p style="margin:0">
+          Rules follow <a href="https://hordemagic.com/basic-horde-rules/" target="_blank" rel="noopener">hordemagic.com</a>,
+          including the recommended rule that a legendary milled by damage enters the battlefield and phases out.
+        </p>
+        <p style="margin:0">
+          <strong>Multi-library decks:</strong> the D&amp;D dungeon is three levels played in order, and
+          Angels &amp; Demons runs two libraries at once. Each is listed here as its own deck &mdash;
+          run them in separate games (or two screens) and treat the pair as beaten only when both are empty.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= IMPORT ================= -->
+  <section class="screen" id="screen-import">
+    <div class="panel" id="import-step-paste">
+      <h2>Import a decklist</h2>
+      <label class="field">
+        <span>Deck name</span>
+        <input class="txt" id="import-name" placeholder="My Horde" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>Paste the decklist</span>
+        <textarea class="paste" id="import-text" spellcheck="false" placeholder="Creatures: (79)
+3 Corpse Knight
+6 Death Baron
+3 Gray Merchant of
+Asphodel
+
+Tokens: (200)
+187 Token: Zombie
+13 Token: Zombie Giant"></textarea>
+      </label>
+      <div class="row" style="margin-bottom:12px">
+        <label class="row tight" style="gap:7px; cursor:pointer">
+          <input type="checkbox" id="opt-join" checked>
+          <span class="small">Join wrapped lines (a line with no quantity continues the one above)</span>
+        </label>
+      </div>
+      <div class="note">
+        Section headers like <code>Tokens (150)</code> mark everything under them as tokens.
+        The next screen shows what was found and lets you fix it.
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" id="btn-parse">Look these up</button>
+        <button class="btn ghost" id="btn-import-cancel">Cancel</button>
+      </div>
+    </div>
+
+    <div class="panel hidden" id="import-step-loading">
+      <h2>Looking up cards</h2>
+      <div class="progress" style="margin-bottom:10px"><i id="lookup-bar" style="width:0%"></i></div>
+      <p class="muted small" id="lookup-status">Starting&hellip;</p>
+      <button class="btn ghost sm" id="btn-skip-lookup">Skip &mdash; use text cards</button>
+    </div>
+
+    <div class="panel hidden" id="import-step-review">
+      <h2>Review &amp; save</h2>
+      <div id="review-warnings"></div>
+      <div class="row small muted" style="margin:6px 0 12px">
+        <span id="review-summary"></span>
+        <span class="grow"></span>
+        <button class="btn sm ghost" id="btn-all-token">All tokens</button>
+        <button class="btn sm ghost" id="btn-all-card">All cards</button>
+      </div>
+      <div id="review-rows"></div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn primary" id="btn-save-deck">Save deck</button>
+        <button class="btn ghost" id="btn-back-paste">Back to the paste</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SETUP ================= -->
+  <section class="screen" id="screen-setup">
+    <div class="panel">
+      <h2>New game &mdash; <span id="setup-deckname"></span></h2>
+
+      <div id="setup-players" class="stack"></div>
+      <div class="row" style="margin:10px 0 18px">
+        <button class="btn sm ghost" id="btn-add-player">+ Add survivor</button>
+      </div>
+
+      <label class="field">
+        <span>A wave ends when the Horde casts&hellip;</span>
+        <div class="chips" id="opt-waveend">
+          <button class="chip" data-v="nontoken">a non-token card</button>
+          <button class="chip" data-v="rarity">an uncommon, rare or mythic</button>
+        </div>
+      </label>
+
+      <label class="field">
+        <span>Waves per turn</span>
+        <div class="chips" id="opt-wavepattern">
+          <button class="chip" data-v="snake">Snake &mdash; 1, 2, 3, 2, 1&hellip;</button>
+          <button class="chip" data-v="fixed">Always 1</button>
+        </div>
+      </label>
+
+      <div class="row">
+        <label class="field" style="margin:0">
+          <span>Shared life</span>
+          <input class="txt num" id="setup-life" type="number" min="1" max="999" value="85">
+        </label>
+        <label class="field" style="margin:0">
+          <span>Setup turns</span>
+          <input class="txt num" id="setup-turns" type="number" min="0" max="10" value="3">
+        </label>
+        <label class="field" style="margin:0">
+          <span>Poison limit</span>
+          <input class="txt num" id="setup-poison" type="number" min="1" max="99" value="10">
+        </label>
+      </div>
+
+      <label class="row tight" style="gap:7px; cursor:pointer; margin-top:6px">
+        <input type="checkbox" id="opt-legendary" checked>
+        <span class="small">A legendary milled by damage enters the battlefield, then phases out (recommended)</span>
+      </label>
+
+      <div class="note" style="margin-top:14px" id="setup-lifenote"></div>
+
+      <div class="row" style="margin-top:16px">
+        <button class="btn primary" id="btn-start">Shuffle &amp; begin</button>
+        <button class="btn ghost" id="btn-setup-cancel">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= GAME ================= -->
+  <section class="screen" id="screen-game">
+    <div class="counters" style="margin-bottom:14px">
+      <div class="counter hot"><span class="n" id="c-library">0</span><span class="k">Library</span></div>
+      <div class="counter"><span class="n" id="c-board">0</span><span class="k">Creatures</span></div>
+      <div class="counter"><span class="n" id="c-power">0</span><span class="k">Attacking</span></div>
+      <div class="counter"><span class="n" id="c-yard">0</span><span class="k">Graveyard</span></div>
+      <div class="counter"><span class="n" id="c-turn">1</span><span class="k">Turn</span></div>
+    </div>
+
+    <div class="cols two">
+      <div>
+        <div class="stage" id="stage">
+          <div id="stage-body"></div>
+        </div>
+
+        <div class="sticky-action">
+          <button class="btn primary big" id="btn-action">Take the Horde&rsquo;s turn</button>
+          <div class="row tight" style="margin-top:8px">
+            <button class="btn sm ghost" id="btn-undo">Undo</button>
+            <button class="btn sm ghost" id="btn-random">Random survivor</button>
+            <span class="grow"></span>
+            <button class="btn sm ghost danger" id="btn-quit">End game</button>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:4px">
+          <h2>The Horde&rsquo;s board</h2>
+          <p class="tiny muted" style="margin:-4px 0 10px">
+            Haste, goaded, attacking every turn. Only <span class="kw def">Defender</span> can block.
+            Tap a stack to kill one or all.
+          </p>
+          <div class="cardgrid" id="board"></div>
+          <p class="muted small" id="board-empty">Nothing on the battlefield.</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <h2>Damage to the Horde</h2>
+          <div class="millout" id="mill-out">0</div>
+          <div class="pad" id="mill-pad">
+            <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
+            <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
+            <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
+            <button data-k="clear">C</button><button data-d="0">0</button><button data-k="back">&larr;</button>
+            <button class="wide btn primary" data-k="mill" style="border-radius:11px">Mill that many</button>
+          </div>
+          <p class="tiny muted" style="margin:10px 0 0">
+            No life total &mdash; damage and life loss become mill. Lifegain does nothing.
+          </p>
+        </div>
+
+        <div class="panel">
+          <h2>Survivors</h2>
+          <div class="lifepool" id="lifepool">
+            <span class="n" id="life-n">0</span>
+            <span class="k">Shared life</span>
+          </div>
+          <div class="row" style="justify-content:center; margin-bottom:10px">
+            <button class="step" id="life-minus" aria-label="Lose 1 life">&minus;</button>
+            <button class="btn sm ghost" data-life="-5">&minus;5</button>
+            <button class="btn sm ghost" data-life="-10">&minus;10</button>
+            <button class="btn sm ghost" id="life-all">Take all</button>
+            <button class="step" id="life-plus" aria-label="Gain 1 life">+</button>
+          </div>
+          <div class="row" style="justify-content:center; align-items:center; gap:8px">
+            <span class="small muted">Poison</span>
+            <button class="btn sm ghost" data-poison="-1">&minus;</button>
+            <strong id="poison-n">0</strong>
+            <button class="btn sm ghost" data-poison="1">+</button>
+            <span class="tiny muted" id="poison-limit"></span>
+          </div>
+          <div id="player-chips" class="chips" style="margin-top:12px; justify-content:center"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Log</h2>
+          <ul class="log" id="log"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= END ================= -->
+  <section class="screen" id="screen-end">
+    <div class="panel" style="text-align:center; padding:34px 20px">
+      <h2 id="end-title" style="font-size:30px; text-transform:none; letter-spacing:0; color:var(--ink)"></h2>
+      <p class="muted" id="end-sub" style="margin-bottom:22px"></p>
+      <div class="row" style="justify-content:center">
+        <button class="btn primary" id="btn-again">Play again</button>
+        <button class="btn ghost" id="btn-end-home">Back to decks</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<dialog id="stack-dialog">
+  <h3 style="margin:0 0 4px" id="sd-name"></h3>
+  <p class="muted small" id="sd-sub" style="margin:0 0 14px"></p>
+  <div class="stack">
+    <button class="btn" id="sd-kill1" style="width:100%">Kill one &rarr; graveyard</button>
+    <button class="btn" id="sd-killall" style="width:100%">Kill the whole stack</button>
+    <button class="btn ghost" id="sd-close" style="width:100%">Cancel</button>
+  </div>
+</dialog>
+
+<dialog id="confirm-dialog">
+  <h3 style="margin:0 0 6px" id="cd-title"></h3>
+  <p class="muted small" id="cd-body" style="margin:0 0 16px"></p>
+  <div class="row" style="justify-content:flex-end">
+    <button class="btn ghost" id="cd-no">Cancel</button>
+    <button class="btn danger" id="cd-yes">Confirm</button>
+  </div>
+</dialog>
+<script>
+"use strict";
+
+/* Bundled horde decks, transcribed from the decklists at hordemagic.com.
+   Stored as {q: quantity, n: name, t: 1 if token}; everything else (art,
+   rarity, rules text) is filled in from Scryfall the first time a deck is
+   used, then cached offline. */
+const BUNDLED_DECKS = [{"name":"Zombies Horde","waveEnd":"nontoken","wave":"snake","entries":[{"q":3,"n":"Corpse Knight","t":0,"c":"creature"},{"q":6,"n":"Death Baron","t":0,"c":"creature"},{"q":5,"n":"Diregraf Captain","t":0,"c":"creature"},{"q":3,"n":"Dread Slaver","t":0,"c":"creature"},{"q":2,"n":"Eternal Skylord","t":0,"c":"creature"},{"q":4,"n":"Fleshbag Marauder","t":0,"c":"creature"},{"q":2,"n":"Ghoultree","t":0,"c":"creature"},{"q":1,"n":"Gleaming Overseer","t":0,"c":"creature"},{"q":2,"n":"Grave Titan","t":0,"c":"creature"},{"q":3,"n":"Gray Merchant of Asphodel","t":0,"c":"creature"},{"q":1,"n":"Josu Vess, Lich Knight","t":0,"c":"creature"},{"q":2,"n":"Lotleth Giant","t":0,"c":"creature"},{"q":1,"n":"Mournwillow","t":0,"c":"creature"},{"q":3,"n":"Noosegraf Mob","t":0,"c":"creature"},{"q":2,"n":"Noxious Ghoul","t":0,"c":"creature"},{"q":4,"n":"Plague Belcher","t":0,"c":"creature"},{"q":3,"n":"Soulless One","t":0,"c":"creature"},{"q":5,"n":"Unbreathing Horde","t":0,"c":"creature"},{"q":2,"n":"Undead Alchemist","t":0,"c":"creature"},{"q":18,"n":"Undead Servant","t":0,"c":"creature"},{"q":4,"n":"Undead Warchief","t":0,"c":"creature"},{"q":1,"n":"Vengeful Pharaoh","t":0,"c":"creature"},{"q":2,"n":"Vulturous Zombie","t":0,"c":"creature"},{"q":2,"n":"Zombie Apocalypse","t":0,"c":"spell"},{"q":1,"n":"End Hostilities","t":0,"c":"spell"},{"q":1,"n":"Endless Ranks of the Dead","t":0,"c":"spell"},{"q":1,"n":"Footbottom Feast","t":0,"c":"spell"},{"q":1,"n":"Tainted Remedy","t":0,"c":"spell"},{"q":2,"n":"Plague Wind","t":0,"c":"spell"},{"q":2,"n":"Throne of the God-Pharaoh","t":0,"c":"spell"},{"q":1,"n":"Graf Harvest","t":0,"c":"spell"},{"q":2,"n":"Grave Betrayal","t":0,"c":"spell"},{"q":1,"n":"Creeping Corrosion","t":0,"c":"spell"},{"q":1,"n":"Aether Snap","t":0,"c":"spell"},{"q":1,"n":"Army of the Damned","t":0,"c":"spell"},{"q":3,"n":"Awaken the Erstwhile","t":0,"c":"spell"},{"q":1,"n":"Barter in Blood","t":0,"c":"spell"},{"q":1,"n":"Call to the Grave","t":0,"c":"spell"},{"q":187,"n":"Zombie","t":1,"c":"creature"},{"q":13,"n":"Zombie Giant","t":1,"c":"creature"}]},{"name":"Vampire Horde","waveEnd":"rarity","wave":"snake","entries":[{"q":1,"n":"Anowon, the Ruin Sage","t":0,"c":"creature"},{"q":1,"n":"Arvad the Cursed","t":0,"c":"creature"},{"q":1,"n":"Ascendant Evincar","t":0,"c":"creature"},{"q":1,"n":"Astarion, the Decadent","t":0,"c":"creature"},{"q":1,"n":"Drana, Kalastria Bloodchief","t":0,"c":"creature"},{"q":1,"n":"Drana, Liberator of Malakir","t":0,"c":"creature"},{"q":1,"n":"Drana, the Last Bloodchief","t":0,"c":"creature"},{"q":1,"n":"Edgar Markov","t":0,"c":"creature"},{"q":1,"n":"Edgar, Charmed Groom","t":0,"c":"creature"},{"q":1,"n":"Elenda, the Dusk Rose","t":0,"c":"creature"},{"q":1,"n":"Etrata, the Silencer","t":0,"c":"creature"},{"q":1,"n":"Evelyn, the Covetous","t":0,"c":"creature"},{"q":1,"n":"Kalitas, Bloodchief of Ghet","t":0,"c":"creature"},{"q":1,"n":"Kalitas, Traitor of Ghet","t":0,"c":"creature"},{"q":1,"n":"Lord Xander, the Collector","t":0,"c":"creature"},{"q":1,"n":"Olivia Voldaren","t":0,"c":"creature"},{"q":1,"n":"Olivia, Crimson Bride","t":0,"c":"creature"},{"q":1,"n":"Timothar, Baron of Bats","t":0,"c":"creature"},{"q":1,"n":"Vito, Thorn of the Dusk Rose","t":0,"c":"creature"},{"q":1,"n":"Zagras, Thief of Heartbeats Vampire Support","t":0,"c":"creature"},{"q":10,"n":"Blood Artist","t":0,"c":"creature"},{"q":8,"n":"Butcher of Malakir","t":0,"c":"creature"},{"q":3,"n":"Captivating Vampire","t":0,"c":"creature"},{"q":23,"n":"Child of Night","t":0,"c":"creature"},{"q":1,"n":"Eldrazi Monument","t":0,"c":"creature"},{"q":7,"n":"Indulgent Aristocrat","t":0,"c":"creature"},{"q":8,"n":"Innocent Traveler","t":0,"c":"creature"},{"q":3,"n":"Olivia's Wrath","t":0,"c":"creature"},{"q":3,"n":"Patron of the Vein","t":0,"c":"creature"},{"q":8,"n":"Rakish Heir","t":0,"c":"creature"},{"q":1,"n":"Ruinous Ultimatum","t":0,"c":"creature"},{"q":7,"n":"Sanguine Bond","t":0,"c":"creature"},{"q":1,"n":"Shared Animosity","t":0,"c":"creature"},{"q":4,"n":"Stensia Masquerade","t":0,"c":"creature"},{"q":7,"n":"Stromkirk Captain","t":0,"c":"creature"},{"q":18,"n":"Vampire Envoy","t":0,"c":"creature"},{"q":10,"n":"Vampire Nighthawk","t":0,"c":"creature"},{"q":3,"n":"Vampire Nocturnus","t":0,"c":"creature"},{"q":5,"n":"Vampires' Vengeance","t":0,"c":"creature"},{"q":5,"n":"Vampire Knight","t":1,"c":"creature"},{"q":145,"n":"Vampire","t":1,"c":"creature"}]},{"name":"Eldrazi Titans Horde","waveEnd":"rarity","wave":"snake","entries":[{"q":150,"n":"Eldrazi Scion","t":1,"c":"creature"},{"q":15,"n":"Eldrazi Skyspawner","t":0,"c":"creature"},{"q":3,"n":"Eldrazi Devastator","t":0,"c":"creature"},{"q":12,"n":"Ulamog's Crusher","t":0,"c":"creature"},{"q":8,"n":"Artisan of Kozilek","t":0,"c":"creature"},{"q":7,"n":"Bane of Bala Ged","t":0,"c":"creature"},{"q":7,"n":"Birthing Hulk","t":0,"c":"creature"},{"q":4,"n":"Breaker of Armies","t":0,"c":"creature"},{"q":4,"n":"Decimator of the Provinces","t":0,"c":"creature"},{"q":10,"n":"Desolation Twin","t":0,"c":"creature"},{"q":3,"n":"Eldrazi Ravager","t":0,"c":"creature"},{"q":8,"n":"Flayer Drone","t":0,"c":"creature"},{"q":1,"n":"Hideous Taskmaster","t":0,"c":"creature"},{"q":1,"n":"It That Betrays","t":0,"c":"creature"},{"q":2,"n":"Pathrazer of Ulamog","t":0,"c":"creature"},{"q":6,"n":"Reality Smasher","t":0,"c":"creature"},{"q":1,"n":"Sire of Stagnation","t":0,"c":"creature"},{"q":4,"n":"Titans' Vanguard","t":0,"c":"creature"},{"q":1,"n":"Twins of Discord","t":0,"c":"creature"},{"q":5,"n":"Vile Aggregate","t":0,"c":"creature"},{"q":1,"n":"Void Winnower","t":0,"c":"creature"},{"q":5,"n":"World Breaker","t":0,"c":"creature"},{"q":6,"n":"All Is Dust","t":0,"c":"spell"},{"q":3,"n":"Extinction Event","t":0,"c":"spell"},{"q":2,"n":"Overcome","t":0,"c":"spell"},{"q":4,"n":"Overrun","t":0,"c":"spell"},{"q":4,"n":"Overwhelming Stampede","t":0,"c":"spell"},{"q":5,"n":"Eldrazi Monument","t":0,"c":"permanent"},{"q":1,"n":"Eldrazi Conscription","t":0,"c":"permanent"},{"q":4,"n":"Everlasting Torment","t":0,"c":"permanent"},{"q":4,"n":"Molten Nursery","t":0,"c":"permanent"},{"q":2,"n":"Tainted Remedy Eldrazi Horde Decklist Bosses","t":0,"c":"permanent"},{"q":1,"n":"Emrakul, the Aeons Torn","t":0,"c":"creature"},{"q":1,"n":"Emrakul, the World Anew","t":0,"c":"creature"},{"q":1,"n":"Kozilek, Butcher of Truth","t":0,"c":"creature"},{"q":1,"n":"Kozilek, the Broken Reality","t":0,"c":"creature"},{"q":1,"n":"Kozilek, the Great Distortion","t":0,"c":"creature"},{"q":1,"n":"Ulamog, the Ceaseless Hunger","t":0,"c":"creature"},{"q":1,"n":"Ulamog, the Defiler","t":0,"c":"creature"},{"q":1,"n":"Ulamog, the Infinite Gyre","t":0,"c":"creature"}]},{"name":"Slivers Horde","waveEnd":"rarity","wave":"snake","entries":[{"q":1,"n":"Sliver Hivelord","t":0,"c":"creature"},{"q":1,"n":"Sliver Legion","t":0,"c":"creature"},{"q":1,"n":"Sliver Overlord","t":0,"c":"creature"},{"q":1,"n":"Sliver Queen","t":0,"c":"creature"},{"q":1,"n":"The First Sliver Sliver Support","t":0,"c":"creature"},{"q":2,"n":"Battering Sliver","t":0,"c":"creature"},{"q":2,"n":"Belligerent Sliver","t":0,"c":"creature"},{"q":2,"n":"Bonesplitter Sliver","t":0,"c":"creature"},{"q":4,"n":"Brood Sliver","t":0,"c":"creature"},{"q":5,"n":"Cleaving Sliver","t":0,"c":"creature"},{"q":2,"n":"Crystalline Sliver","t":0,"c":"creature"},{"q":4,"n":"Diffusion Sliver","t":0,"c":"creature"},{"q":3,"n":"Fungus Sliver","t":0,"c":"creature"},{"q":3,"n":"Fury Sliver","t":0,"c":"creature"},{"q":4,"n":"Groundshaker Sliver","t":0,"c":"creature"},{"q":2,"n":"Harmonic Sliver","t":0,"c":"creature"},{"q":2,"n":"Horned Sliver","t":0,"c":"creature"},{"q":6,"n":"Lancer Sliver","t":0,"c":"creature"},{"q":5,"n":"Lavabelly Sliver","t":0,"c":"creature"},{"q":3,"n":"Leeching Sliver","t":0,"c":"creature"},{"q":1,"n":"Megantic Sliver","t":0,"c":"creature"},{"q":10,"n":"Metallic Sliver","t":0,"c":"creature"},{"q":2,"n":"Might Sliver","t":0,"c":"creature"},{"q":2,"n":"Muscle Sliver","t":0,"c":"creature"},{"q":3,"n":"Predatory Sliver","t":0,"c":"creature"},{"q":2,"n":"Pulmonic Sliver","t":0,"c":"creature"},{"q":1,"n":"Shadow Sliver","t":0,"c":"creature"},{"q":3,"n":"Shifting Sliver","t":0,"c":"creature"},{"q":2,"n":"Sidewinder Sliver","t":0,"c":"creature"},{"q":2,"n":"Sinew Sliver","t":0,"c":"creature"},{"q":2,"n":"Soul Shatter","t":0,"c":"creature"},{"q":1,"n":"Spined Sliver","t":0,"c":"creature"},{"q":2,"n":"Spiteful Sliver","t":0,"c":"creature"},{"q":4,"n":"Steelform Sliver","t":0,"c":"creature"},{"q":4,"n":"Striking Sliver","t":0,"c":"creature"},{"q":3,"n":"Talon Sliver","t":0,"c":"creature"},{"q":4,"n":"Tempered Sliver","t":0,"c":"creature"},{"q":2,"n":"Thorncaster Sliver","t":0,"c":"creature"},{"q":4,"n":"Two-Headed Sliver","t":0,"c":"creature"},{"q":2,"n":"Vampiric Sliver","t":0,"c":"creature"},{"q":3,"n":"Venom Sliver","t":0,"c":"creature"},{"q":2,"n":"Virulent Sliver","t":0,"c":"creature"},{"q":1,"n":"Watcher Sliver","t":0,"c":"creature"},{"q":5,"n":"Winged Sliver","t":0,"c":"creature"},{"q":2,"n":"Barter in Blood","t":0,"c":"spell"},{"q":5,"n":"Crackling Doom","t":0,"c":"spell"},{"q":2,"n":"Destructive Flow","t":0,"c":"spell"},{"q":1,"n":"Necrotic Hex","t":0,"c":"spell"},{"q":1,"n":"Simplify","t":0,"c":"spell"},{"q":1,"n":"Tranquility","t":0,"c":"spell"},{"q":1,"n":"Vona's Hunger","t":0,"c":"spell"},{"q":1,"n":"Wave of Vitriol","t":0,"c":"spell"},{"q":170,"n":"Metallic Sliver","t":1,"c":"creature"}]},{"name":"Angels & Demons — Clerics and Devils","waveEnd":"rarity","wave":"snake","entries":[{"q":5,"n":"Whisper, Blood Liturgist","t":0,"c":"creature"},{"q":1,"n":"Lyzolda, the Blood Witch","t":0,"c":"creature"},{"q":1,"n":"Karlach, Fury of Avernus","t":0,"c":"creature"},{"q":1,"n":"Raphael, Fiendish Savior","t":0,"c":"creature"},{"q":60,"n":"Cleric","t":1,"c":"creature"},{"q":82,"n":"Devil","t":1,"c":"creature"},{"q":1,"n":"Vile Deacon","t":0,"c":"creature"},{"q":4,"n":"Shadow-Rite Priest","t":0,"c":"creature"},{"q":1,"n":"Pious Evangel","t":0,"c":"creature"},{"q":3,"n":"Priest of the Blood Rite","t":0,"c":"creature"},{"q":11,"n":"Demon's Disciple","t":0,"c":"creature"},{"q":9,"n":"Havoc Jester","t":0,"c":"creature"},{"q":4,"n":"Hellrider","t":0,"c":"creature"},{"q":8,"n":"Mayhem Devil","t":0,"c":"creature"},{"q":6,"n":"Pyretic Prankster","t":0,"c":"creature"},{"q":7,"n":"Scourge Devil","t":0,"c":"creature"},{"q":2,"n":"Tibalt, Rakish Instigator","t":0,"c":"permanent"},{"q":4,"n":"Rite of Belzenlok","t":0,"c":"permanent"}]},{"name":"Angels & Demons — Demons","waveEnd":"rarity","wave":"snake","entries":[{"q":1,"n":"Be'lakor, the Dark Master","t":0,"c":"creature"},{"q":1,"n":"Griselbrand","t":0,"c":"creature"},{"q":1,"n":"Demonlord Belzenlok","t":0,"c":"creature"},{"q":1,"n":"Jerren, Corrupted Bishop","t":0,"c":"creature"},{"q":1,"n":"Kothophed, Soul Hoarder","t":0,"c":"creature"},{"q":1,"n":"Nefarox, Overlord of Grixis","t":0,"c":"creature"},{"q":1,"n":"Ob Nixilis, Unshackled","t":0,"c":"creature"},{"q":1,"n":"Orca, Siege Demon","t":0,"c":"creature"},{"q":1,"n":"Orcus, Prince of Undeath","t":0,"c":"creature"},{"q":1,"n":"Rakdos the Defiler","t":0,"c":"creature"},{"q":1,"n":"Rakdos, the Showstopper","t":0,"c":"creature"},{"q":1,"n":"Ravenous Demon","t":0,"c":"creature"},{"q":1,"n":"Razaketh, the Foulblooded","t":0,"c":"creature"},{"q":1,"n":"Shimatsu the Bloodcloaked","t":0,"c":"creature"},{"q":1,"n":"Westvale Abbey","t":0,"c":"creature"},{"q":11,"n":"Demon","t":1,"c":"creature"},{"q":1,"n":"Balor","t":0,"c":"creature"},{"q":1,"n":"Defiler of Souls","t":0,"c":"creature"},{"q":1,"n":"Demon of Catastrophes","t":0,"c":"creature"},{"q":1,"n":"Demon of Dark Schemes","t":0,"c":"creature"},{"q":1,"n":"Demon of Loathing","t":0,"c":"creature"},{"q":1,"n":"Demon of Wailing Agonies","t":0,"c":"creature"},{"q":1,"n":"Demonic Taskmaster","t":0,"c":"creature"},{"q":1,"n":"Demonlord of Ashmouth","t":0,"c":"creature"},{"q":2,"n":"Desecration Demon","t":0,"c":"creature"},{"q":1,"n":"Butcher of the Horde","t":0,"c":"creature"},{"q":9,"n":"Carnifex Demon","t":0,"c":"creature"},{"q":2,"n":"Abhorrent Overlord","t":0,"c":"creature"},{"q":1,"n":"Apocalypse Demon","t":0,"c":"creature"},{"q":1,"n":"Archfiend of Depravity","t":0,"c":"creature"},{"q":1,"n":"Archfiend of Despair","t":0,"c":"creature"},{"q":4,"n":"Archfiend of Sorrows","t":0,"c":"creature"},{"q":1,"n":"Archfiend of Spite","t":0,"c":"creature"},{"q":1,"n":"Doom Whisperer","t":0,"c":"creature"},{"q":1,"n":"Dreadfeast Demon","t":0,"c":"creature"},{"q":5,"n":"Dreadhound","t":0,"c":"creature"},{"q":2,"n":"Eater of Hope","t":0,"c":"creature"},{"q":1,"n":"Embodiment of Agonies","t":0,"c":"creature"},{"q":10,"n":"Goremand","t":0,"c":"creature"},{"q":1,"n":"Harvester of Souls","t":0,"c":"creature"},{"q":1,"n":"Herald of Torment","t":0,"c":"creature"},{"q":1,"n":"Indulgent Tormentor","t":0,"c":"creature"},{"q":1,"n":"Liege of the Pit","t":0,"c":"creature"},{"q":1,"n":"Lord of the Forsaken","t":0,"c":"creature"},{"q":1,"n":"Lord of the Pit","t":0,"c":"creature"},{"q":1,"n":"Lord of the Void","t":0,"c":"creature"},{"q":1,"n":"Minion of Leshrac","t":0,"c":"creature"},{"q":1,"n":"Overseer of the Damned","t":0,"c":"creature"},{"q":2,"n":"Rakshasa Debaser","t":0,"c":"creature"},{"q":1,"n":"Razorjaw Oni","t":0,"c":"creature"},{"q":1,"n":"Reaper from the Abyss","t":0,"c":"creature"},{"q":1,"n":"Shadowborn Demon","t":0,"c":"creature"},{"q":1,"n":"Shadowgrange Archfiend","t":0,"c":"creature"},{"q":2,"n":"Tyrannical Pitlord","t":0,"c":"creature"},{"q":1,"n":"Woebringer Demon","t":0,"c":"creature"},{"q":2,"n":"Xathrid Demon","t":0,"c":"creature"}]},{"name":"D&D Dungeon — Lv1 Oozes","waveEnd":"rarity","wave":"snake","entries":[{"q":38,"n":"Ooze","t":1,"c":"creature"},{"q":18,"n":"Expanding Ooze","t":0,"c":"creature"},{"q":2,"n":"Baleful Beholder","t":0,"c":"creature"},{"q":6,"n":"Acidic Slime","t":0,"c":"creature"},{"q":1,"n":"Biogenic Ooze","t":0,"c":"creature"},{"q":13,"n":"Gelatinous Cube","t":0,"c":"creature"},{"q":1,"n":"Ravenous Slime","t":0,"c":"creature"},{"q":1,"n":"Predator Ooze","t":0,"c":"creature"},{"q":2,"n":"Sludge Monster","t":0,"c":"creature"},{"q":1,"n":"Uchuulon","t":0,"c":"creature"},{"q":1,"n":"Aeve, Progenitor Ooze","t":0,"c":"creature"},{"q":1,"n":"Slurrk, All-Ingesting","t":0,"c":"creature"},{"q":1,"n":"Arms of Hadar","t":0,"c":"spell"},{"q":1,"n":"Creeping Renaissance","t":0,"c":"spell"},{"q":2,"n":"Crippling Fear","t":0,"c":"spell"},{"q":1,"n":"Power Word Kill","t":0,"c":"spell"},{"q":6,"n":"Slime Against Humanity","t":0,"c":"spell"},{"q":2,"n":"Split The Party","t":0,"c":"spell"},{"q":1,"n":"Gutter Grime","t":0,"c":"permanent"},{"q":1,"n":"March of the World Ooze","t":0,"c":"permanent"}]},{"name":"D&D Dungeon — Lv2 Goblins & Skeletons","waveEnd":"rarity","wave":"snake","entries":[{"q":55,"n":"Goblin","t":1,"c":"creature"},{"q":4,"n":"Goblin Wizard","t":1,"c":"creature"},{"q":25,"n":"Stingscourger","t":0,"c":"creature"},{"q":4,"n":"Goblin Arsonist","t":0,"c":"creature"},{"q":11,"n":"Putrid Goblin","t":0,"c":"creature"},{"q":2,"n":"Scuzzback Marauders","t":0,"c":"creature"},{"q":9,"n":"Skeleton Archer","t":0,"c":"creature"},{"q":1,"n":"Persistent Specimen","t":0,"c":"creature"},{"q":14,"n":"Carnage Gladiator","t":0,"c":"creature"},{"q":3,"n":"Ankle Shanker","t":0,"c":"creature"},{"q":1,"n":"Goblin Trashmaster","t":0,"c":"creature"},{"q":1,"n":"Death Tyrant","t":0,"c":"creature"},{"q":5,"n":"Gut, True Soul Zealot","t":0,"c":"creature"},{"q":1,"n":"Bladewing, Deathless Tyrant","t":0,"c":"creature"},{"q":1,"n":"Krenko, Mob Boss","t":0,"c":"creature"},{"q":10,"n":"Arms of Hadar","t":0,"c":"spell"},{"q":1,"n":"Austere Command","t":0,"c":"spell"},{"q":1,"n":"Rampage of the Clans","t":0,"c":"spell"},{"q":1,"n":"Vandalblast","t":0,"c":"spell"},{"q":12,"n":"Empty the Warrens","t":0,"c":"spell"},{"q":8,"n":"Goblin Grenade","t":0,"c":"spell"},{"q":12,"n":"Trumpet Blast","t":0,"c":"spell"},{"q":4,"n":"Turn to Slag","t":0,"c":"spell"},{"q":5,"n":"War Drums","t":0,"c":"permanent"},{"q":7,"n":"Skeletal Swarming","t":0,"c":"permanent"},{"q":2,"n":"Rite of the Dragoncaller","t":0,"c":"permanent"},{"q":2,"n":"Gruul War Chant","t":0,"c":"permanent"}]},{"name":"D&D Dungeon — Lv3 Giants & Dragons","waveEnd":"rarity","wave":"snake","entries":[{"q":70,"n":"Giant Wizard","t":1,"c":"creature"},{"q":12,"n":"Baleful Beholder","t":0,"c":"creature"},{"q":6,"n":"Rimeshield Frost Giant","t":0,"c":"creature"},{"q":5,"n":"Benthic Giant","t":0,"c":"creature"},{"q":4,"n":"Cinderheart Giant","t":0,"c":"creature"},{"q":8,"n":"Writhing Necromass","t":0,"c":"creature"},{"q":8,"n":"Sparktongue Dragon","t":0,"c":"creature"},{"q":8,"n":"Noxious Dragon","t":0,"c":"creature"},{"q":8,"n":"Borderland Behemoth","t":0,"c":"creature"},{"q":8,"n":"Sunrise Sovereign","t":0,"c":"creature"},{"q":5,"n":"Quakebringer","t":0,"c":"creature"},{"q":3,"n":"Calamity Bearer","t":0,"c":"creature"},{"q":1,"n":"Palisade Giant","t":0,"c":"creature"},{"q":1,"n":"Kalemne's Captain","t":0,"c":"creature"},{"q":1,"n":"Xanathar, Guild Kingpin","t":0,"c":"creature"},{"q":1,"n":"Storvald, Frost Giant Jarl","t":0,"c":"creature"},{"q":1,"n":"Icingdeath, Frost Tongue","t":0,"c":"creature"},{"q":20,"n":"Arms of Hadar","t":0,"c":"spell"},{"q":3,"n":"Eyes of the Beholder","t":0,"c":"spell"},{"q":4,"n":"Squash","t":0,"c":"spell"},{"q":1,"n":"Vandalblast","t":0,"c":"spell"},{"q":3,"n":"Slaughter the Strong","t":0,"c":"spell"},{"q":8,"n":"Split the Party","t":0,"c":"spell"},{"q":1,"n":"Seismic Stomp","t":0,"c":"spell"},{"q":8,"n":"You Come to a River","t":0,"c":"spell"},{"q":1,"n":"Twilight's Call","t":0,"c":"spell"},{"q":1,"n":"Campfire","t":0,"c":"permanent"}]}];
+
+/* =========================================================================
+   Helpers
+   ========================================================================= */
+
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+const el = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+};
+const uid = () => Math.random().toString(36).slice(2, 10);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function toast(msg) {
+  const t = el("div", "toast", msg);
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
+/* A biased shuffle would quietly skew which bosses surface early, so this is
+   a plain correct Fisher-Yates. */
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+/* Straight quotes for lookup; the decklists use curly ones inconsistently. */
+const normName = (s) => String(s).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').trim();
+
+/* =========================================================================
+   Persistence
+   ========================================================================= */
+
+const LS_DECKS = "horde.decks";
+const LS_GAME = "horde.game";
+
+function loadDecks() {
+  try { return JSON.parse(localStorage.getItem(LS_DECKS)) || []; }
+  catch { return []; }
+}
+function saveDecks(decks) {
+  try { localStorage.setItem(LS_DECKS, JSON.stringify(decks)); }
+  catch { toast("Couldn't save — device storage is full"); }
+}
+function loadGame() {
+  try { return JSON.parse(localStorage.getItem(LS_GAME)) || null; }
+  catch { return null; }
+}
+function persistGame() {
+  try {
+    if (G) localStorage.setItem(LS_GAME, JSON.stringify(G));
+    else localStorage.removeItem(LS_GAME);
+  } catch { /* a full quota shouldn't interrupt a game in progress */ }
+}
+
+const IDB_NAME = "horde-cards";
+const IDB_STORE = "images";
+
+/* Image storage is a nice-to-have: if IndexedDB is unavailable (private mode,
+   storage denied) every call degrades to a no-op and the app falls back to
+   generated text faces rather than failing to start. */
+let imageDB = null;
+const imageDBReady = new Promise((resolve) => {
+  let req;
+  try { req = indexedDB.open(IDB_NAME, 1); } catch { return resolve(null); }
+  req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+  req.onsuccess = () => { imageDB = req.result; resolve(imageDB); };
+  req.onerror = () => resolve(null);
+});
+
+async function putImage(key, blob) {
+  await imageDBReady;
+  if (!imageDB) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = imageDB.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).put(blob, key);
+      tx.oncomplete = resolve;
+      tx.onerror = resolve;
+    } catch { resolve(); }
+  });
+}
+async function getImage(key) {
+  await imageDBReady;
+  if (!imageDB) return null;
+  return new Promise((resolve) => {
+    try {
+      const tx = imageDB.transaction(IDB_STORE, "readonly");
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    } catch { resolve(null); }
+  });
+}
+
+/* =========================================================================
+   Decklist parsing
+
+   Deliberately forgiving: horde lists come from many sources, and a line the
+   parser mangles is far better surfaced on the review screen than rejected.
+   ========================================================================= */
+
+/* A section heading also hints at card type, which is all an offline import
+   has to go on until Scryfall fills in real type lines. */
+function catFromSection(label, isToken) {
+  if (isToken) return "creature";
+  if (/creature|legendar/i.test(label)) return "creature";
+  if (/spell|instant|sorcer/i.test(label)) return "spell";
+  if (/enchant|artifact|planeswalker/i.test(label)) return "permanent";
+  return null;
+}
+
+/* "Creatures: (79)", "Tokens (150)", "Legendary Creatures (Bosses): (8)" */
+const HEADER_RE = /^(.*?):?\s*\(([^()]*)\)\s*$/;
+const BARE_HEADERS = /^(tokens?|deck|main ?deck|sideboard|commander|bosses?|horde|creatures?|spells?|instants?|sorceries|enchantments?|artifacts?|planeswalkers?|legendar(y|ies)|lands?)\b/i;
+
+function parseDecklist(text, opts = {}) {
+  const joinWrapped = opts.joinWrapped !== false;
+  const entries = [];
+  const warnings = [];
+  let sectionIsToken = null;
+  let sectionCat = null;
+  let sawHeader = false;
+
+  for (const rawLine of String(text).split(/\r?\n/)) {
+    let line = rawLine.replace(/\s+/g, " ").trim();
+    if (!line) continue;
+    if (line.startsWith("//") || line.startsWith("#")) continue;
+    line = line.replace(/^(SB|MB):\s*/i, "");
+
+    // Section header: no leading count, and either "(...)"-suffixed, ':'-suffixed,
+    // or a bare known heading word.
+    if (!/^\d/.test(line)) {
+      const h = line.match(HEADER_RE);
+      const isHeader = h || line.endsWith(":") || (BARE_HEADERS.test(line) && line.split(" ").length <= 4);
+      // A wrapped continuation always wins over a header guess when the
+      // previous line was an entry and this line isn't count-suffixed.
+      const canContinue = joinWrapped && entries.length && !h && !line.endsWith(":");
+      if (isHeader && !canContinue) {
+        const label = (h ? h[1] : line.replace(/:$/, "")).trim();
+        sectionIsToken = /token/i.test(label) ? true : false;
+        sectionCat = catFromSection(label, sectionIsToken);
+        sawHeader = true;
+        continue;
+      }
+      if (canContinue) {
+        const prev = entries[entries.length - 1];
+        prev.name = (prev.name.endsWith("-") ? prev.name : prev.name + " ") + line;
+        prev.name = prev.name.replace(/\s+/g, " ").trim();
+        continue;
+      }
+      if (isHeader) {
+        const label = (h ? h[1] : line.replace(/:$/, "")).trim();
+        sectionIsToken = /token/i.test(label) ? true : false;
+        sectionCat = catFromSection(label, sectionIsToken);
+        sawHeader = true;
+        continue;
+      }
+    }
+
+    let qty = 1;
+    let name = line;
+    const m = line.match(/^(\d+)\s*[xX]?\s+(.*)$/) || line.match(/^[xX](\d+)\s+(.*)$/);
+    if (m) { qty = parseInt(m[1], 10); name = m[2]; }
+
+    if (!Number.isFinite(qty) || qty < 1) qty = 1;
+    if (qty > 999) {
+      warnings.push('Clamped an implausible quantity on "' + name + '" (' + qty + ' → 999).');
+      qty = 999;
+    }
+
+    entries.push({
+      qty, name,
+      tokenHint: sectionIsToken === true,
+      catHint: sectionCat,
+      raw: rawLine.trim(),
+    });
+  }
+
+  // Post-process names now that continuations are joined.
+  for (const e of entries) {
+    let name = normName(e.name);
+
+    // Trailing set/collector data and foil markers.
+    const setMatch = name.match(/\s*[([]([A-Za-z0-9_]{2,6})[)\]]\s*([A-Za-z0-9-]+)?\s*$/);
+    if (setMatch) name = name.slice(0, setMatch.index);
+    name = name.replace(/\s*\*[^*]*\*\s*$/, "").trim();
+
+    // "Token: Zombie" marks a token regardless of section.
+    if (/^tokens?\s*[:\-]\s*/i.test(name)) {
+      name = name.replace(/^tokens?\s*[:\-]\s*/i, "").trim();
+      e.tokenHint = true;
+    }
+
+    // Split cards and DFCs: the front face is what Scryfall answers to.
+    name = name.split(/\s*\/\/\s*/)[0].trim();
+
+    // A trailing "2/2" is common token shorthand.
+    const pt = name.match(/^(.*?)[\s,-]+(\d+|\*)\s*\/\s*(\d+|\*)$/);
+    if (pt && pt[1].trim()) {
+      name = pt[1].trim();
+      e.ptHint = { power: pt[2], toughness: pt[3] };
+      if (!sawHeader) e.tokenHint = true;
+    }
+    e.name = name;
+  }
+
+  const kept = entries.filter((e) => {
+    if (e.name) return true;
+    warnings.push('Skipped a line with no card name: "' + e.raw + '"');
+    return false;
+  });
+
+  // Merge duplicates so the review screen shows one row per card.
+  const merged = new Map();
+  for (const e of kept) {
+    const key = e.name.toLowerCase() + "|" + (e.tokenHint ? "t" : "c");
+    const hit = merged.get(key);
+    if (hit) { hit.qty += e.qty; hit.ptHint = hit.ptHint || e.ptHint; }
+    else merged.set(key, { ...e });
+  }
+
+  return { entries: Array.from(merged.values()), warnings };
+}
+
+/* =========================================================================
+   Scryfall lookup
+
+   Non-tokens go through /cards/collection (75 identifiers per request, so a
+   300-card horde is one or two calls). Tokens aren't reliably addressable by
+   name there, so they fall back to a throttled search. Every failure is
+   non-fatal: the card keeps its parsed name and plays as a text face.
+   ========================================================================= */
+
+const SCRYFALL = "https://api.scryfall.com";
+const COLLECTION_CHUNK = 75;
+const THROTTLE_MS = 110; // Scryfall asks for 50-100ms between requests
+
+let lookupAborted = false;
+/* A dead network should cost one failed request, not one per card: the first
+   connection-level failure short-circuits the rest of the run. */
+let networkDead = false;
+
+function cardFromScryfall(sf, entry) {
+  const face = sf.card_faces && sf.card_faces[0] ? sf.card_faces[0] : sf;
+  const typeLine = sf.type_line || face.type_line || "";
+  const oracle = sf.oracle_text || face.oracle_text || "";
+  const imageUri =
+    (sf.image_uris && sf.image_uris.normal) ||
+    (face.image_uris && face.image_uris.normal) || null;
+  return {
+    key: "c_" + uid(),
+    name: sf.name || entry.name,
+    scryfallId: sf.id || null,
+    isToken: sf.layout === "token" || /\bToken\b/.test(typeLine),
+    rarity: sf.rarity || null,
+    isLegendary: /\bLegendary\b/.test(typeLine),
+    hasDefender: /\bDefender\b/.test(oracle),
+    typeLine,
+    manaCost: sf.mana_cost || face.mana_cost || "",
+    oracleText: oracle,
+    power: sf.power != null ? String(sf.power) : (face.power != null ? String(face.power) : null),
+    toughness: sf.toughness != null ? String(sf.toughness) : (face.toughness != null ? String(face.toughness) : null),
+    colors: sf.colors || face.colors || sf.color_identity || [],
+    imageUri,
+    resolved: true,
+  };
+}
+
+function cardFromEntry(entry) {
+  // No Scryfall data: the best card we can build from the decklist line alone.
+  return {
+    key: "c_" + uid(),
+    name: entry.name,
+    scryfallId: null,
+    isToken: !!entry.tokenHint,
+    catHint: entry.catHint || null,
+    rarity: null,
+    isLegendary: false,
+    hasDefender: false,
+    typeLine: entry.ptHint ? "Creature" : "",
+    manaCost: "",
+    oracleText: "",
+    power: entry.ptHint ? entry.ptHint.power : null,
+    toughness: entry.ptHint ? entry.ptHint.toughness : null,
+    colors: [],
+    imageUri: null,
+    resolved: false,
+  };
+}
+
+async function sfJSON(url, opts) {
+  if (networkDead) throw new Error("offline");
+  let res;
+  try {
+    res = await fetch(url, opts);
+  } catch (e) {
+    // fetch only rejects on a connection-level failure, never on a 404.
+    networkDead = true;
+    throw e;
+  }
+  if (!res.ok) throw new Error("Scryfall " + res.status);
+  return res.json();
+}
+
+async function lookupNamed(entry) {
+  // Tokens first when hinted: an exact-name hit would otherwise silently turn
+  // "Zombie" the token into "Zombie" the creature card.
+  const order = entry.tokenHint ? ["token", "exact", "fuzzy"] : ["exact", "token", "fuzzy"];
+  for (const how of order) {
+    if (lookupAborted || networkDead) return null;
+    try {
+      if (how === "exact") {
+        return await sfJSON(SCRYFALL + "/cards/named?exact=" + encodeURIComponent(entry.name));
+      }
+      if (how === "fuzzy") {
+        return await sfJSON(SCRYFALL + "/cards/named?fuzzy=" + encodeURIComponent(entry.name));
+      }
+      const q = '!"' + entry.name.replace(/"/g, "") + '" is:token';
+      const data = await sfJSON(SCRYFALL + "/cards/search?q=" + encodeURIComponent(q) + "&unique=cards");
+      if (data.data && data.data.length) return data.data[0];
+    } catch { /* try the next strategy */ }
+    await sleep(THROTTLE_MS);
+  }
+  return null;
+}
+
+/* Resolve every entry to a card object. Never throws: whatever can't be looked
+   up comes back as an unresolved card. */
+async function resolveEntries(entries, onProgress) {
+  const cards = new Array(entries.length).fill(null);
+  let done = 0;
+  const bump = (label) => onProgress && onProgress(done, entries.length, label);
+
+  const batchIdx = entries.map((e, i) => i).filter((i) => !entries[i].tokenHint);
+  for (let c = 0; c < batchIdx.length; c += COLLECTION_CHUNK) {
+    if (lookupAborted || networkDead) break;
+    const slice = batchIdx.slice(c, c + COLLECTION_CHUNK);
+    bump("Looking up " + slice.length + " cards");
+    try {
+      const data = await sfJSON(SCRYFALL + "/cards/collection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifiers: slice.map((i) => ({ name: entries[i].name })) }),
+      });
+      // Results omit misses, so match by name rather than position.
+      const byName = new Map();
+      for (const sf of data.data || []) byName.set(sf.name.toLowerCase(), sf);
+      for (const i of slice) {
+        const want = entries[i].name.toLowerCase();
+        const hit = byName.get(want) ||
+          (data.data || []).find((sf) => sf.name.toLowerCase().startsWith(want));
+        if (hit) { cards[i] = cardFromScryfall(hit, entries[i]); done++; }
+      }
+    } catch { /* fall through to the per-card pass */ }
+    bump("Looking up cards");
+    await sleep(THROTTLE_MS);
+  }
+
+  for (let i = 0; i < entries.length; i++) {
+    if (lookupAborted || networkDead) break;
+    if (cards[i]) continue;
+    bump(entries[i].name);
+    const sf = await lookupNamed(entries[i]);
+    cards[i] = sf ? cardFromScryfall(sf, entries[i]) : cardFromEntry(entries[i]);
+    done++;
+    bump(entries[i].name);
+  }
+
+  for (let i = 0; i < entries.length; i++) {
+    if (!cards[i]) cards[i] = cardFromEntry(entries[i]);
+  }
+  return cards;
+}
+
+/* Download and cache art. Failures are silent by design — a missing image
+   costs a prettier card, not a playable one. */
+async function cacheImages(cards, onProgress) {
+  const withArt = cards.filter((c) => c.imageUri && c.scryfallId);
+  let done = 0;
+  for (const card of withArt) {
+    if (lookupAborted || networkDead) break;
+    onProgress && onProgress(done, withArt.length, card.name);
+    try {
+      if (!(await getImage(card.scryfallId))) {
+        const res = await fetch(card.imageUri);
+        if (res.ok) await putImage(card.scryfallId, await res.blob());
+      }
+    } catch { /* keep going */ }
+    done++;
+    await sleep(40);
+  }
+  onProgress && onProgress(done, withArt.length, "");
+}
+
+/* =========================================================================
+   Card rendering
+   ========================================================================= */
+
+const objectUrls = new Map(); // scryfallId -> object URL
+
+async function primeImages(cards) {
+  for (const url of objectUrls.values()) URL.revokeObjectURL(url);
+  objectUrls.clear();
+  for (const card of cards) {
+    if (!card.scryfallId) continue;
+    const blob = await getImage(card.scryfallId);
+    if (blob) objectUrls.set(card.scryfallId, URL.createObjectURL(blob));
+  }
+}
+
+function colorClass(card) {
+  const c = card.colors || [];
+  if (c.length > 1) return "c-M";
+  if (c.length === 1) return "c-" + c[0];
+  return "";
+}
+
+function categoryOf(card) {
+  const t = card.typeLine || "";
+  if (/Creature/i.test(t)) return "creature";
+  if (/Instant|Sorcery/i.test(t)) return "spell";
+  if (t) return "permanent";
+  // No type line (an offline import): fall back to the decklist's own section
+  // heading, then to the token flag.
+  if (card.catHint) return card.catHint;
+  return card.isToken ? "creature" : "permanent";
+}
+
+const ptString = (card) =>
+  (card.power == null || card.toughness == null) ? null : card.power + "/" + card.toughness;
+
+/* Returns an element, not a string, so image object URLs never round-trip
+   through innerHTML. */
+function cardFace(card, opts = {}) {
+  const node = el("div", "cardface");
+  if (card.hasDefender) node.classList.add("defender");
+  const art = card.scryfallId ? objectUrls.get(card.scryfallId) : null;
+
+  if (art) {
+    const img = el("img");
+    img.src = art;
+    img.alt = card.name;
+    img.loading = "lazy";
+    node.appendChild(img);
+  } else {
+    node.classList.add("gen");
+    const cc = colorClass(card);
+    if (cc) node.classList.add(cc);
+    const top = el("div", "cf-top");
+    top.appendChild(el("div", "cf-name", card.name));
+    if (card.manaCost) top.appendChild(el("div", "cf-cost", card.manaCost));
+    node.appendChild(top);
+    node.appendChild(el("div", "cf-type",
+      card.typeLine || (card.isToken ? "Token Creature" : "Card")));
+    node.appendChild(el("div", "cf-oracle", card.oracleText || ""));
+    const pt = ptString(card);
+    if (pt) node.appendChild(el("div", "cf-pt", pt));
+  }
+
+  if (opts.badge !== false) {
+    let label = card.isToken ? "Token" : "Card";
+    let cls = card.isToken ? " token" : "";
+    if (opts.rule === "rarity" && card.rarity) {
+      label = card.rarity;
+      cls = /uncommon|rare|mythic/.test(card.rarity) ? " rare" : "";
+    }
+    node.appendChild(el("div", "cf-badge" + cls, label));
+  }
+  if (card.hasDefender) node.appendChild(el("div", "cf-badge defender", "Defender"));
+  if (opts.count && opts.count > 1) node.appendChild(el("div", "cf-count", "×" + opts.count));
+  return node;
+}
+
+/* =========================================================================
+   Game state
+
+   G.library / G.graveyard hold card keys (duplicates allowed); G.cards is the
+   deck's key -> card dictionary. Board stacks are {cardKey, count}, so 145
+   Vampire tokens are one tile rather than 145.
+   ========================================================================= */
+
+let G = null;
+let undoStack = [];
+let millInput = "";
+
+const PHASE = { SETUP: "setup", SURVIVORS: "survivors", REVEAL: "reveal", COMBAT: "combat" };
+const SNAKE = [1, 2, 3, 2]; // 1,2,3,2,1,2,3,2,1...
+
+/* Per hordemagic.com: 100 life for one survivor, 15 less for each one after. */
+const sharedLifeFor = (n) => Math.max(1, 100 - 15 * (Math.max(1, n) - 1));
+
+function waveSizeFor(hordeTurn, pattern) {
+  if (pattern !== "snake") return 1;
+  return SNAKE[(Math.max(1, hordeTurn) - 1) % SNAKE.length];
+}
+
+/* A wave ends when the Horde casts a wave-ender. Which cards count depends on
+   the deck: the Zombies horde ends waves on non-token cards, while the Eldrazi
+   and D&D hordes end them on an uncommon/rare/mythic. */
+function isWaveEnder(card, rule) {
+  if (rule === "rarity") {
+    if (card.rarity) return /^(uncommon|rare|mythic)$/.test(card.rarity);
+    // Unknown rarity (offline import): non-tokens are the best available proxy.
+    return !card.isToken;
+  }
+  return !card.isToken;
+}
+
+function newGame(deck, opts) {
+  const cards = {};
+  const library = [];
+  for (const entry of deck.entries) {
+    cards[entry.card.key] = entry.card;
+    for (let i = 0; i < entry.qty; i++) library.push(entry.card.key);
+  }
+  shuffle(library);
+
+  return {
+    deckId: deck.id,
+    deckName: deck.name,
+    cards,
+    library,
+    graveyard: [],
+    board: [],
+    revealed: [],
+    spellTargets: {},     // index into G.revealed -> player id
+    milledLegends: [],    // card keys milled by damage this mill, for the ETB rule
+    players: opts.players.map((name, i) => ({ id: "p" + i, name: name || "Survivor " + (i + 1) })),
+    life: opts.life,
+    poison: 0,
+    poisonLimit: opts.poisonLimit,
+    waveEnd: opts.waveEnd,
+    wavePattern: opts.wavePattern,
+    legendaryRule: opts.legendaryRule,
+    hordeTurn: 0,         // how many turns the Horde has actually taken
+    turn: 1,
+    setupTurnsLeft: opts.setupTurns,
+    phase: opts.setupTurns > 0 ? PHASE.SETUP : PHASE.SURVIVORS,
+    log: [],
+    over: null,
+  };
+}
+
+function snapshot() {
+  undoStack.push(JSON.stringify(G));
+  if (undoStack.length > 25) undoStack.shift();
+}
+function undo() {
+  const prev = undoStack.pop();
+  if (!prev) { toast("Nothing to undo"); return; }
+  G = JSON.parse(prev);
+  millInput = "";
+  persistGame();
+  renderGame();
+  toast("Undone");
+}
+
+function logit(msg) {
+  G.log.unshift({ t: G.turn, msg });
+  if (G.log.length > 150) G.log.pop();
+}
+
+const boardCreatures = () => G.board.filter((s) => categoryOf(G.cards[s.cardKey]) === "creature");
+const attackers = () => boardCreatures().filter((s) => !G.cards[s.cardKey].hasDefender);
+const creatureCount = () => boardCreatures().reduce((n, s) => n + s.count, 0);
+function attackingPower() {
+  return attackers().reduce((n, s) => {
+    const p = parseInt(G.cards[s.cardKey].power, 10);
+    return n + (Number.isFinite(p) ? p * s.count : 0);
+  }, 0);
+}
+
+/* True when some attacker's power is unknown — an offline deck has names but
+   no stats, and reporting a confident "0" there would be a lie. */
+function powerIsPartial() {
+  return attackers().some((s) => !Number.isFinite(parseInt(G.cards[s.cardKey].power, 10)));
+}
+
+function addToBoard(cardKey, n = 1) {
+  const hit = G.board.find((s) => s.cardKey === cardKey);
+  if (hit) hit.count += n;
+  else G.board.push({ cardKey, count: n });
+}
+function removeFromBoard(cardKey, n) {
+  const i = G.board.findIndex((s) => s.cardKey === cardKey);
+  if (i < 0) return 0;
+  const stack = G.board[i];
+  const killed = Math.min(n, stack.count);
+  stack.count -= killed;
+  if (stack.count <= 0) G.board.splice(i, 1);
+  for (let k = 0; k < killed; k++) G.graveyard.push(cardKey);
+  return killed;
+}
+
+/* ---- The Horde's turn ---- */
+
+function currentWaveSize() {
+  return waveSizeFor(G.hordeTurn + 1, G.wavePattern);
+}
+
+function flipHordeTurn() {
+  snapshot();
+  G.hordeTurn++;
+  G.revealed = [];
+  G.spellTargets = {};
+  G.milledLegends = [];
+
+  const want = waveSizeFor(G.hordeTurn, G.wavePattern);
+  let enders = 0;
+  while (G.library.length && enders < want) {
+    const key = G.library.pop();
+    G.revealed.push(key);
+    if (isWaveEnder(G.cards[key], G.waveEnd)) enders++;
+  }
+
+  if (!G.revealed.length) {
+    logit("The Horde's library is empty — nothing to cast.");
+  } else {
+    logit("Wave " + want + ": cast " + G.revealed.length + " card" +
+      (G.revealed.length === 1 ? "" : "s") + ".");
+    if (enders < want) logit("The library ran out before the wave finished.");
+  }
+
+  // Spells roll their victim now so the target is visible before it resolves.
+  G.revealed.forEach((key, i) => {
+    if (categoryOf(G.cards[key]) === "spell") {
+      const target = pick(G.players);
+      if (target) G.spellTargets[i] = target.id;
+    }
+  });
+
+  G.phase = PHASE.REVEAL;
+  checkEnd();
+  persistGame();
+}
+
+function resolveReveal() {
+  snapshot();
+  for (let i = 0; i < G.revealed.length; i++) {
+    const key = G.revealed[i];
+    const card = G.cards[key];
+    if (categoryOf(card) === "spell") {
+      const target = G.players.find((p) => p.id === G.spellTargets[i]);
+      logit(card.name + " resolves" + (target ? " — random target: " + target.name : "") + ".");
+      G.graveyard.push(key);
+    } else {
+      addToBoard(key, 1);
+      logit(card.name + " enters the battlefield.");
+    }
+  }
+  G.revealed = [];
+  G.spellTargets = {};
+  G.phase = PHASE.COMBAT;
+  checkEnd();
+  persistGame();
+}
+
+function endHordeTurn() {
+  snapshot();
+  G.turn++;
+  G.phase = PHASE.SURVIVORS;
+  G.milledLegends = [];
+  persistGame();
+}
+
+function endSetupTurn() {
+  snapshot();
+  G.setupTurnsLeft--;
+  G.turn++;
+  if (G.setupTurnsLeft <= 0) {
+    G.phase = PHASE.SURVIVORS;
+    logit("Setup over — the Horde wakes up.");
+  }
+  persistGame();
+}
+
+/* ---- Damage, mill, life ---- */
+
+function millCards(n) {
+  if (!(n > 0)) return;
+  snapshot();
+  const moved = Math.min(n, G.library.length);
+  const legends = [];
+  for (let i = 0; i < moved; i++) {
+    const key = G.library.pop();
+    G.graveyard.push(key);
+    if (G.legendaryRule && G.cards[key].isLegendary) legends.push(key);
+  }
+  logit(n + " damage to the Horde — milled " + moved + " card" + (moved === 1 ? "" : "s") + ".");
+  if (moved < n) logit("The library ran out mid-mill.");
+
+  // Recommended rule: a legendary milled by damage enters the battlefield and
+  // immediately phases out. Surface it rather than resolving it silently.
+  G.milledLegends = legends;
+  for (const key of legends) {
+    logit(G.cards[key].name + " was milled — it enters the battlefield, then phases out.");
+  }
+
+  checkEnd();
+  persistGame();
+}
+
+function adjustLife(delta) {
+  snapshot();
+  G.life = Math.max(0, G.life + delta);
+  if (G.life === 0) logit("The survivors are out of life.");
+  checkEnd();
+  persistGame();
+}
+
+function adjustPoison(delta) {
+  snapshot();
+  G.poison = Math.max(0, G.poison + delta);
+  checkEnd();
+  persistGame();
+}
+
+function killFromStack(cardKey, n) {
+  snapshot();
+  const killed = removeFromBoard(cardKey, n);
+  if (killed) logit(killed + "× " + G.cards[cardKey].name + " destroyed.");
+  checkEnd();
+  persistGame();
+}
+
+function rerollTarget(index) {
+  snapshot();
+  const target = pick(G.players);
+  if (target) G.spellTargets[index] = target.id;
+  persistGame();
+}
+
+/* ---- End conditions ---- */
+
+function checkEnd() {
+  if (G.over) return;
+  if (G.library.length === 0 && G.revealed.length === 0 && G.board.length === 0) {
+    G.over = "survivors";
+    logit("Library empty, board empty. The survivors win.");
+    return;
+  }
+  if (G.life <= 0) {
+    G.over = "horde";
+    logit("The survivors are dead. The Horde wins.");
+    return;
+  }
+  if (G.poison >= G.poisonLimit) {
+    G.over = "horde";
+    logit("Poison limit reached. The Horde wins.");
+  }
+}
+
+/* =========================================================================
+   Screens
+   ========================================================================= */
+
+function showScreen(id) {
+  $$(".screen").forEach((s) => s.classList.toggle("active", s.id === id));
+  $("#btn-home").hidden = id === "screen-decks";
+  window.scrollTo(0, 0);
+}
+
+/* Bundled decks are stored compactly and enriched from Scryfall on first use;
+   until then they play as text cards with the token flag from the decklist. */
+function hydrateBundled(b) {
+  return {
+    id: "b_" + b.name.replace(/\W+/g, "").toLowerCase(),
+    name: b.name,
+    builtin: true,
+    waveEnd: b.waveEnd,
+    wavePattern: b.wave,
+    enriched: false,
+    entries: b.entries.map((e) => ({
+      qty: e.q,
+      card: cardFromEntry({ name: e.n, tokenHint: !!e.t, catHint: e.c || null }),
+    })),
+  };
+}
+
+function allDecks() {
+  const saved = loadDecks();
+  const savedIds = new Set(saved.map((d) => d.id));
+  const builtin = BUNDLED_DECKS.map(hydrateBundled).filter((d) => !savedIds.has(d.id));
+  return saved.concat(builtin);
+}
+
+function renderDecks() {
+  const list = $("#deck-list");
+  list.textContent = "";
+
+  for (const deck of allDecks()) {
+    const total = deck.entries.reduce((n, e) => n + e.qty, 0);
+    const tokens = deck.entries.reduce((n, e) => n + (e.card.isToken ? e.qty : 0), 0);
+    const row = el("div", "deckrow");
+
+    const name = el("div", "grow");
+    const title = el("div", "dname", deck.name);
+    name.appendChild(title);
+    name.appendChild(el("div", "small muted",
+      total + " cards · " + tokens + " tokens · waves end on " +
+      (deck.waveEnd === "rarity" ? "uncommon+" : "non-token") +
+      (deck.builtin ? " · built in" : "")));
+    row.appendChild(name);
+
+    const play = el("button", "btn primary sm", "New game");
+    play.addEventListener("click", () => openSetup(deck));
+    row.appendChild(play);
+
+    if (!deck.builtin) {
+      const del = el("button", "btn ghost sm danger", "Delete");
+      del.addEventListener("click", () => {
+        confirmDialog("Delete " + deck.name + "?", "The decklist is removed from this device.", () => {
+          saveDecks(loadDecks().filter((d) => d.id !== deck.id));
+          renderDecks();
+          toast("Deck deleted");
+        });
+      });
+      row.appendChild(del);
+    }
+    list.appendChild(row);
+  }
+
+  const saved = loadGame();
+  $("#btn-resume").hidden = !saved || !!saved.over;
+}
+
+/* ---- Import ---- */
+
+let reviewCards = [];
+let reviewEntries = [];
+
+function importStep(step) {
+  $("#import-step-paste").classList.toggle("hidden", step !== "paste");
+  $("#import-step-loading").classList.toggle("hidden", step !== "loading");
+  $("#import-step-review").classList.toggle("hidden", step !== "review");
+}
+
+function setLookupProgress(done, total, label) {
+  $("#lookup-bar").style.width = (total ? Math.round((done / total) * 100) : 0) + "%";
+  $("#lookup-status").textContent = label ? label + " — " + done + " / " + total : done + " / " + total;
+}
+
+async function runImport() {
+  const parsed = parseDecklist($("#import-text").value, { joinWrapped: $("#opt-join").checked });
+  if (!parsed.entries.length) { toast("Nothing to import — paste a decklist first"); return; }
+
+  reviewEntries = parsed.entries;
+  lookupAborted = false;
+  networkDead = false;
+  importStep("loading");
+  setLookupProgress(0, reviewEntries.length, "Starting");
+
+  reviewCards = await resolveEntries(reviewEntries, setLookupProgress);
+
+  $("#lookup-status").textContent = "Downloading card images…";
+  $("#lookup-bar").style.width = "0%";
+  await cacheImages(reviewCards, setLookupProgress);
+  await primeImages(reviewCards);
+
+  renderReview(parsed.warnings);
+  importStep("review");
+}
+
+function renderReview(warnings) {
+  const warnBox = $("#review-warnings");
+  warnBox.textContent = "";
+
+  if (networkDead) {
+    warnBox.appendChild(el("div", "note bad",
+      "Couldn't reach Scryfall, so there's no art, rules text or rarity. The deck still plays " +
+      "as text cards — re-import later on a connection to fill it in."));
+  }
+
+  const unresolved = reviewCards.filter((c) => !c.resolved).length;
+  if (unresolved && !networkDead) {
+    warnBox.appendChild(el("div", "note warn",
+      unresolved + " card" + (unresolved === 1 ? " was" : "s were") + " not found on Scryfall — " +
+      "they'll play as text cards with no rules text or rarity. Check their Token/Card flag."));
+  }
+  for (const w of warnings || []) {
+    const n = el("div", "note warn", w);
+    n.style.marginTop = "8px";
+    warnBox.appendChild(n);
+  }
+
+  const rows = $("#review-rows");
+  rows.textContent = "";
+  reviewCards.forEach((card, i) => {
+    const row = el("div", "review-row");
+
+    const slot = el("div", "slot");
+    const redraw = () => { slot.textContent = ""; slot.appendChild(cardFace(card, { badge: false })); };
+    redraw();
+    row.appendChild(slot);
+
+    const mid = el("div");
+    const nameInput = el("input", "txt");
+    nameInput.value = card.name;
+    nameInput.setAttribute("aria-label", "Card name");
+    nameInput.addEventListener("input", () => { card.name = nameInput.value; redraw(); });
+    mid.appendChild(nameInput);
+    mid.appendChild(el("div", "tiny muted",
+      reviewEntries[i].qty + "× · " + (card.typeLine || "unknown type") +
+      (card.rarity ? " · " + card.rarity : "") +
+      (ptString(card) ? " · " + ptString(card) : "") +
+      (card.resolved ? "" : " · not found")));
+    row.appendChild(mid);
+
+    const toggle = el("button", "toggle", card.isToken ? "Token" : "Card");
+    toggle.setAttribute("aria-pressed", String(card.isToken));
+    toggle.title = "Under the non-token wave rule, only cards end a wave.";
+    toggle.addEventListener("click", () => {
+      card.isToken = !card.isToken;
+      toggle.textContent = card.isToken ? "Token" : "Card";
+      toggle.setAttribute("aria-pressed", String(card.isToken));
+      redraw();
+      updateReviewSummary();
+    });
+    row.appendChild(toggle);
+    rows.appendChild(row);
+  });
+  updateReviewSummary();
+}
+
+function updateReviewSummary() {
+  const total = reviewEntries.reduce((n, e) => n + e.qty, 0);
+  const tokens = reviewCards.reduce((n, c, i) => n + (c.isToken ? reviewEntries[i].qty : 0), 0);
+  $("#review-summary").textContent =
+    total + " cards · " + tokens + " tokens · " + (total - tokens) + " non-token";
+}
+
+function saveImportedDeck() {
+  const finish = () => {
+    const decks = loadDecks();
+    decks.push({
+      id: "d_" + uid(),
+      name: ($("#import-name").value || "").trim() || "Horde deck",
+      createdAt: Date.now(),
+      waveEnd: "nontoken",
+      wavePattern: "snake",
+      enriched: true,
+      entries: reviewCards.map((card, i) => ({ qty: reviewEntries[i].qty, card })),
+    });
+    saveDecks(decks);
+    toast("Deck saved");
+    renderDecks();
+    showScreen("screen-decks");
+  };
+
+  // No non-token card means the Horde flips its whole library in one wave.
+  if (!reviewCards.some((c) => !c.isToken)) {
+    confirmDialog("Every card is marked as a token",
+      "Under the non-token wave rule the Horde would cast its entire library in one wave. Save anyway?",
+      finish);
+    return;
+  }
+  finish();
+}
+
+/* ---- Setup ---- */
+
+let setupDeck = null;
+let setupNames = ["", ""];
+let setupWaveEnd = "nontoken";
+let setupWavePattern = "snake";
+
+function openSetup(deck) {
+  setupDeck = deck;
+  setupWaveEnd = deck.waveEnd || "nontoken";
+  setupWavePattern = deck.wavePattern || "snake";
+  $("#setup-deckname").textContent = deck.name;
+  renderSetupPlayers();
+  renderSetupChips();
+  showScreen("screen-setup");
+}
+
+function renderSetupPlayers() {
+  const box = $("#setup-players");
+  box.textContent = "";
+  setupNames.forEach((name, i) => {
+    const row = el("div", "row");
+    const input = el("input", "txt grow");
+    input.value = name;
+    input.placeholder = "Survivor " + (i + 1);
+    input.setAttribute("aria-label", "Survivor " + (i + 1) + " name");
+    input.addEventListener("input", () => { setupNames[i] = input.value; });
+    row.appendChild(input);
+    if (setupNames.length > 1) {
+      const rm = el("button", "btn sm ghost danger", "Remove");
+      rm.addEventListener("click", () => { setupNames.splice(i, 1); renderSetupPlayers(); syncLife(); });
+      row.appendChild(rm);
+    }
+    box.appendChild(row);
+  });
+}
+
+function renderSetupChips() {
+  $$("#opt-waveend .chip").forEach((c) =>
+    c.setAttribute("aria-pressed", String(c.dataset.v === setupWaveEnd)));
+  $$("#opt-wavepattern .chip").forEach((c) =>
+    c.setAttribute("aria-pressed", String(c.dataset.v === setupWavePattern)));
+}
+
+function syncLife() {
+  const n = setupNames.length;
+  $("#setup-life").value = sharedLifeFor(n);
+  $("#setup-lifenote").textContent =
+    n + " survivor" + (n === 1 ? "" : "s") + " share " + sharedLifeFor(n) + " life " +
+    "(100 for the first, 15 less for each one after). Survivors take their turns together as one player.";
+}
+
+/* ---- Game ---- */
+
+async function startGame() {
+  const deck = setupDeck;
+
+  // Built-in decks carry only names until their first game; fill in art and
+  // rarity now, since the rarity wave rule depends on it.
+  if (deck.builtin && !deck.enriched && navigator.onLine !== false) {
+    importStep("loading");
+    showScreen("screen-import");
+    $("#import-step-paste").classList.add("hidden");
+    $("#import-step-review").classList.add("hidden");
+    lookupAborted = false;
+    networkDead = false;
+    setLookupProgress(0, deck.entries.length, "Preparing " + deck.name);
+    const entries = deck.entries.map((e) => ({ name: e.card.name, tokenHint: e.card.isToken }));
+    const cards = await resolveEntries(entries, setLookupProgress);
+    $("#lookup-status").textContent = "Downloading card images…";
+    await cacheImages(cards, setLookupProgress);
+    // Keep the decklist's own token flags: they are authoritative for waves.
+    cards.forEach((c, i) => {
+      c.isToken = deck.entries[i].card.isToken;
+      c.catHint = c.catHint || deck.entries[i].card.catHint;
+    });
+    deck.entries = deck.entries.map((e, i) => ({ qty: e.qty, card: cards[i] }));
+    if (networkDead) {
+      // Don't cache a failed enrich as done, or the deck stays text-only forever.
+      toast("Offline — playing with text cards");
+    } else {
+      deck.enriched = true;
+      const saved = loadDecks().filter((d) => d.id !== deck.id);
+      saved.push(deck);
+      saveDecks(saved);
+    }
+  }
+
+  G = newGame(deck, {
+    players: setupNames,
+    life: Math.max(1, parseInt($("#setup-life").value, 10) || sharedLifeFor(setupNames.length)),
+    setupTurns: Math.max(0, parseInt($("#setup-turns").value, 10) || 0),
+    poisonLimit: Math.max(1, parseInt($("#setup-poison").value, 10) || 10),
+    waveEnd: setupWaveEnd,
+    wavePattern: setupWavePattern,
+    legendaryRule: $("#opt-legendary").checked,
+  });
+  undoStack = [];
+  millInput = "";
+  await primeImages(Object.values(G.cards));
+  logit("Shuffled " + G.library.length + " cards. Waves end on " +
+    (G.waveEnd === "rarity" ? "an uncommon, rare or mythic" : "a non-token card") + ".");
+  persistGame();
+  renderGame();
+  showScreen("screen-game");
+}
+
+async function resumeGame() {
+  const saved = loadGame();
+  if (!saved) return;
+  G = saved;
+  undoStack = [];
+  millInput = "";
+  await primeImages(Object.values(G.cards));
+  renderGame();
+  showScreen("screen-game");
+}
+
+function renderGame() {
+  if (!G) return;
+  if (G.over) { renderEnd(); return; }
+
+  $("#c-library").textContent = G.library.length;
+  $("#c-board").textContent = creatureCount();
+  $("#c-power").textContent = attackingPower() + (powerIsPartial() ? "+?" : "");
+  $("#c-yard").textContent = G.graveyard.length;
+  $("#c-turn").textContent = G.turn;
+
+  $("#life-n").textContent = G.life;
+  $("#lifepool").classList.toggle("low", G.life <= 20);
+  $("#poison-n").textContent = G.poison;
+  $("#poison-limit").textContent = "/ " + G.poisonLimit;
+  $("#mill-out").textContent = millInput || "0";
+
+  const chips = $("#player-chips");
+  chips.textContent = "";
+  for (const p of G.players) chips.appendChild(el("span", "chip", p.name));
+
+  renderStage();
+  renderBoard();
+  renderLog();
+}
+
+function waveChip(size, castSoFar) {
+  const chip = el("div", "wave-chip");
+  chip.appendChild(el("span", null, "Wave " + size));
+  const dots = el("span", "dots");
+  for (let i = 0; i < size; i++) {
+    dots.appendChild(el("span", "dot" + (i < castSoFar ? " on" : "")));
+  }
+  chip.appendChild(dots);
+  return chip;
+}
+
+function renderStage() {
+  const body = $("#stage-body");
+  body.textContent = "";
+  const btn = $("#btn-action");
+
+  if (G.phase === PHASE.SETUP) {
+    body.appendChild(el("h2", "stage-title", "Survivors are digging in"));
+    body.appendChild(el("p", "stage-oracle",
+      G.setupTurnsLeft + " setup turn" + (G.setupTurnsLeft === 1 ? "" : "s") +
+      " left before the Horde's first turn. Play lands, get something on the board."));
+    btn.textContent = "End survivor turn";
+    return;
+  }
+
+  if (G.phase === PHASE.SURVIVORS) {
+    body.appendChild(waveChip(currentWaveSize(), 0));
+    body.appendChild(el("h2", "stage-title", "Survivors' turn"));
+    body.appendChild(el("p", "stage-oracle",
+      "Attack, block, cast. Damage you deal to the Horde goes in the pad and mills it. " +
+      "Kill its creatures by tapping them below. The next wave is " + currentWaveSize() + "."));
+    btn.textContent = "Take the Horde's turn";
+    if (G.milledLegends.length) renderMilledLegends(body);
+    return;
+  }
+
+  if (G.phase === PHASE.REVEAL) {
+    if (!G.revealed.length) {
+      body.appendChild(el("h2", "stage-title", "Empty library"));
+      body.appendChild(el("p", "stage-oracle",
+        "The Horde has nothing left to cast. Clear its board and you've won."));
+      btn.textContent = "Continue";
+      return;
+    }
+    renderRevealStage(body);
+    btn.textContent = "Resolve the wave";
+    return;
+  }
+
+  // COMBAT
+  const power = attackingPower();
+  const count = attackers().reduce((n, s) => n + s.count, 0);
+  const defenders = creatureCount() - count;
+  body.appendChild(el("h2", "stage-title", "The Horde attacks"));
+  const line = el("p", "stage-type");
+  line.textContent = count
+    ? count + " creature" + (count === 1 ? "" : "s") + " attacking for " + power +
+      (powerIsPartial() ? "+ power (some stats unknown — check the cards)." : " power.")
+    : "Nothing attacks this turn.";
+  body.appendChild(line);
+  body.appendChild(el("p", "stage-oracle",
+    "Everything is goaded and attacking." +
+    (defenders ? " " + defenders + " with Defender stayed back to block." : "") +
+    " Block what you can, then take the rest off the shared life total."));
+  if (count) {
+    const grid = el("div", "cardgrid lg");
+    for (const stack of attackers()) {
+      const slot = el("div", "slot");
+      slot.appendChild(cardFace(G.cards[stack.cardKey], { count: stack.count, rule: G.waveEnd }));
+      grid.appendChild(slot);
+    }
+    body.appendChild(grid);
+  }
+  btn.textContent = "End the Horde's turn";
+}
+
+function renderMilledLegends(body) {
+  const box = el("div", "note warn");
+  box.style.marginTop = "12px";
+  box.textContent = "Milled legendary: " +
+    G.milledLegends.map((k) => G.cards[k].name).join(", ") +
+    " — put it onto the battlefield, trigger its ETB, then phase it out.";
+  body.appendChild(box);
+}
+
+function renderRevealStage(body) {
+  const heroIdx = G.revealed.length - 1;
+  const hero = G.cards[G.revealed[heroIdx]];
+
+  body.appendChild(waveChip(waveSizeFor(G.hordeTurn, G.wavePattern),
+    G.revealed.filter((k) => isWaveEnder(G.cards[k], G.waveEnd)).length));
+
+  const wrapEl = el("div", "stage-hero flipin");
+  const slot = el("div", "slot");
+  slot.appendChild(cardFace(hero, { rule: G.waveEnd }));
+  wrapEl.appendChild(slot);
+
+  const meta = el("div", "meta");
+  meta.appendChild(el("h2", "stage-title", hero.name));
+  const kw = el("p", "stage-type");
+  if (hero.isLegendary) kw.appendChild(el("span", "kw leg", "Legendary"));
+  if (hero.hasDefender) kw.appendChild(el("span", "kw def", "Defender"));
+  kw.appendChild(document.createTextNode(
+    (hero.typeLine || (hero.isToken ? "Token" : "Card")) +
+    (ptString(hero) ? " · " + ptString(hero) : "") +
+    (hero.rarity ? " · " + hero.rarity : "")));
+  meta.appendChild(kw);
+
+  const spellIdx = Object.keys(G.spellTargets)[0];
+  if (spellIdx !== undefined) {
+    const target = G.players.find((p) => p.id === G.spellTargets[spellIdx]);
+    if (target) {
+      const t = el("div", "target");
+      t.appendChild(el("span", "small muted", "Random target"));
+      t.appendChild(el("span", "who", target.name));
+      const re = el("button", "btn sm ghost", "Re-roll");
+      re.addEventListener("click", () => { rerollTarget(spellIdx); renderGame(); });
+      t.appendChild(re);
+      meta.appendChild(t);
+    }
+  }
+
+  if (hero.oracleText) meta.appendChild(el("p", "stage-oracle", hero.oracleText));
+  if (!hero.resolved) {
+    meta.appendChild(el("div", "note warn",
+      "Not found on Scryfall, so there's no rules text here — play it from the paper card or memory."));
+  }
+  wrapEl.appendChild(meta);
+  body.appendChild(wrapEl);
+
+  if (G.revealed.length > 1) {
+    body.appendChild(el("h3", "small muted", "Cast this wave, in order"));
+    const grid = el("div", "cardgrid");
+    G.revealed.forEach((key) => {
+      const s = el("div", "slot flipin");
+      s.appendChild(cardFace(G.cards[key], { rule: G.waveEnd }));
+      grid.appendChild(s);
+    });
+    body.appendChild(grid);
+  }
+}
+
+function renderBoard() {
+  const box = $("#board");
+  box.textContent = "";
+  $("#board-empty").hidden = G.board.length > 0;
+
+  for (const stack of G.board) {
+    const card = G.cards[stack.cardKey];
+    const slot = el("div", "slot");
+    const btn = el("button");
+    btn.style.cssText = "all:unset; cursor:pointer; display:block; width:100%;";
+    btn.setAttribute("aria-label", "Remove " + card.name + " from the battlefield");
+    btn.appendChild(cardFace(card, { count: stack.count, rule: G.waveEnd }));
+    btn.addEventListener("click", () => openStackDialog(stack.cardKey));
+    slot.appendChild(btn);
+    box.appendChild(slot);
+  }
+}
+
+function renderLog() {
+  const box = $("#log");
+  box.textContent = "";
+  for (const entry of G.log) {
+    const li = el("li");
+    li.appendChild(el("span", "t", "T" + entry.t));
+    li.appendChild(document.createTextNode(entry.msg));
+    box.appendChild(li);
+  }
+}
+
+function renderEnd() {
+  const won = G.over === "survivors";
+  $("#end-title").textContent = won ? "The Horde falls." : "The Horde wins.";
+  $("#end-sub").textContent = won
+    ? "Library empty, board clear — you made it out after " + (G.turn - 1) + " turns."
+    : "The survivors are down after " + (G.turn - 1) + " turns.";
+  showScreen("screen-end");
+}
+
+/* =========================================================================
+   Dialogs
+   ========================================================================= */
+
+let stackDialogKey = null;
+
+function openStackDialog(cardKey) {
+  const card = G.cards[cardKey];
+  const stack = G.board.find((s) => s.cardKey === cardKey);
+  if (!stack) return;
+  stackDialogKey = cardKey;
+  $("#sd-name").textContent = card.name;
+  $("#sd-sub").textContent = stack.count + " on the battlefield" +
+    (ptString(card) ? " · " + ptString(card) : "") +
+    (card.hasDefender ? " · Defender (blocks, doesn't attack)" : "");
+  $("#sd-killall").textContent = "Kill all " + stack.count + " → graveyard";
+  $("#stack-dialog").showModal();
+}
+
+let confirmCb = null;
+function confirmDialog(title, body, onYes) {
+  $("#cd-title").textContent = title;
+  $("#cd-body").textContent = body;
+  confirmCb = onYes;
+  $("#confirm-dialog").showModal();
+}
+
+/* =========================================================================
+   Events
+   ========================================================================= */
+
+$("#btn-home").addEventListener("click", () => { renderDecks(); showScreen("screen-decks"); });
+
+// --- import ---
+$("#btn-import").addEventListener("click", () => {
+  $("#import-name").value = "";
+  $("#import-text").value = "";
+  importStep("paste");
+  showScreen("screen-import");
+});
+$("#btn-import-cancel").addEventListener("click", () => showScreen("screen-decks"));
+$("#btn-parse").addEventListener("click", runImport);
+$("#btn-back-paste").addEventListener("click", () => importStep("paste"));
+$("#btn-skip-lookup").addEventListener("click", () => { lookupAborted = true; });
+$("#btn-save-deck").addEventListener("click", saveImportedDeck);
+$("#btn-all-token").addEventListener("click", () => {
+  reviewCards.forEach((c) => (c.isToken = true));
+  renderReview([]);
+});
+$("#btn-all-card").addEventListener("click", () => {
+  reviewCards.forEach((c) => (c.isToken = false));
+  renderReview([]);
+});
+
+// --- setup ---
+$("#btn-add-player").addEventListener("click", () => {
+  if (setupNames.length >= 4) { toast("Horde Magic tops out at four survivors"); return; }
+  setupNames.push("");
+  renderSetupPlayers();
+  syncLife();
+});
+$("#opt-waveend").addEventListener("click", (e) => {
+  const chip = e.target.closest(".chip");
+  if (!chip) return;
+  setupWaveEnd = chip.dataset.v;
+  renderSetupChips();
+});
+$("#opt-wavepattern").addEventListener("click", (e) => {
+  const chip = e.target.closest(".chip");
+  if (!chip) return;
+  setupWavePattern = chip.dataset.v;
+  renderSetupChips();
+});
+$("#btn-setup-cancel").addEventListener("click", () => showScreen("screen-decks"));
+$("#btn-start").addEventListener("click", startGame);
+$("#btn-resume").addEventListener("click", resumeGame);
+
+// --- game ---
+$("#btn-action").addEventListener("click", () => {
+  switch (G.phase) {
+    case PHASE.SETUP: endSetupTurn(); break;
+    case PHASE.SURVIVORS: flipHordeTurn(); break;
+    case PHASE.REVEAL: resolveReveal(); break;
+    case PHASE.COMBAT: endHordeTurn(); break;
+  }
+  renderGame();
+});
+
+$("#btn-undo").addEventListener("click", undo);
+
+$("#btn-random").addEventListener("click", () => {
+  const p = pick(G.players);
+  if (p) toast("Random survivor: " + p.name);
+});
+
+$("#btn-quit").addEventListener("click", () => {
+  confirmDialog("End this game?", "The board and life total are discarded. Your decks stay saved.", () => {
+    G = null;
+    undoStack = [];
+    persistGame();
+    renderDecks();
+    showScreen("screen-decks");
+  });
+});
+
+// --- mill pad ---
+$("#mill-pad").addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const { d, k } = btn.dataset;
+  if (d != null) {
+    if (millInput.length < 4) millInput = (millInput + d).replace(/^0+(?=\d)/, "");
+  } else if (k === "clear") {
+    millInput = "";
+  } else if (k === "back") {
+    millInput = millInput.slice(0, -1);
+  } else if (k === "mill") {
+    const n = parseInt(millInput, 10);
+    if (!(n > 0)) { toast("Enter an amount first"); return; }
+    millCards(n);
+    millInput = "";
+    renderGame();
+    return;
+  }
+  $("#mill-out").textContent = millInput || "0";
+});
+
+// --- life / poison ---
+$("#life-minus").addEventListener("click", () => { adjustLife(-1); renderGame(); });
+$("#life-plus").addEventListener("click", () => { adjustLife(1); renderGame(); });
+$("#life-all").addEventListener("click", () => { adjustLife(-attackingPower()); renderGame(); });
+$$("[data-life]").forEach((b) =>
+  b.addEventListener("click", () => { adjustLife(parseInt(b.dataset.life, 10)); renderGame(); }));
+$$("[data-poison]").forEach((b) =>
+  b.addEventListener("click", () => { adjustPoison(parseInt(b.dataset.poison, 10)); renderGame(); }));
+
+// --- stack dialog ---
+$("#sd-close").addEventListener("click", () => $("#stack-dialog").close());
+$("#sd-kill1").addEventListener("click", () => {
+  killFromStack(stackDialogKey, 1);
+  $("#stack-dialog").close();
+  renderGame();
+});
+$("#sd-killall").addEventListener("click", () => {
+  const stack = G.board.find((s) => s.cardKey === stackDialogKey);
+  killFromStack(stackDialogKey, stack ? stack.count : 1);
+  $("#stack-dialog").close();
+  renderGame();
+});
+
+// --- confirm dialog ---
+$("#cd-no").addEventListener("click", () => $("#confirm-dialog").close());
+$("#cd-yes").addEventListener("click", () => {
+  $("#confirm-dialog").close();
+  const cb = confirmCb;
+  confirmCb = null;
+  if (cb) cb();
+});
+
+// --- end screen ---
+$("#btn-again").addEventListener("click", () => {
+  const deck = allDecks().find((d) => d.id === G.deckId);
+  G = null;
+  persistGame();
+  if (deck) openSetup(deck);
+  else { renderDecks(); showScreen("screen-decks"); }
+});
+$("#btn-end-home").addEventListener("click", () => {
+  G = null;
+  persistGame();
+  renderDecks();
+  showScreen("screen-decks");
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.target.matches("input, textarea")) return;
+  if (!$("#screen-game").classList.contains("active")) return;
+  if (e.key === "u" || e.key === "U") { undo(); e.preventDefault(); }
+});
+
+/* =========================================================================
+   Boot
+   ========================================================================= */
+
+syncLife();
+renderDecks();
+showScreen("screen-decks");
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+
+// Exposed for the test harness; harmless in normal use.
+window.__horde = {
+  parseDecklist, cardFromEntry, categoryOf, isWaveEnder, waveSizeFor, sharedLifeFor,
+  hydrateBundled, BUNDLED_DECKS,
+  get G() { return G; },
+  set G(v) { G = v; },
+  newGame, flipHordeTurn, resolveReveal, endHordeTurn, millCards, adjustLife,
+  killFromStack, attackingPower, powerIsPartial, creatureCount, primeImages, renderGame, showScreen,
+};
+</script>
+</body>
+</html>
