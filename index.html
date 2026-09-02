@@ -245,6 +245,20 @@
     background: rgba(10,9,8,.88); border: 1px solid var(--line);
     backdrop-filter: blur(3px);
   }
+  /* Counters ride on the tile, next to the P/T they add up to: mid-combat
+     what a stack is worth is the number being read off the screen. */
+  .cf-counters {
+    position: absolute; left: 6px; bottom: 6px; right: 46px; z-index: 2;
+    display: flex; flex-wrap: wrap; gap: 3px;
+    font-size: 10.5px; font-weight: 700; line-height: 1.25;
+  }
+  .cf-counters span {
+    padding: 2px 5px; border-radius: 5px;
+    background: rgba(10,9,8,.88); border: 1px solid var(--line); color: var(--ink-soft);
+    backdrop-filter: blur(3px);
+  }
+  .cf-counters .cc-pt { background: rgba(31,74,45,.94); border-color: #4f8a5f; color: #dff5e4; }
+  .cardface.countered { outline: 2px solid #4f8a5f; outline-offset: -2px; }
 
   .cardgrid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
   .cardgrid.board { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
@@ -450,6 +464,24 @@
   .poisonrow button:hover { background: var(--surface-3); }
   .poisonrow b { color: var(--ink); font-size: 18px; min-width: 22px; text-align: center; }
 
+  /* One row per counter type, with the same minus/plus as poison, because at
+     the table it's the same gesture. */
+  .ctrrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--surface-2);
+  }
+  .ctrrow.on { border-color: var(--accent-hot); }
+  .ctrrow .nm { flex: 1; font-weight: 700; }
+  .ctrrow button {
+    width: 34px; height: 34px; flex: none; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--surface);
+    font-weight: 700; font-size: 17px; line-height: 1;
+  }
+  .ctrrow button:hover { background: var(--surface-3); }
+  .ctrrow button[disabled] { opacity: .35; }
+  .ctrrow b { min-width: 22px; text-align: center; font-size: 18px; }
+
   /* ---------- Full card view ---------- */
 
   dialog.cardview {
@@ -461,6 +493,7 @@
   #cv-slot { container-type: inline-size; width: min(84vw, 440px); }
   @media (max-height: 820px) { #cv-slot { width: min(56vh, 440px); } }
   .cardview h3 { margin: 0 0 3px; font-size: 22px; }
+  .cardview .cv-ctr { color: #9fdcae; font-weight: 700; }
   .cardview .sub { color: var(--ink-soft); font-size: 14px; margin: 0 0 10px; }
   .cardview .cv-oracle {
     white-space: pre-wrap; text-align: left;
@@ -1021,8 +1054,10 @@ Tokens: (200)
   <div class="cv-art"><div class="slot" id="cv-slot"></div></div>
   <h3 id="cv-name"></h3>
   <p class="sub" id="cv-type"></p>
+  <p class="sub cv-ctr" id="cv-counters" hidden></p>
   <p class="cv-oracle" id="cv-oracle"></p>
   <div class="stack" id="cv-actions">
+    <button class="btn" id="cv-counters-btn" style="width:100%">Counters&hellip;</button>
     <button class="btn" id="cv-kill1" style="width:100%">Kill one &rarr; graveyard</button>
     <button class="btn" id="cv-killall" style="width:100%">Kill the whole stack</button>
     <div class="row tight" id="cv-qty">
@@ -1101,6 +1136,35 @@ Tokens: (200)
       <button class="btn primary grow" id="tq-add">Add</button>
       <button class="btn ghost" id="tq-back">Back</button>
     </div>
+  </div>
+</dialog>
+
+<dialog id="counters-dialog" class="sheet">
+  <h3 style="margin:0 0 4px" id="ct-name"></h3>
+  <p class="muted small" id="ct-sub" style="margin:0 0 14px"></p>
+
+  <div class="row tight" id="ct-howmany" style="margin-bottom:12px">
+    <span class="grow">How many of them</span>
+    <button class="btn sm" id="ct-fewer" type="button" aria-label="One fewer creature">&minus;</button>
+    <b id="ct-n">1</b>
+    <button class="btn sm" id="ct-more" type="button" aria-label="One more creature">+</button>
+    <button class="btn sm" id="ct-one" type="button">One</button>
+    <button class="btn sm" id="ct-all" type="button">All</button>
+  </div>
+
+  <div class="stack" id="ct-rows"></div>
+
+  <form class="row tight" id="ct-add-form" style="margin-top:10px">
+    <input class="txt grow" id="ct-add-name" type="text" autocomplete="off"
+           placeholder="Another counter &mdash; stun, charge&hellip;">
+    <button class="btn sm" type="submit">Add</button>
+  </form>
+
+  <p class="tiny muted" id="ct-preview" style="margin:12px 0 0"></p>
+
+  <div class="row" style="margin-top:14px">
+    <button class="btn primary grow" id="ct-apply" type="button">Apply</button>
+    <button class="btn ghost" id="ct-cancel" type="button">Cancel</button>
   </div>
 </dialog>
 
@@ -1657,6 +1721,16 @@ function cardFace(card, opts = {}) {
   }
   if (card.hasDefender) node.appendChild(el("div", "cf-badge defender", "Defender"));
   if (opts.count && opts.count > 1) node.appendChild(el("div", "cf-count", "×" + opts.count));
+  // Board tiles pass their stack, so the counters on it — and the P/T they add
+  // up to — are readable without opening the card.
+  if (opts.stack && hasCounters(opts.stack)) {
+    node.classList.add("countered");
+    const chips = el("div", "cf-counters");
+    chips.appendChild(el("span", "cc-n", countersLabel(opts.stack)));
+    const pt = effectivePT(opts.stack);
+    if (pt) chips.appendChild(el("span", "cc-pt", pt.power + "/" + pt.toughness));
+    node.appendChild(chips);
+  }
   return node;
 }
 
@@ -1664,8 +1738,9 @@ function cardFace(card, opts = {}) {
    Game state
 
    G.library / G.graveyard hold card keys (duplicates allowed); G.cards is the
-   deck's key -> card dictionary. Board stacks are {cardKey, count}, so 145
-   Vampire tokens are one tile rather than 145.
+   deck's key -> card dictionary. Board stacks are {cardKey, count, counters},
+   so 145 Vampire tokens are one tile rather than 145 — and the two of them
+   carrying a +1/+1 counter are a tile of their own.
    ========================================================================= */
 
 let G = null;
@@ -1823,13 +1898,81 @@ function logit(msg) {
   if (G.log.length > 150) G.log.pop();
 }
 
+/* ---- Counters ----
+
+   A board stack is one tile: copies of a card that are identical to each
+   other. Counters break that identity — the two Squirrels carrying a +1/+1
+   counter are not the same permanent as the four without one — so a stack is
+   keyed by its card *and* its counters, and putting counters on some of a
+   stack splits those copies onto a tile of their own.
+
+   stack.counters maps a counter name to how many each copy in the stack
+   carries: {"+1/+1": 2}. It's absent on a stack that has none, which is most
+   of them, and every stack in a game saved before counters existed. */
+const PLUS_COUNTER = "+1/+1";
+const MINUS_COUNTER = "-1/-1";
+
+/* Drops zeroes and sorts by name, so the same counters arrived at two
+   different ways are one tile rather than two that never merge. */
+function normCounters(counters) {
+  const out = {};
+  for (const name of Object.keys(counters || {}).sort()) {
+    const n = Math.max(0, Math.round(Number(counters[name]) || 0));
+    if (n > 0) out[name] = n;
+  }
+  return out;
+}
+const counterEntries = (stack) => Object.entries(normCounters(stack && stack.counters));
+const hasCounters = (stack) => counterEntries(stack).length > 0;
+
+/* A tile's identity, stable across renders: the board is rebuilt from state on
+   every action, so an index would go stale under an open dialog. */
+const stackId = (stack) =>
+  stack.cardKey + "#" + counterEntries(stack).map(([name, n]) => name + "\u00d7" + n).join(",");
+
+/* Accepts a stack id, or a bare card key meaning the tile with no counters. */
+function findStack(id) {
+  if (!G || !id) return null;
+  return G.board.find((s) => stackId(s) === id) || G.board.find((s) => s.cardKey === id) || null;
+}
+
+/* How many of a card are out, across every tile its counters split it into. */
+const countOnBoard = (cardKey) =>
+  G.board.reduce((n, s) => n + (s.cardKey === cardKey ? s.count : 0), 0);
+
+/* "+1/+1 ×2 · stun" — what the tile, the card view and the log all print. */
+const countersLabel = (stack) =>
+  counterEntries(stack).map(([name, n]) => (n > 1 ? name + " \u00d7" + n : name)).join(" \u00b7 ");
+
+/* The card's name, plus its counters when it has any: two tiles of Squirrel
+   have to read differently in the log. */
+const stackLabel = (stack) =>
+  G.cards[stack.cardKey].name + (hasCounters(stack) ? " (" + countersLabel(stack) + ")" : "");
+
+/* +1/+1 and −1/−1 counters move the stats, and the app does that arithmetic
+   because the attacking total depends on it. Every other counter — stun,
+   charge, whatever the trigger names — is tracked and shown, and left to the
+   players to apply: reading what a counter does is a rules engine's job, not
+   a scorekeeper's. */
+function effectivePT(stack) {
+  const card = G.cards[stack.cardKey];
+  if (!card) return null;
+  const p = parseInt(card.power, 10);
+  const t = parseInt(card.toughness, 10);
+  if (!Number.isFinite(p) || !Number.isFinite(t)) return null;
+  const c = normCounters(stack.counters);
+  const d = (c[PLUS_COUNTER] || 0) - (c[MINUS_COUNTER] || 0);
+  return { power: p + d, toughness: t + d };
+}
+
 const boardCreatures = () => G.board.filter((s) => categoryOf(G.cards[s.cardKey]) === "creature");
 const attackers = () => boardCreatures().filter((s) => !G.cards[s.cardKey].hasDefender);
 const creatureCount = () => boardCreatures().reduce((n, s) => n + s.count, 0);
 function attackingPower() {
   return attackers().reduce((n, s) => {
-    const p = parseInt(G.cards[s.cardKey].power, 10);
-    return n + (Number.isFinite(p) ? p * s.count : 0);
+    const pt = effectivePT(s);
+    // Shrunk below zero a creature deals no damage; it doesn't heal anyone.
+    return n + (pt ? Math.max(0, pt.power) * s.count : 0);
   }, 0);
 }
 
@@ -1846,22 +1989,29 @@ function notePeak() {
   if (n > (G.peakCreatures || 0)) G.peakCreatures = n;
 }
 
-function addToBoard(cardKey, n = 1) {
-  const hit = G.board.find((s) => s.cardKey === cardKey);
-  if (hit) hit.count += n;
-  else G.board.push({ cardKey, count: n });
+/* Joins the tile whose counters match, so a creature entering with none lands
+   on the plain tile however many countered ones are already out. */
+function addToBoard(cardKey, n = 1, counters = null) {
+  const want = stackId({ cardKey, counters });
+  const hit = G.board.find((s) => stackId(s) === want);
+  if (hit) { hit.count += n; return hit; }
+  const stack = { cardKey, count: n };
+  const c = normCounters(counters);
+  if (Object.keys(c).length) stack.counters = c;
+  G.board.push(stack);
+  return stack;
 }
-/* Creatures that die land in the graveyard. Tokens taken back off by a
-   quantity correction never really entered, so they leave without one —
-   otherwise fixing a miscount would quietly pad Grave Betrayal's food. */
-function removeFromBoard(cardKey, n, toYard = true) {
-  const i = G.board.findIndex((s) => s.cardKey === cardKey);
+/* Creatures that die land in the graveyard; their counters cease to exist with
+   them, so nothing follows them there. Tokens taken back off by a quantity
+   correction never really entered, so they leave without one — otherwise
+   fixing a miscount would quietly pad Grave Betrayal's food. */
+function removeFromStack(stack, n, toYard = true) {
+  const i = G.board.indexOf(stack);
   if (i < 0) return 0;
-  const stack = G.board[i];
   const killed = Math.min(n, stack.count);
   stack.count -= killed;
   if (stack.count <= 0) G.board.splice(i, 1);
-  if (toYard) for (let k = 0; k < killed; k++) G.graveyard.push(cardKey);
+  if (toYard) for (let k = 0; k < killed; k++) G.graveyard.push(stack.cardKey);
   return killed;
 }
 
@@ -1998,11 +2148,52 @@ function adjustPoison(delta) {
   persistGame();
 }
 
-function killFromStack(cardKey, n) {
+/* Takes a stack id — the tile that was tapped — because a card split across
+   tiles by its counters has more than one "one" to kill. A bare card key still
+   works, and means the tile with no counters on it. */
+function killFromStack(id, n) {
+  const stack = findStack(id);
+  if (!stack) return;
   snapshot();
-  const killed = removeFromBoard(cardKey, n);
-  if (killed) logit(killed + "× " + G.cards[cardKey].name + " destroyed.");
+  const label = stackLabel(stack);
+  const killed = removeFromStack(stack, n);
+  if (killed) logit(killed + "× " + label + " destroyed.");
   checkEnd();
+  persistGame();
+}
+
+/* Counters land on permanents, not on tiles: putting a +1/+1 counter on two of
+   six Squirrels moves those two onto their own tile and leaves four behind.
+   One call covers the lot — adding a counter, taking one off, correcting what
+   a stack carries — because they're all the same move: n of this tile now
+   carry exactly these counters. */
+function setStackCounters(id, howMany, counters) {
+  const from = findStack(id);
+  if (!from) return null;
+  const n = Math.min(Math.max(1, Math.round(howMany || 0)), from.count);
+  const next = normCounters(counters);
+  if (stackId({ cardKey: from.cardKey, counters: next }) === stackId(from)) return from;
+  snapshot();
+  const was = countersLabel(from);
+  from.count -= n;
+  if (from.count <= 0) G.board.splice(G.board.indexOf(from), 1);
+  const to = addToBoard(from.cardKey, n, next);
+  logit(n + "\u00d7 " + G.cards[to.cardKey].name + ": " +
+    (hasCounters(to) ? countersLabel(to) : "counters removed" + (was ? " (was " + was + ")" : "")) + ".");
+  persistGame();
+  return to;
+}
+
+/* "+1" on a tile: one more of exactly what the tile shows, counters and all,
+   because the trigger that made it copied the creature in front of you. A
+   fresh one with no counters comes off the plain tile, or + Create tokens. */
+function duplicateStack(id) {
+  const stack = findStack(id);
+  if (!stack) return;
+  snapshot();
+  addToBoard(stack.cardKey, 1, stack.counters);
+  logit("+1 " + stackLabel(stack) + " token.");
+  notePeak();
   persistGame();
 }
 
@@ -2023,19 +2214,19 @@ function createTokens(card, n) {
 /* Fixing a stack that's already out: you made six Zombies and meant eight, or
    the paper count drifted. Up is the same manual add as + Create tokens; down
    takes the extras off without a trip through the graveyard. */
-function setTokenCount(cardKey, n) {
-  const card = G.cards[cardKey];
-  const stack = G.board.find((s) => s.cardKey === cardKey);
-  const have = stack ? stack.count : 0;
-  if (!card || !(n >= 0) || n === have) return;
+function setTokenCount(id, n) {
+  const stack = findStack(id);
+  if (!stack || !(n >= 0) || n === stack.count) return;
+  const have = stack.count;
+  const label = stackLabel(stack);   // read before the stack can be spliced out
   snapshot();
   if (n > have) {
-    addToBoard(cardKey, n - have);
-    logit("+" + (n - have) + " " + card.name + " \u2014 " + n + " on the battlefield.");
+    addToBoard(stack.cardKey, n - have, stack.counters);
+    logit("+" + (n - have) + " " + label + " \u2014 " + n + " on the battlefield.");
     notePeak();
   } else {
-    removeFromBoard(cardKey, have - n, false);
-    logit((have - n) + "\u00d7 " + card.name + " taken off \u2014 " +
+    removeFromStack(stack, have - n, false);
+    logit((have - n) + "\u00d7 " + label + " taken off \u2014 " +
       (n ? n + " on the battlefield." : "none left on the battlefield."));
   }
   checkEnd();
@@ -2719,8 +2910,8 @@ function renderStage() {
     const grid = el("div", "cardgrid lg");
     for (const stack of attackers()) {
       grid.appendChild(cardSlot(G.cards[stack.cardKey],
-        { count: stack.count, rule: G.waveEnd },
-        () => openCardDialog(stack.cardKey, { stack: true })));
+        { count: stack.count, rule: G.waveEnd, stack },
+        () => openStackDialog(stack)));
     }
     body.appendChild(grid);
   }
@@ -2797,14 +2988,17 @@ function renderBoard() {
 
   const atk = attackers().reduce((n, s) => n + s.count, 0);
   const def = creatureCount() - atk;
+  const withCounters = G.board.reduce((n, s) => n + (hasCounters(s) ? s.count : 0), 0);
   $("#board-summary").textContent = G.board.length
-    ? creatureCount() + " creatures · " + atk + " attacking" + (def ? " · " + def + " holding back" : "")
+    ? creatureCount() + " creatures · " + atk + " attacking" +
+      (def ? " · " + def + " holding back" : "") +
+      (withCounters ? " · " + withCounters + " with counters" : "")
     : "";
 
   for (const stack of G.board) {
     const card = G.cards[stack.cardKey];
-    box.appendChild(cardSlot(card, { count: stack.count, rule: G.waveEnd },
-      () => openCardDialog(stack.cardKey, { stack: true })));
+    box.appendChild(cardSlot(card, { count: stack.count, rule: G.waveEnd, stack },
+      () => openStackDialog(stack)));
   }
 }
 
@@ -2875,15 +3069,17 @@ function renderEnd() {
    Dialogs
    ========================================================================= */
 
-let cardDialogKey = null;
-let cardDialogStack = false;   // opened from a board stack, so it carries actions
+let cardDialogStackId = null;   // set when opened from a board tile, which carries actions
+
+/* A board tile: the same full-size view, plus the actions that belong to those
+   copies — counters, +1, and the two kills. */
+const openStackDialog = (stack) => openCardDialog(stack.cardKey, { stackId: stackId(stack) });
 
 /* Accepts a board/library card key, or a bare card object for the import
    review where there is no game in progress. */
 function openCardDialog(keyOrCard, opts = {}) {
   const card = typeof keyOrCard === "string" ? G.cards[keyOrCard] : keyOrCard;
   if (!card) return;
-  cardDialogKey = typeof keyOrCard === "string" ? keyOrCard : null;
 
   const slot = $("#cv-slot");
   slot.textContent = "";
@@ -2899,7 +3095,7 @@ function openCardDialog(keyOrCard, opts = {}) {
      card.resolved ? "" : "Not found on Scryfall — play it from the paper card or memory."));
   oracle.hidden = !oracle.textContent;
 
-  cardDialogStack = !!opts.stack;
+  cardDialogStackId = opts.stackId || null;
   renderCardActions();
   $("#card-dialog").showModal();
 }
@@ -2909,15 +3105,24 @@ function openCardDialog(keyOrCard, opts = {}) {
    correction. Redrawn in place rather than only on open, so tapping +1 a few
    times reads back the count it's building. */
 function renderCardActions() {
-  const stack = cardDialogStack && G ?
-    G.board.find((s) => s.cardKey === cardDialogKey) : null;
+  const stack = findStack(cardDialogStackId);
   $("#cv-actions").hidden = !stack;
+  const line = $("#cv-counters");
+  line.hidden = !stack || !hasCounters(stack);
   if (!stack) return;
-  const card = G.cards[cardDialogKey];
+  const card = G.cards[stack.cardKey];
+  if (hasCounters(stack)) {
+    const pt = effectivePT(stack);
+    line.textContent = countersLabel(stack) +
+      (pt ? " — " + (stack.count === 1 ? "a " : "each one a ") + pt.power + "/" + pt.toughness : "");
+  }
   // Only tokens: a printed creature comes out of the library, so making a
   // second one by hand would be inventing a card the deck doesn't hold.
   $("#cv-qty").hidden = !card.isToken;
-  $("#cv-dup").setAttribute("aria-label", "Add one more " + card.name);
+  $("#cv-dup").setAttribute("aria-label", "Add one more " + card.name +
+    (hasCounters(stack) ? " with the same counters" : ""));
+  $("#cv-counters-btn").textContent = hasCounters(stack) ? "Counters…"
+    : stack.count > 1 ? "Put counters on some…" : "Put counters on it…";
   $("#cv-kill1").textContent = "Kill one → graveyard";
   $("#cv-killall").textContent = "Kill all " + stack.count + " → graveyard";
 }
@@ -2946,8 +3151,8 @@ function tokenStep(step) {
    Text faces carry their own name and stats, but art faces are 120px wide at
    the table, so the line under them is where a 1/1 and a 4/4 Skeleton part. */
 function tokenSubtitle(card) {
-  const onBoard = G.board.find((s) => s.cardKey === card.key);
-  const where = onBoard ? onBoard.count + " on the battlefield" : null;
+  const out = countOnBoard(card.key);
+  const where = out ? out + " on the battlefield" : null;
   // P/T identifies a creature token; anything else leans on its type line.
   const what = ptString(card) || (categoryOf(card) === "creature" ? null :
     (card.typeLine || "").replace(/^Token\s+/i, "") || null);
@@ -3085,19 +3290,24 @@ function openTokenQtyStep(card, from) {
 /* The same pad, reached from a token already on the board: it opens on the
    count that's out and sets the stack to whatever you leave it at — 0 clears
    the type off the board. */
-function openTokenSetStep(cardKey) {
-  const card = G.cards[cardKey];
-  const stack = G.board.find((s) => s.cardKey === cardKey);
-  if (!card || !stack) return;
+function openTokenSetStep(id) {
+  const stack = findStack(id);
+  const card = stack ? G.cards[stack.cardKey] : null;
+  if (!card) return;
   tokenPickCard = card;
-  tokenSetKey = cardKey;
+  tokenSetKey = stackId(stack);
   tokenQtyBack = "card";
   tokenQtyMode = "set";
   tokenQtyInput = String(stack.count);
   $("#tq-name").textContent = card.name;
   const pt = ptString(card);
-  $("#tq-sub").textContent = (pt ? pt + " \u00b7 " : "") + stack.count +
-    " on the battlefield \u2014 how many should there be?";
+  // Counters split a type across tiles and this pad only sets the one it was
+  // opened from, so it says which when there's more than one.
+  const split = countOnBoard(card.key) !== stack.count;
+  $("#tq-sub").textContent = (pt ? pt + " \u00b7 " : "") +
+    (hasCounters(stack) ? countersLabel(stack) + " \u00b7 " : "") + stack.count +
+    (split ? " in this stack" : " on the battlefield") +
+    " \u2014 how many should there be?";
   $("#tq-add").textContent = "Set";
   tokenStep("qty");
   renderTokenQty();
@@ -3106,6 +3316,118 @@ function openTokenSetStep(cardKey) {
 
 function renderTokenQty() {
   $("#tq-out").textContent = tokenQtyInput || "0";
+}
+
+/* =========================================================================
+   Counters
+
+   The edit is made on a copy and applied in one go. At the table you're
+   reading a trigger off a card — "put two +1/+1 counters on each of them" —
+   and a half-applied trigger that has already split the board is worse than
+   no counters at all. Cancel leaves the game untouched.
+   ========================================================================= */
+
+let counterEdit = null;   // { id, howMany, counters, extras }
+
+function openCountersDialog(id) {
+  const stack = findStack(id);
+  if (!stack) return;
+  const counters = normCounters(stack.counters);
+  counterEdit = {
+    id: stackId(stack),
+    // Most horde triggers that make counters make them for every creature it
+    // controls, so the whole tile is the safer default; One is a tap away.
+    howMany: stack.count,
+    counters,
+    extras: Object.keys(counters).filter((n) => n !== PLUS_COUNTER && n !== MINUS_COUNTER),
+  };
+  $("#ct-add-name").value = "";
+  renderCounters();
+  $("#counters-dialog").showModal();
+}
+
+/* The two the app does arithmetic for always show, even at zero — they're what
+   a trigger asks for nine times out of ten. Anything else appears once it's on
+   the stack or has been typed in. */
+const counterNames = () => [PLUS_COUNTER, MINUS_COUNTER, ...counterEdit.extras];
+
+function renderCounters() {
+  const stack = counterEdit && findStack(counterEdit.id);
+  if (!stack) { $("#counters-dialog").close(); return; }
+  const card = G.cards[stack.cardKey];
+  const pt = ptString(card);
+  $("#ct-name").textContent = card.name;
+  $("#ct-sub").textContent = (pt ? pt + " · " : "") + stack.count +
+    (countOnBoard(card.key) === stack.count ? " on the battlefield" : " in this stack") +
+    (hasCounters(stack) ? " · " + countersLabel(stack) : "");
+
+  $("#ct-howmany").hidden = stack.count < 2;
+  $("#ct-n").textContent = counterEdit.howMany;
+
+  const rows = $("#ct-rows");
+  rows.textContent = "";
+  for (const name of counterNames()) rows.appendChild(counterRow(name));
+  $("#ct-preview").textContent = countersPreview(stack);
+}
+
+function counterRow(name) {
+  const n = counterEdit.counters[name] || 0;
+  const row = el("div", "ctrrow" + (n ? " on" : ""));
+  row.appendChild(el("span", "nm", name));
+  const less = el("button", null, "−");
+  less.type = "button";
+  less.disabled = n === 0;
+  less.setAttribute("aria-label", "One less " + name + " counter");
+  less.addEventListener("click", () => bumpCounter(name, -1));
+  const more = el("button", null, "+");
+  more.type = "button";
+  more.setAttribute("aria-label", "One more " + name + " counter");
+  more.addEventListener("click", () => bumpCounter(name, 1));
+  row.append(less, el("b", null, String(n)), more);
+  return row;
+}
+
+function bumpCounter(name, delta) {
+  const n = (counterEdit.counters[name] || 0) + delta;
+  if (n > 0) counterEdit.counters[name] = n;
+  else delete counterEdit.counters[name];   // the row stays, so it can go back up
+  renderCounters();
+}
+
+function setCounterHowMany(n) {
+  const stack = counterEdit && findStack(counterEdit.id);
+  if (!stack) return;
+  counterEdit.howMany = Math.min(Math.max(1, n), stack.count);
+  renderCounters();
+}
+
+/* What Apply would do, spelled out. The split is the part that surprises
+   people, so it says how many stay behind and what they stay as. */
+function countersPreview(stack) {
+  const after = { cardKey: stack.cardKey, counters: normCounters(counterEdit.counters) };
+  if (stackId(after) === stackId(stack)) {
+    return hasCounters(stack)
+      ? "These are the counters they already carry."
+      : "No counters yet — add one above.";
+  }
+  const n = Math.min(counterEdit.howMany, stack.count);
+  const ptAfter = effectivePT(after);
+  let out = n + "× " + G.cards[stack.cardKey].name + " → " +
+    (hasCounters(after) ? countersLabel(after) : "no counters") +
+    (ptAfter ? " · " + ptAfter.power + "/" + ptAfter.toughness : "");
+  const rest = stack.count - n;
+  if (rest) {
+    const ptRest = effectivePT(stack);
+    out += ". The other " + rest + " stay " + (hasCounters(stack) ? "on " + countersLabel(stack)
+      : ptRest ? ptRest.power + "/" + ptRest.toughness : "as they are");
+  }
+  out += ".";
+  // The app won't kill them for you — it isn't a rules engine — but it
+  // shouldn't let a 0-toughness stack sit there unremarked either.
+  if (ptAfter && ptAfter.toughness <= 0) {
+    out += " Toughness 0 — that's lethal; kill them off the tile once it's applied.";
+  }
+  return out;
 }
 
 let confirmCb = null;
@@ -3271,28 +3593,67 @@ $$("[data-poison]").forEach((b) =>
 // --- stack dialog ---
 $("#cv-close").addEventListener("click", () => $("#card-dialog").close());
 $("#cv-dup").addEventListener("click", () => {
-  const card = G.cards[cardDialogKey];
-  if (!card) return;
-  createTokens(card, 1);
+  duplicateStack(cardDialogStackId);
   // Left open on purpose: three triggers is three taps, not three reopens.
   renderCardActions();
   renderGame();
 });
 $("#cv-setqty").addEventListener("click", () => {
-  const key = cardDialogKey;
+  const id = cardDialogStackId;
   $("#card-dialog").close();
-  openTokenSetStep(key);
+  openTokenSetStep(id);
+});
+$("#cv-counters-btn").addEventListener("click", () => {
+  const id = cardDialogStackId;
+  $("#card-dialog").close();
+  openCountersDialog(id);
 });
 $("#cv-kill1").addEventListener("click", () => {
-  killFromStack(cardDialogKey, 1);
+  killFromStack(cardDialogStackId, 1);
   $("#card-dialog").close();
   renderGame();
 });
 $("#cv-killall").addEventListener("click", () => {
-  const stack = G.board.find((s) => s.cardKey === cardDialogKey);
-  killFromStack(cardDialogKey, stack ? stack.count : 1);
+  const stack = findStack(cardDialogStackId);
+  killFromStack(cardDialogStackId, stack ? stack.count : 1);
   $("#card-dialog").close();
   renderGame();
+});
+
+// --- counters ---
+$("#ct-cancel").addEventListener("click", () => $("#counters-dialog").close());
+$("#counters-dialog").addEventListener("close", () => { counterEdit = null; });
+$("#ct-fewer").addEventListener("click", () => counterEdit && setCounterHowMany(counterEdit.howMany - 1));
+$("#ct-more").addEventListener("click", () => counterEdit && setCounterHowMany(counterEdit.howMany + 1));
+$("#ct-one").addEventListener("click", () => setCounterHowMany(1));
+$("#ct-all").addEventListener("click", () => setCounterHowMany(Infinity));
+/* A counter the app knows nothing about — stun, charge, whatever the card
+   names. Typing it in puts one on; the row then works like the other two. */
+$("#ct-add-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!counterEdit) return;
+  const typed = $("#ct-add-name").value.trim().replace(/\s+/g, " ").slice(0, 24);
+  if (!typed) { toast("Name the counter first"); return; }
+  const name = counterNames().find((n) => n.toLowerCase() === typed.toLowerCase()) || typed;
+  if (!counterNames().includes(name)) counterEdit.extras.push(name);
+  $("#ct-add-name").value = "";
+  bumpCounter(name, 1);
+});
+$("#ct-apply").addEventListener("click", () => {
+  const stack = counterEdit && findStack(counterEdit.id);
+  if (!stack) { $("#counters-dialog").close(); return; }
+  const next = normCounters(counterEdit.counters);
+  if (stackId({ cardKey: stack.cardKey, counters: next }) === stackId(stack)) {
+    toast("Nothing to apply");
+    return;
+  }
+  const n = Math.min(counterEdit.howMany, stack.count);
+  const name = G.cards[stack.cardKey].name;
+  setStackCounters(counterEdit.id, n, next);
+  $("#counters-dialog").close();
+  renderGame();
+  toast(n + "× " + name + (Object.keys(next).length
+    ? " → " + countersLabel({ counters: next }) : " — counters off"));
 });
 
 // --- token dialog ---
@@ -3301,8 +3662,9 @@ $("#token-pick-close").addEventListener("click", () => $("#token-dialog").close(
 $("#tq-back").addEventListener("click", () => {
   // "set" was reached from the card, not from a step inside this dialog.
   if (tokenQtyBack === "card") {
+    const stack = findStack(tokenSetKey);
     $("#token-dialog").close();
-    openCardDialog(tokenSetKey, { stack: true });
+    if (stack) openStackDialog(stack);
     return;
   }
   tokenStep(tokenQtyBack);
@@ -3344,13 +3706,14 @@ $("#token-qty-pad").addEventListener("click", (e) => {
 $("#tq-add").addEventListener("click", () => {
   const n = parseInt(tokenQtyInput, 10);
   if (tokenQtyMode === "set") {
-    const card = G.cards[tokenSetKey];
-    if (!card) { $("#token-dialog").close(); return; }
+    const stack = findStack(tokenSetKey);
+    if (!stack) { $("#token-dialog").close(); return; }
     if (!(n >= 0)) { toast("Enter an amount first"); return; }
+    const name = G.cards[stack.cardKey].name;
     setTokenCount(tokenSetKey, n);
     $("#token-dialog").close();
     renderGame();
-    toast(n ? n + " " + card.name + " on the battlefield" : card.name + " cleared off");
+    toast(n ? n + " " + name + " on the battlefield" : name + " cleared off");
     return;
   }
   if (!(n > 0)) { toast("Enter an amount first"); return; }
@@ -3446,7 +3809,9 @@ window.__horde = {
   get G() { return G; },
   set G(v) { G = v; },
   newGame, flipHordeTurn, resolveReveal, endHordeTurn, millCards, adjustLife, adjustPoison,
-  killFromStack, createTokens, setTokenCount, attackingPower, powerIsPartial, creatureCount, yardStacks,
+  killFromStack, createTokens, setTokenCount, duplicateStack, attackingPower, powerIsPartial,
+  creatureCount, yardStacks,
+  setStackCounters, stackId, findStack, countOnBoard, countersLabel, effectivePT, normCounters,
   cardMeta, padPress, primeImages, renderGame, showScreen,
 };
 </script>
