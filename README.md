@@ -15,14 +15,19 @@ installs to a home screen and runs offline once a deck has been loaded.
 ## What it does
 
 - **Casts waves.** Each turn the Horde casts off the top of its library until the
-  wave ends. Wave size snakes `1, 2, 3, 2, 1, 2, 3…` (or stays at 1, your choice).
-- **Two wave-end rules**, because the published decks disagree: a wave ends either
-  on a **non-token card** (the Zombies horde) or on an **uncommon/rare/mythic**
-  (Eldrazi, D&D, Angels & Demons). Set per game.
+  wave ends. Tokens are shuffled in with everything else and ride along inside a
+  wave, so a one-wave turn can still put a dozen creatures on the board.
+- **Rulesets, not switches.** The wave rules come from two different rule
+  documents, so you pick a ruleset and the app prints every value it fixes
+  (see below).
 - **Tracks the board.** Token stacks collapse into one tile with a count, so 145
   Vampire tokens is one card, not 145. Tap any card — on the board, in a wave, or
   in the import review — to open it full size and actually read it; board cards
   carry kill-one / kill-all from there.
+- **Create tokens.** Cards like Hare Apparent, Hop to It, or Empty the Warrens make
+  more of a token type the library already defines. **+ Create tokens** on the
+  board lets you pick that type and add however many enter — a manual add that
+  doesn't touch the library, graveyard, or wave count.
 - **Damage → mill.** A numeric pad; the Horde has no life total. Legendaries milled
   by damage are called out so you can apply the ETB-and-phase-out rule.
 - **Attacks.** Everything is goaded and attacking; `Defender` creatures are held
@@ -31,33 +36,70 @@ installs to a home screen and runs offline once a deck has been loaded.
   after (2 players = 85). Poison tracked too.
 - **Random targeting** for the Horde's instants and sorceries, with a re-roll.
 - **Undo** on every action, and the game survives a reload or a screen lock.
+- **The ban list**, offline and searchable — type a card name to find out whether
+  it's legal in a survivor's deck.
 
 ## Decks
 
-Nine horde libraries from hordemagic.com are built in:
+Nine horde libraries transcribed from hordemagic.com are built in, plus two
+Bloomburrow tribal hordes built for this app:
 
-| Deck | Cards | Tokens | Wave ends on |
+| Deck | Cards | Tokens | Opens on |
 |---|---|---|---|
-| Zombies Horde | 300 | 200 | non-token |
-| Vampire Horde | 300 | 150 | uncommon+ |
-| Eldrazi Titans Horde | 301 | 150 | uncommon+ |
-| Slivers Horde | 305 | 170 | uncommon+ |
-| Angels & Demons — Clerics and Devils | 210 | 142 | uncommon+ |
-| Angels & Demons — Demons | 96 | 11 | uncommon+ |
-| D&D Dungeon — Lv1 Oozes | 100 | 38 | uncommon+ |
-| D&D Dungeon — Lv2 Goblins & Skeletons | 202 | 59 | uncommon+ |
-| D&D Dungeon — Lv3 Giants & Dragons | 200 | 70 | uncommon+ |
+| Zombies Horde | 300 | 200 | Original Horde |
+| Vampire Horde | 300 | 150 | Horde Magic |
+| Eldrazi Titans Horde | 301 | 150 | Horde Magic |
+| Slivers Horde | 305 | 170 | Horde Magic |
+| Angels & Demons — Clerics and Devils | 210 | 142 | Horde Magic |
+| Angels & Demons — Demons | 96 | 11 | Horde Magic |
+| D&D Dungeon — Lv1 Oozes | 100 | 38 | Horde Magic |
+| D&D Dungeon — Lv2 Goblins & Skeletons | 202 | 59 | Horde Magic |
+| D&D Dungeon — Lv3 Giants & Dragons | 200 | 70 | Horde Magic |
+| Bloomburrow — Rabbit Warren | 300 | 185 | Horde Magic |
+| Bloomburrow — Bat Coven | 300 | 178 | Horde Magic |
 
-Counts match each decklist's own stated totals.
+Counts match each decklist's own stated totals. The two Bloomburrow hordes aren't
+published lists — they're a Rabbit swarm and a Bat air force built here out of
+real cards, each 300 with a spine of tribal creatures, a handful of anthems and
+wraths, and a boss or two.
+
+## Ban list
+
+**Ban list** on the decks screen carries the 36 cards banned at
+[hordemagic.com](https://hordemagic.com/ban-list/), the two banned combos, and the
+rules of thumb behind them. They bind the *survivors'* EDH decks, not the Horde's
+library, so nothing is enforced — type a name into the box and it tells you
+whether that card is out. It works offline like the rest of the app.
 
 **Multi-library decks aren't automated.** The D&D dungeon is three levels played in
 sequence and Angels & Demons runs two libraries simultaneously; each is listed as a
 separate deck. Run them as separate games (or on two screens) and treat the set as
 beaten only when every library is empty.
 
-The Vampire deck doesn't state its own wave rule, so it defaults to the site's
-general `uncommon+`. Change it on the setup screen if your group plays it the other
-way — the setting is per game, not baked into the deck.
+The Vampire deck doesn't state its own wave rule, so it opens on the site's
+general one. A deck only picks the *opening* ruleset; the choice is per game, made
+on the setup screen, and isn't baked into the deck.
+
+## Rulesets
+
+The two wave-end rules in circulation aren't a preference — they come from two
+different rule documents, and mixing their pieces produces a game neither one
+describes. So the setup screen asks for a ruleset, then prints every value it
+fixes: wave-end rule, waves per turn, setup turns, shared life, poison limit, and
+the milled-legendary rule.
+
+| Ruleset | A wave ends on | Waves per turn |
+|---|---|---|
+| **Horde Magic** — the rules published at [hordemagic.com](https://hordemagic.com/basic-horde-rules/) | an uncommon, rare or mythic | 1 |
+| **Horde Magic — escalating waves** — the same rules, plus their optional wave count | an uncommon, rare or mythic | 1, 2, 3, 2, 1… |
+| **Original Horde** — the 2011 rule the Zombies-style lists are built for | a non-token card | 1 |
+| **House rules** — every control unlocked | your call | your call |
+
+All three published rulesets use the site's table rules: three survivor setup
+turns, 100 shared life less 15 per extra survivor, a poison limit of 10, and a
+legendary milled by damage entering and then phasing out. Only **House rules**
+hands those back as editable fields. The ruleset in play is printed under the
+counters for the whole game.
 
 ### Importing your own
 
@@ -78,8 +120,9 @@ lists actually come in:
   your list genuinely has quantity-less lines.
 
 The review screen then shows every card with its art and lets you fix the name or
-flip its **Token / Card** flag before saving — that flag decides where waves stop,
-so it's worth a glance.
+flip its **Token / Card** flag before saving. That flag decides where waves stop
+under **Original Horde**, and it's the fallback whenever rarity is unknown (an
+offline import), so it's worth a glance.
 
 ## Card art
 
