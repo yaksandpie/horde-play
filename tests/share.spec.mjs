@@ -120,41 +120,114 @@ test.describe("the wire format", () => {
     expect(out.viewerTargets).toEqual(out.hostTargets);
   });
 
+  test("the viewer counts the same creatures and attackers as the host", async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+    await playATurn(app);
+
+    const { host, viewer } = await app.evaluate(() => {
+      const H = window.__horde;
+      const G = H.G;
+      const snap = H.encodeSnapshot(G);
+      const cards = {};
+      for (const c of snap.ic) cards[c[0]] = H.cardFromInline(c);
+      const V = H.decodeSnapshot(snap, cards);
+
+      /* These read the module-level G, which is the point: the viewer runs the
+         same board renderer, so it has to reach the same numbers. */
+      const tally = () => ({
+        creatures: H.creatureCount(),
+        power: H.attackingPower(),
+        partial: H.powerIsPartial(),
+        yard: H.yardStacks().reduce((n, s) => n + s.count, 0),
+      });
+      const host = tally();
+      H.G = V;
+      const viewer = tally();
+      H.G = G;
+      return { host, viewer };
+    });
+
+    /* Offline here, so nothing has a type line and every card leans on the
+       decklist's own section heading to say it's a creature. Drop that from the
+       wire and a viewer's board silently reads zero. */
+    expect(host.creatures).toBeGreaterThan(0);
+    expect(viewer).toEqual(host);
+  });
+
   test("an oversized board sheds the log, then the graveyard breakdown, keeping the count",
     async ({ app }) => {
-      const out = await app.evaluate(() => {
-        const { encodeSnapshot, G, SHARE_MAX } = window.__horde;
-        const keys = Object.keys(G.cards);
+      await startGame(app, "Zombies Horde");
 
-        // A long game: a full log and a graveyard holding most of the deck.
+      const out = await app.evaluate(() => {
+        const { encodeSnapshot, decodeSnapshot, cardFromInline, G, SHARE_MAX } = window.__horde;
+
+        /* A long game on a fat deck: enough distinct cards, each with real
+           rules text, that the snapshot cannot fit however it's packed. Built
+           here rather than played out, so the thresholds don't drift with the
+           bundled decklists. */
+        for (let i = 0; i < 120; i++) {
+          const key = "c_big" + i;
+          G.cards[key] = Object.assign(
+            window.__horde.cardFromEntry({ name: "Sedge Scavenger of the Deep Marsh " + i }),
+            { key, oracleText: "Whenever this creature attacks, ".repeat(6) + i });
+        }
         G.log = Array.from({ length: 400 }, (_, i) => ({
           t: i, msg: "The Horde cast something with a fairly long name " + i,
         }));
         G.graveyard = [];
-        for (const key of keys) {
+        for (const key of Object.keys(G.cards)) {
           for (let i = 0; i < 3; i++) G.graveyard.push(key);
         }
 
         const snap = encodeSnapshot(G);
-        return snap && {
-          fits: new TextEncoder().encode(JSON.stringify(snap)).length <= SHARE_MAX,
+        if (!snap) return null;
+        const V = decodeSnapshot(snap, {});
+        return {
+          size: new TextEncoder().encode(JSON.stringify(snap)).length,
+          max: SHARE_MAX,
           log: snap.lg.length,
           breakdown: snap.gy.length,
           count: snap.gn,
           realCount: G.graveyard.length,
+          board: snap.bd.length,
+          realBoard: G.board.length,
+          viewerYard: V.yardCount,
         };
       });
 
       expect(out).toBeTruthy();
-      expect(out.fits).toBe(true);
+      expect(out.size).toBeLessThanOrEqual(out.max);
+      // Shed in order: the log is reference, the graveyard breakdown is
+      // reference, the board is the whole point.
       expect(out.log).toBe(0);
       expect(out.breakdown).toBe(0);
+      expect(out.board).toBe(out.realBoard);
       // The tally still reads true even though the cards behind it didn't fit.
       expect(out.count).toBe(out.realCount);
+      expect(out.viewerYard).toBe(out.realCount);
     });
+
+  test("a board too big to send says so rather than sending half of it", async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+
+    const snap = await app.evaluate(() => {
+      const { encodeSnapshot, G } = window.__horde;
+      // Every card in the deck on the battlefield at once, each with rules text
+      // that has to travel inline because an offline import has no Scryfall id.
+      for (const [key, card] of Object.entries(G.cards)) {
+        card.oracleText = "This creature has a great deal to say for itself. ".repeat(4);
+        G.board.push({ cardKey: key, count: 1 });
+      }
+      return encodeSnapshot(G);
+    });
+
+    expect(snap).toBeNull();
+  });
 
   test("a card with no Scryfall id travels inline, so an offline import is still watchable",
     async ({ app }) => {
+      await startGame(app, "Zombies Horde");
+
       const out = await app.evaluate(() => {
         const { encodeSnapshot, decodeSnapshot, cardFromEntry, G } = window.__horde;
         const card = Object.assign(cardFromEntry({ name: "Homebrew Horror", tokenHint: true }),
