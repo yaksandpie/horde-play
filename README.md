@@ -33,19 +33,32 @@ installs to a home screen and runs offline once a deck has been loaded.
   manual add that doesn't touch the library, graveyard, or wave count, and the type
   stays on the list for the rest of the game.
 - **Damage → mill.** A numeric pad; the Horde has no life total. Legendaries milled
-  by damage are called out so you can apply the ETB-and-phase-out rule.
+  by damage are called out so you can apply the ETB-and-phase-out rule, and they
+  stay called out until the turn ends — two mills in one turn is ordinary, and the
+  first legendary is still owed its trigger.
+- **The graveyard, on tap.** The Graveyard counter opens it, collapsed into stacks
+  the way the board is. Plenty of horde cards care what's in there — Grave
+  Betrayal, Footbottom Feast, Unbreathing Horde — and it's the only part of the
+  game state you otherwise can't look at.
 - **Attacks.** Everything is goaded and attacking; `Defender` creatures are held
   back as blockers and excluded from the attacking total.
 - **Shared life**, per the site's rules: 100 for one survivor, 15 less for each one
   after (2 players = 85). Poison tracked too.
-- **Random targeting** for the Horde's instants and sorceries, with a re-roll.
+- **Random targeting** for the Horde's instants and sorceries, with a re-roll. A
+  wave can carry several spells, and each one shows its own victim.
 - **Undo** on every action, and the game survives a reload or a screen lock.
+- **The screen stays awake** while a game is up, so a tablet propped on the table
+  doesn't dim between waves.
+- **Keyboard shortcuts** for a laptop driving the game: `space` takes the turn,
+  `u` undoes, `d` opens damage, `l` life, `g` the graveyard.
+- **An end screen that says how it went** — rounds survived, cards left in the
+  library, graveyard size, and the biggest the Horde's board ever got.
 - **The ban list**, offline and searchable — type a card name to find out whether
   it's legal in a survivor's deck.
 
 ## Decks
 
-Nine horde libraries transcribed from hordemagic.com are built in, plus two
+Nine horde libraries transcribed from hordemagic.com are built in, plus five
 Bloomburrow tribal hordes built for this app:
 
 | Deck | Cards | Tokens | Opens on |
@@ -61,11 +74,28 @@ Bloomburrow tribal hordes built for this app:
 | D&D Dungeon — Lv3 Giants & Dragons | 200 | 70 | Horde Magic |
 | Bloomburrow — Rabbit Warren | 300 | 185 | Horde Magic |
 | Bloomburrow — Bat Coven | 300 | 178 | Horde Magic |
+| Bloomburrow — Squirrel Hoard | 300 | 172 | Horde Magic |
+| Bloomburrow — Raccoon Ruckus | 300 | 178 | Horde Magic |
+| Bloomburrow — Druid Circle | 300 | 174 | Horde Magic |
 
-Counts match each decklist's own stated totals. The two Bloomburrow hordes aren't
-published lists — they're a Rabbit swarm and a Bat air force built here out of
-real cards, each 300 with a spine of tribal creatures, a handful of anthems and
-wraths, and a boss or two.
+Counts match each decklist's own stated totals. The five Bloomburrow hordes aren't
+published lists — they're built here out of real cards, each 300 with a spine of
+tribal creatures, a handful of anthems and wraths, and a boss or two:
+
+- **Rabbit Warren** — a white Rabbit swarm that keeps making more Rabbits.
+- **Bat Coven** — a Bat air force, so most of the board flies.
+- **Squirrel Hoard** — Bloomburrow's Golgari Squirrels backed by the older
+  Squirrel cards (Chatterfang, Squirrel Mob, Nut Collector, Deep Forest Hermit).
+- **Raccoon Ruckus** — Gruul Raccoons plus Beast tokens, leaning on mass pump
+  (Trumpet Blast, Overrun) rather than card quality.
+- **Druid Circle** — Druid kindred from across Magic, swarming with Elf Druid
+  tokens; the only horde here that reaches for infect (Triumph of the Hordes),
+  so watch the poison counter.
+
+Only Rabbit Warren and Bat Coven are all-Bloomburrow. The other three pull cards
+from wherever the tribe exists — Odyssey Squirrels, Modern Horizons, Commander
+sets — because Bloomburrow alone doesn't have enough Squirrels, Raccoons, or
+Druids to fill 300 cards.
 
 ## Ban list
 

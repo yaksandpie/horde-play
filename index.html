@@ -110,6 +110,8 @@
   .btn:hover { background: var(--surface-3); }
   .btn:active { transform: translateY(1px); }
   .btn[disabled] { opacity: .4; cursor: not-allowed; }
+  /* Strips a button back to its contents, for tiles that are a card face. */
+  .plainbtn { all: unset; cursor: pointer; display: block; width: 100%; }
   .btn.primary {
     background: var(--accent);
     border-color: var(--accent-hot);
@@ -337,6 +339,12 @@
     color: var(--muted); white-space: nowrap;
   }
   .tally .t.hot .n { color: #ff9d6e; }
+  /* One tally cell opens the graveyard, so it reads as tappable without
+     breaking the quiet ledger the rest of the row is. */
+  button.t { width: 100%; border: 0; transition: background .12s ease; }
+  button.t:hover { background: var(--surface-2); }
+  button.t:active { background: var(--surface-3); }
+  button.t .k::after { content: " \203A"; color: var(--ink-soft); }
 
   /* ---------- Players ---------- */
 
@@ -890,7 +898,9 @@ Tokens: (200)
       <div class="t hot"><span class="n" id="c-library">0</span><span class="k">Library</span></div>
       <div class="t"><span class="n" id="c-board">0</span><span class="k">Creatures</span></div>
       <div class="t"><span class="n" id="c-power">0</span><span class="k">Attacking</span></div>
-      <div class="t"><span class="n" id="c-yard">0</span><span class="k">Graveyard</span></div>
+      <button class="t" id="tile-yard" aria-label="Open the graveyard">
+        <span class="n" id="c-yard">0</span><span class="k">Graveyard</span>
+      </button>
     </div>
 
     <p class="tiny muted rulesline" id="game-rules"></p>
@@ -932,7 +942,8 @@ Tokens: (200)
   <section class="screen" id="screen-end">
     <div class="panel" style="text-align:center; padding:34px 20px">
       <h2 id="end-title" style="font-size:30px; text-transform:none; letter-spacing:0; color:var(--ink)"></h2>
-      <p class="muted" id="end-sub" style="margin-bottom:22px"></p>
+      <p class="muted" id="end-sub" style="margin-bottom:18px"></p>
+      <div class="tally" id="end-stats" style="margin-bottom:22px"></div>
       <div class="row" style="justify-content:center">
         <button class="btn primary" id="btn-again">Play again</button>
         <button class="btn ghost" id="btn-end-home">Back to decks</button>
@@ -1074,6 +1085,16 @@ Tokens: (200)
   </div>
 </dialog>
 
+<dialog id="yard-dialog" class="sheet">
+  <h3 style="margin:0 0 4px">Graveyard</h3>
+  <p class="muted small" id="yd-sub" style="margin:0 0 12px"></p>
+  <div class="cardgrid tokengrid" id="yd-grid" style="margin-bottom:6px"></div>
+  <p class="muted small" id="yd-empty" hidden>
+    Nothing here yet &mdash; damage mills the Horde, and its dead creatures land here too.
+  </p>
+  <button class="btn ghost" id="yd-close" style="width:100%; margin-top:10px">Close</button>
+</dialog>
+
 <dialog id="confirm-dialog">
   <h3 style="margin:0 0 6px" id="cd-title"></h3>
   <p class="muted small" id="cd-body" style="margin:0 0 16px"></p>
@@ -1089,7 +1110,7 @@ Tokens: (200)
    Stored as {q: quantity, n: name, t: 1 if token}; everything else (art,
    rarity, rules text) is filled in from Scryfall the first time a deck is
    used, then cached offline. */
-const BUNDLED_DECKS = [{"name":"Zombies Horde","waveEnd":"nontoken","entries":[{"q":3,"n":"Corpse Knight","t":0,"c":"creature"},{"q":6,"n":"Death Baron","t":0,"c":"creature"},{"q":5,"n":"Diregraf Captain","t":0,"c":"creature"},{"q":3,"n":"Dread Slaver","t":0,"c":"creature"},{"q":2,"n":"Eternal Skylord","t":0,"c":"creature"},{"q":4,"n":"Fleshbag Marauder","t":0,"c":"creature"},{"q":2,"n":"Ghoultree","t":0,"c":"creature"},{"q":1,"n":"Gleaming Overseer","t":0,"c":"creature"},{"q":2,"n":"Grave Titan","t":0,"c":"creature"},{"q":3,"n":"Gray Merchant of Asphodel","t":0,"c":"creature"},{"q":1,"n":"Josu Vess, Lich Knight","t":0,"c":"creature"},{"q":2,"n":"Lotleth Giant","t":0,"c":"creature"},{"q":1,"n":"Mournwillow","t":0,"c":"creature"},{"q":3,"n":"Noosegraf Mob","t":0,"c":"creature"},{"q":2,"n":"Noxious Ghoul","t":0,"c":"creature"},{"q":4,"n":"Plague Belcher","t":0,"c":"creature"},{"q":3,"n":"Soulless One","t":0,"c":"creature"},{"q":5,"n":"Unbreathing Horde","t":0,"c":"creature"},{"q":2,"n":"Undead Alchemist","t":0,"c":"creature"},{"q":18,"n":"Undead Servant","t":0,"c":"creature"},{"q":4,"n":"Undead Warchief","t":0,"c":"creature"},{"q":1,"n":"Vengeful Pharaoh","t":0,"c":"creature"},{"q":2,"n":"Vulturous Zombie","t":0,"c":"creature"},{"q":2,"n":"Zombie Apocalypse","t":0,"c":"spell"},{"q":1,"n":"End Hostilities","t":0,"c":"spell"},{"q":1,"n":"Endless Ranks of the Dead","t":0,"c":"spell"},{"q":1,"n":"Footbottom Feast","t":0,"c":"spell"},{"q":1,"n":"Tainted Remedy","t":0,"c":"spell"},{"q":2,"n":"Plague Wind","t":0,"c":"spell"},{"q":2,"n":"Throne of the God-Pharaoh","t":0,"c":"spell"},{"q":1,"n":"Graf Harvest","t":0,"c":"spell"},{"q":2,"n":"Grave Betrayal","t":0,"c":"spell"},{"q":1,"n":"Creeping Corrosion","t":0,"c":"spell"},{"q":1,"n":"Aether Snap","t":0,"c":"spell"},{"q":1,"n":"Army of the Damned","t":0,"c":"spell"},{"q":3,"n":"Awaken the Erstwhile","t":0,"c":"spell"},{"q":1,"n":"Barter in Blood","t":0,"c":"spell"},{"q":1,"n":"Call to the Grave","t":0,"c":"spell"},{"q":187,"n":"Zombie","t":1,"c":"creature"},{"q":13,"n":"Zombie Giant","t":1,"c":"creature"}]},{"name":"Vampire Horde","waveEnd":"rarity","entries":[{"q":1,"n":"Anowon, the Ruin Sage","t":0,"c":"creature"},{"q":1,"n":"Arvad the Cursed","t":0,"c":"creature"},{"q":1,"n":"Ascendant Evincar","t":0,"c":"creature"},{"q":1,"n":"Astarion, the Decadent","t":0,"c":"creature"},{"q":1,"n":"Drana, Kalastria Bloodchief","t":0,"c":"creature"},{"q":1,"n":"Drana, Liberator of Malakir","t":0,"c":"creature"},{"q":1,"n":"Drana, the Last Bloodchief","t":0,"c":"creature"},{"q":1,"n":"Edgar Markov","t":0,"c":"creature"},{"q":1,"n":"Edgar, Charmed Groom","t":0,"c":"creature"},{"q":1,"n":"Elenda, the Dusk Rose","t":0,"c":"creature"},{"q":1,"n":"Etrata, the Silencer","t":0,"c":"creature"},{"q":1,"n":"Evelyn, the Covetous","t":0,"c":"creature"},{"q":1,"n":"Kalitas, Bloodchief of Ghet","t":0,"c":"creature"},{"q":1,"n":"Kalitas, Traitor of Ghet","t":0,"c":"creature"},{"q":1,"n":"Lord Xander, the Collector","t":0,"c":"creature"},{"q":1,"n":"Olivia Voldaren","t":0,"c":"creature"},{"q":1,"n":"Olivia, Crimson Bride","t":0,"c":"creature"},{"q":1,"n":"Timothar, Baron of Bats","t":0,"c":"creature"},{"q":1,"n":"Vito, Thorn of the Dusk Rose","t":0,"c":"creature"},{"q":1,"n":"Zagras, Thief of Heartbeats Vampire Support","t":0,"c":"creature"},{"q":10,"n":"Blood Artist","t":0,"c":"creature"},{"q":8,"n":"Butcher of Malakir","t":0,"c":"creature"},{"q":3,"n":"Captivating Vampire","t":0,"c":"creature"},{"q":23,"n":"Child of Night","t":0,"c":"creature"},{"q":1,"n":"Eldrazi Monument","t":0,"c":"creature"},{"q":7,"n":"Indulgent Aristocrat","t":0,"c":"creature"},{"q":8,"n":"Innocent Traveler","t":0,"c":"creature"},{"q":3,"n":"Olivia's Wrath","t":0,"c":"creature"},{"q":3,"n":"Patron of the Vein","t":0,"c":"creature"},{"q":8,"n":"Rakish Heir","t":0,"c":"creature"},{"q":1,"n":"Ruinous Ultimatum","t":0,"c":"creature"},{"q":7,"n":"Sanguine Bond","t":0,"c":"creature"},{"q":1,"n":"Shared Animosity","t":0,"c":"creature"},{"q":4,"n":"Stensia Masquerade","t":0,"c":"creature"},{"q":7,"n":"Stromkirk Captain","t":0,"c":"creature"},{"q":18,"n":"Vampire Envoy","t":0,"c":"creature"},{"q":10,"n":"Vampire Nighthawk","t":0,"c":"creature"},{"q":3,"n":"Vampire Nocturnus","t":0,"c":"creature"},{"q":5,"n":"Vampires' Vengeance","t":0,"c":"creature"},{"q":5,"n":"Vampire Knight","t":1,"c":"creature"},{"q":145,"n":"Vampire","t":1,"c":"creature"}]},{"name":"Eldrazi Titans Horde","waveEnd":"rarity","entries":[{"q":150,"n":"Eldrazi Scion","t":1,"c":"creature"},{"q":15,"n":"Eldrazi Skyspawner","t":0,"c":"creature"},{"q":3,"n":"Eldrazi Devastator","t":0,"c":"creature"},{"q":12,"n":"Ulamog's Crusher","t":0,"c":"creature"},{"q":8,"n":"Artisan of Kozilek","t":0,"c":"creature"},{"q":7,"n":"Bane of Bala Ged","t":0,"c":"creature"},{"q":7,"n":"Birthing Hulk","t":0,"c":"creature"},{"q":4,"n":"Breaker of Armies","t":0,"c":"creature"},{"q":4,"n":"Decimator of the Provinces","t":0,"c":"creature"},{"q":10,"n":"Desolation Twin","t":0,"c":"creature"},{"q":3,"n":"Eldrazi Ravager","t":0,"c":"creature"},{"q":8,"n":"Flayer Drone","t":0,"c":"creature"},{"q":1,"n":"Hideous Taskmaster","t":0,"c":"creature"},{"q":1,"n":"It That Betrays","t":0,"c":"creature"},{"q":2,"n":"Pathrazer of Ulamog","t":0,"c":"creature"},{"q":6,"n":"Reality Smasher","t":0,"c":"creature"},{"q":1,"n":"Sire of Stagnation","t":0,"c":"creature"},{"q":4,"n":"Titans' Vanguard","t":0,"c":"creature"},{"q":1,"n":"Twins of Discord","t":0,"c":"creature"},{"q":5,"n":"Vile Aggregate","t":0,"c":"creature"},{"q":1,"n":"Void Winnower","t":0,"c":"creature"},{"q":5,"n":"World Breaker","t":0,"c":"creature"},{"q":6,"n":"All Is Dust","t":0,"c":"spell"},{"q":3,"n":"Extinction Event","t":0,"c":"spell"},{"q":2,"n":"Overcome","t":0,"c":"spell"},{"q":4,"n":"Overrun","t":0,"c":"spell"},{"q":4,"n":"Overwhelming Stampede","t":0,"c":"spell"},{"q":5,"n":"Eldrazi Monument","t":0,"c":"permanent"},{"q":1,"n":"Eldrazi Conscription","t":0,"c":"permanent"},{"q":4,"n":"Everlasting Torment","t":0,"c":"permanent"},{"q":4,"n":"Molten Nursery","t":0,"c":"permanent"},{"q":2,"n":"Tainted Remedy Eldrazi Horde Decklist Bosses","t":0,"c":"permanent"},{"q":1,"n":"Emrakul, the Aeons Torn","t":0,"c":"creature"},{"q":1,"n":"Emrakul, the World Anew","t":0,"c":"creature"},{"q":1,"n":"Kozilek, Butcher of Truth","t":0,"c":"creature"},{"q":1,"n":"Kozilek, the Broken Reality","t":0,"c":"creature"},{"q":1,"n":"Kozilek, the Great Distortion","t":0,"c":"creature"},{"q":1,"n":"Ulamog, the Ceaseless Hunger","t":0,"c":"creature"},{"q":1,"n":"Ulamog, the Defiler","t":0,"c":"creature"},{"q":1,"n":"Ulamog, the Infinite Gyre","t":0,"c":"creature"}]},{"name":"Slivers Horde","waveEnd":"rarity","entries":[{"q":1,"n":"Sliver Hivelord","t":0,"c":"creature"},{"q":1,"n":"Sliver Legion","t":0,"c":"creature"},{"q":1,"n":"Sliver Overlord","t":0,"c":"creature"},{"q":1,"n":"Sliver Queen","t":0,"c":"creature"},{"q":1,"n":"The First Sliver Sliver Support","t":0,"c":"creature"},{"q":2,"n":"Battering Sliver","t":0,"c":"creature"},{"q":2,"n":"Belligerent Sliver","t":0,"c":"creature"},{"q":2,"n":"Bonesplitter Sliver","t":0,"c":"creature"},{"q":4,"n":"Brood Sliver","t":0,"c":"creature"},{"q":5,"n":"Cleaving Sliver","t":0,"c":"creature"},{"q":2,"n":"Crystalline Sliver","t":0,"c":"creature"},{"q":4,"n":"Diffusion Sliver","t":0,"c":"creature"},{"q":3,"n":"Fungus Sliver","t":0,"c":"creature"},{"q":3,"n":"Fury Sliver","t":0,"c":"creature"},{"q":4,"n":"Groundshaker Sliver","t":0,"c":"creature"},{"q":2,"n":"Harmonic Sliver","t":0,"c":"creature"},{"q":2,"n":"Horned Sliver","t":0,"c":"creature"},{"q":6,"n":"Lancer Sliver","t":0,"c":"creature"},{"q":5,"n":"Lavabelly Sliver","t":0,"c":"creature"},{"q":3,"n":"Leeching Sliver","t":0,"c":"creature"},{"q":1,"n":"Megantic Sliver","t":0,"c":"creature"},{"q":10,"n":"Metallic Sliver","t":0,"c":"creature"},{"q":2,"n":"Might Sliver","t":0,"c":"creature"},{"q":2,"n":"Muscle Sliver","t":0,"c":"creature"},{"q":3,"n":"Predatory Sliver","t":0,"c":"creature"},{"q":2,"n":"Pulmonic Sliver","t":0,"c":"creature"},{"q":1,"n":"Shadow Sliver","t":0,"c":"creature"},{"q":3,"n":"Shifting Sliver","t":0,"c":"creature"},{"q":2,"n":"Sidewinder Sliver","t":0,"c":"creature"},{"q":2,"n":"Sinew Sliver","t":0,"c":"creature"},{"q":2,"n":"Soul Shatter","t":0,"c":"creature"},{"q":1,"n":"Spined Sliver","t":0,"c":"creature"},{"q":2,"n":"Spiteful Sliver","t":0,"c":"creature"},{"q":4,"n":"Steelform Sliver","t":0,"c":"creature"},{"q":4,"n":"Striking Sliver","t":0,"c":"creature"},{"q":3,"n":"Talon Sliver","t":0,"c":"creature"},{"q":4,"n":"Tempered Sliver","t":0,"c":"creature"},{"q":2,"n":"Thorncaster Sliver","t":0,"c":"creature"},{"q":4,"n":"Two-Headed Sliver","t":0,"c":"creature"},{"q":2,"n":"Vampiric Sliver","t":0,"c":"creature"},{"q":3,"n":"Venom Sliver","t":0,"c":"creature"},{"q":2,"n":"Virulent Sliver","t":0,"c":"creature"},{"q":1,"n":"Watcher Sliver","t":0,"c":"creature"},{"q":5,"n":"Winged Sliver","t":0,"c":"creature"},{"q":2,"n":"Barter in Blood","t":0,"c":"spell"},{"q":5,"n":"Crackling Doom","t":0,"c":"spell"},{"q":2,"n":"Destructive Flow","t":0,"c":"spell"},{"q":1,"n":"Necrotic Hex","t":0,"c":"spell"},{"q":1,"n":"Simplify","t":0,"c":"spell"},{"q":1,"n":"Tranquility","t":0,"c":"spell"},{"q":1,"n":"Vona's Hunger","t":0,"c":"spell"},{"q":1,"n":"Wave of Vitriol","t":0,"c":"spell"},{"q":170,"n":"Metallic Sliver","t":1,"c":"creature"}]},{"name":"Angels & Demons — Clerics and Devils","waveEnd":"rarity","entries":[{"q":5,"n":"Whisper, Blood Liturgist","t":0,"c":"creature"},{"q":1,"n":"Lyzolda, the Blood Witch","t":0,"c":"creature"},{"q":1,"n":"Karlach, Fury of Avernus","t":0,"c":"creature"},{"q":1,"n":"Raphael, Fiendish Savior","t":0,"c":"creature"},{"q":60,"n":"Cleric","t":1,"c":"creature"},{"q":82,"n":"Devil","t":1,"c":"creature"},{"q":1,"n":"Vile Deacon","t":0,"c":"creature"},{"q":4,"n":"Shadow-Rite Priest","t":0,"c":"creature"},{"q":1,"n":"Pious Evangel","t":0,"c":"creature"},{"q":3,"n":"Priest of the Blood Rite","t":0,"c":"creature"},{"q":11,"n":"Demon's Disciple","t":0,"c":"creature"},{"q":9,"n":"Havoc Jester","t":0,"c":"creature"},{"q":4,"n":"Hellrider","t":0,"c":"creature"},{"q":8,"n":"Mayhem Devil","t":0,"c":"creature"},{"q":6,"n":"Pyretic Prankster","t":0,"c":"creature"},{"q":7,"n":"Scourge Devil","t":0,"c":"creature"},{"q":2,"n":"Tibalt, Rakish Instigator","t":0,"c":"permanent"},{"q":4,"n":"Rite of Belzenlok","t":0,"c":"permanent"}]},{"name":"Angels & Demons — Demons","waveEnd":"rarity","entries":[{"q":1,"n":"Be'lakor, the Dark Master","t":0,"c":"creature"},{"q":1,"n":"Griselbrand","t":0,"c":"creature"},{"q":1,"n":"Demonlord Belzenlok","t":0,"c":"creature"},{"q":1,"n":"Jerren, Corrupted Bishop","t":0,"c":"creature"},{"q":1,"n":"Kothophed, Soul Hoarder","t":0,"c":"creature"},{"q":1,"n":"Nefarox, Overlord of Grixis","t":0,"c":"creature"},{"q":1,"n":"Ob Nixilis, Unshackled","t":0,"c":"creature"},{"q":1,"n":"Orca, Siege Demon","t":0,"c":"creature"},{"q":1,"n":"Orcus, Prince of Undeath","t":0,"c":"creature"},{"q":1,"n":"Rakdos the Defiler","t":0,"c":"creature"},{"q":1,"n":"Rakdos, the Showstopper","t":0,"c":"creature"},{"q":1,"n":"Ravenous Demon","t":0,"c":"creature"},{"q":1,"n":"Razaketh, the Foulblooded","t":0,"c":"creature"},{"q":1,"n":"Shimatsu the Bloodcloaked","t":0,"c":"creature"},{"q":1,"n":"Westvale Abbey","t":0,"c":"creature"},{"q":11,"n":"Demon","t":1,"c":"creature"},{"q":1,"n":"Balor","t":0,"c":"creature"},{"q":1,"n":"Defiler of Souls","t":0,"c":"creature"},{"q":1,"n":"Demon of Catastrophes","t":0,"c":"creature"},{"q":1,"n":"Demon of Dark Schemes","t":0,"c":"creature"},{"q":1,"n":"Demon of Loathing","t":0,"c":"creature"},{"q":1,"n":"Demon of Wailing Agonies","t":0,"c":"creature"},{"q":1,"n":"Demonic Taskmaster","t":0,"c":"creature"},{"q":1,"n":"Demonlord of Ashmouth","t":0,"c":"creature"},{"q":2,"n":"Desecration Demon","t":0,"c":"creature"},{"q":1,"n":"Butcher of the Horde","t":0,"c":"creature"},{"q":9,"n":"Carnifex Demon","t":0,"c":"creature"},{"q":2,"n":"Abhorrent Overlord","t":0,"c":"creature"},{"q":1,"n":"Apocalypse Demon","t":0,"c":"creature"},{"q":1,"n":"Archfiend of Depravity","t":0,"c":"creature"},{"q":1,"n":"Archfiend of Despair","t":0,"c":"creature"},{"q":4,"n":"Archfiend of Sorrows","t":0,"c":"creature"},{"q":1,"n":"Archfiend of Spite","t":0,"c":"creature"},{"q":1,"n":"Doom Whisperer","t":0,"c":"creature"},{"q":1,"n":"Dreadfeast Demon","t":0,"c":"creature"},{"q":5,"n":"Dreadhound","t":0,"c":"creature"},{"q":2,"n":"Eater of Hope","t":0,"c":"creature"},{"q":1,"n":"Embodiment of Agonies","t":0,"c":"creature"},{"q":10,"n":"Goremand","t":0,"c":"creature"},{"q":1,"n":"Harvester of Souls","t":0,"c":"creature"},{"q":1,"n":"Herald of Torment","t":0,"c":"creature"},{"q":1,"n":"Indulgent Tormentor","t":0,"c":"creature"},{"q":1,"n":"Liege of the Pit","t":0,"c":"creature"},{"q":1,"n":"Lord of the Forsaken","t":0,"c":"creature"},{"q":1,"n":"Lord of the Pit","t":0,"c":"creature"},{"q":1,"n":"Lord of the Void","t":0,"c":"creature"},{"q":1,"n":"Minion of Leshrac","t":0,"c":"creature"},{"q":1,"n":"Overseer of the Damned","t":0,"c":"creature"},{"q":2,"n":"Rakshasa Debaser","t":0,"c":"creature"},{"q":1,"n":"Razorjaw Oni","t":0,"c":"creature"},{"q":1,"n":"Reaper from the Abyss","t":0,"c":"creature"},{"q":1,"n":"Shadowborn Demon","t":0,"c":"creature"},{"q":1,"n":"Shadowgrange Archfiend","t":0,"c":"creature"},{"q":2,"n":"Tyrannical Pitlord","t":0,"c":"creature"},{"q":1,"n":"Woebringer Demon","t":0,"c":"creature"},{"q":2,"n":"Xathrid Demon","t":0,"c":"creature"}]},{"name":"D&D Dungeon — Lv1 Oozes","waveEnd":"rarity","entries":[{"q":38,"n":"Ooze","t":1,"c":"creature"},{"q":18,"n":"Expanding Ooze","t":0,"c":"creature"},{"q":2,"n":"Baleful Beholder","t":0,"c":"creature"},{"q":6,"n":"Acidic Slime","t":0,"c":"creature"},{"q":1,"n":"Biogenic Ooze","t":0,"c":"creature"},{"q":13,"n":"Gelatinous Cube","t":0,"c":"creature"},{"q":1,"n":"Ravenous Slime","t":0,"c":"creature"},{"q":1,"n":"Predator Ooze","t":0,"c":"creature"},{"q":2,"n":"Sludge Monster","t":0,"c":"creature"},{"q":1,"n":"Uchuulon","t":0,"c":"creature"},{"q":1,"n":"Aeve, Progenitor Ooze","t":0,"c":"creature"},{"q":1,"n":"Slurrk, All-Ingesting","t":0,"c":"creature"},{"q":1,"n":"Arms of Hadar","t":0,"c":"spell"},{"q":1,"n":"Creeping Renaissance","t":0,"c":"spell"},{"q":2,"n":"Crippling Fear","t":0,"c":"spell"},{"q":1,"n":"Power Word Kill","t":0,"c":"spell"},{"q":6,"n":"Slime Against Humanity","t":0,"c":"spell"},{"q":2,"n":"Split The Party","t":0,"c":"spell"},{"q":1,"n":"Gutter Grime","t":0,"c":"permanent"},{"q":1,"n":"March of the World Ooze","t":0,"c":"permanent"}]},{"name":"D&D Dungeon — Lv2 Goblins & Skeletons","waveEnd":"rarity","entries":[{"q":55,"n":"Goblin","t":1,"c":"creature"},{"q":4,"n":"Goblin Wizard","t":1,"c":"creature"},{"q":25,"n":"Stingscourger","t":0,"c":"creature"},{"q":4,"n":"Goblin Arsonist","t":0,"c":"creature"},{"q":11,"n":"Putrid Goblin","t":0,"c":"creature"},{"q":2,"n":"Scuzzback Marauders","t":0,"c":"creature"},{"q":9,"n":"Skeleton Archer","t":0,"c":"creature"},{"q":1,"n":"Persistent Specimen","t":0,"c":"creature"},{"q":14,"n":"Carnage Gladiator","t":0,"c":"creature"},{"q":3,"n":"Ankle Shanker","t":0,"c":"creature"},{"q":1,"n":"Goblin Trashmaster","t":0,"c":"creature"},{"q":1,"n":"Death Tyrant","t":0,"c":"creature"},{"q":5,"n":"Gut, True Soul Zealot","t":0,"c":"creature"},{"q":1,"n":"Bladewing, Deathless Tyrant","t":0,"c":"creature"},{"q":1,"n":"Krenko, Mob Boss","t":0,"c":"creature"},{"q":10,"n":"Arms of Hadar","t":0,"c":"spell"},{"q":1,"n":"Austere Command","t":0,"c":"spell"},{"q":1,"n":"Rampage of the Clans","t":0,"c":"spell"},{"q":1,"n":"Vandalblast","t":0,"c":"spell"},{"q":12,"n":"Empty the Warrens","t":0,"c":"spell"},{"q":8,"n":"Goblin Grenade","t":0,"c":"spell"},{"q":12,"n":"Trumpet Blast","t":0,"c":"spell"},{"q":4,"n":"Turn to Slag","t":0,"c":"spell"},{"q":5,"n":"War Drums","t":0,"c":"permanent"},{"q":7,"n":"Skeletal Swarming","t":0,"c":"permanent"},{"q":2,"n":"Rite of the Dragoncaller","t":0,"c":"permanent"},{"q":2,"n":"Gruul War Chant","t":0,"c":"permanent"}]},{"name":"D&D Dungeon — Lv3 Giants & Dragons","waveEnd":"rarity","entries":[{"q":70,"n":"Giant Wizard","t":1,"c":"creature"},{"q":12,"n":"Baleful Beholder","t":0,"c":"creature"},{"q":6,"n":"Rimeshield Frost Giant","t":0,"c":"creature"},{"q":5,"n":"Benthic Giant","t":0,"c":"creature"},{"q":4,"n":"Cinderheart Giant","t":0,"c":"creature"},{"q":8,"n":"Writhing Necromass","t":0,"c":"creature"},{"q":8,"n":"Sparktongue Dragon","t":0,"c":"creature"},{"q":8,"n":"Noxious Dragon","t":0,"c":"creature"},{"q":8,"n":"Borderland Behemoth","t":0,"c":"creature"},{"q":8,"n":"Sunrise Sovereign","t":0,"c":"creature"},{"q":5,"n":"Quakebringer","t":0,"c":"creature"},{"q":3,"n":"Calamity Bearer","t":0,"c":"creature"},{"q":1,"n":"Palisade Giant","t":0,"c":"creature"},{"q":1,"n":"Kalemne's Captain","t":0,"c":"creature"},{"q":1,"n":"Xanathar, Guild Kingpin","t":0,"c":"creature"},{"q":1,"n":"Storvald, Frost Giant Jarl","t":0,"c":"creature"},{"q":1,"n":"Icingdeath, Frost Tongue","t":0,"c":"creature"},{"q":20,"n":"Arms of Hadar","t":0,"c":"spell"},{"q":3,"n":"Eyes of the Beholder","t":0,"c":"spell"},{"q":4,"n":"Squash","t":0,"c":"spell"},{"q":1,"n":"Vandalblast","t":0,"c":"spell"},{"q":3,"n":"Slaughter the Strong","t":0,"c":"spell"},{"q":8,"n":"Split the Party","t":0,"c":"spell"},{"q":1,"n":"Seismic Stomp","t":0,"c":"spell"},{"q":8,"n":"You Come to a River","t":0,"c":"spell"},{"q":1,"n":"Twilight's Call","t":0,"c":"spell"},{"q":1,"n":"Campfire","t":0,"c":"permanent"}]},{"name":"Bloomburrow — Rabbit Warren","waveEnd":"rarity","entries":[{"q":185,"n":"Rabbit","t":1,"c":"creature"},{"q":20,"n":"Hare Apparent","t":0,"c":"creature"},{"q":12,"n":"Intrepid Rabbit","t":0,"c":"creature"},{"q":10,"n":"Warren Elder","t":0,"c":"creature"},{"q":8,"n":"Head of the Homestead","t":0,"c":"creature"},{"q":8,"n":"Brave-Kin Duo","t":0,"c":"creature"},{"q":6,"n":"Treeguard Duo","t":0,"c":"creature"},{"q":5,"n":"Seasoned Warrenguard","t":0,"c":"creature"},{"q":4,"n":"Burrowguard Mentor","t":0,"c":"creature"},{"q":4,"n":"Harvestrite Host","t":0,"c":"creature"},{"q":3,"n":"Pawpatch Recruit","t":0,"c":"creature"},{"q":2,"n":"Warren Warleader","t":0,"c":"creature"},{"q":1,"n":"Valley Questcaller","t":0,"c":"creature"},{"q":1,"n":"Jacked Rabbit","t":0,"c":"creature"},{"q":1,"n":"Byrke, Long Ear of the Law","t":0,"c":"creature"},{"q":1,"n":"Finneas, Ace Archer","t":0,"c":"creature"},{"q":1,"n":"Baylen, the Haymaker","t":0,"c":"creature"},{"q":4,"n":"Hop to It","t":0,"c":"spell"},{"q":4,"n":"Trumpet Blast","t":0,"c":"spell"},{"q":2,"n":"Overrun","t":0,"c":"spell"},{"q":1,"n":"Overwhelming Stampede","t":0,"c":"spell"},{"q":1,"n":"Plague Wind","t":0,"c":"spell"},{"q":1,"n":"Slaughter the Strong","t":0,"c":"spell"},{"q":4,"n":"Carrot Cake","t":0,"c":"permanent"},{"q":3,"n":"Intangible Virtue","t":0,"c":"permanent"},{"q":2,"n":"Glorious Anthem","t":0,"c":"permanent"},{"q":2,"n":"Coat of Arms","t":0,"c":"permanent"},{"q":1,"n":"Shared Animosity","t":0,"c":"permanent"},{"q":1,"n":"Cathars' Crusade","t":0,"c":"permanent"},{"q":1,"n":"Anointed Procession","t":0,"c":"permanent"},{"q":1,"n":"Divine Visitation","t":0,"c":"permanent"}]},{"name":"Bloomburrow — Bat Coven","waveEnd":"rarity","entries":[{"q":178,"n":"Bat","t":1,"c":"creature"},{"q":16,"n":"Lifecreed Duo","t":0,"c":"creature"},{"q":14,"n":"Wax-Wane Witness","t":0,"c":"creature"},{"q":12,"n":"Glidedive Duo","t":0,"c":"creature"},{"q":10,"n":"Starlit Soothsayer","t":0,"c":"creature"},{"q":10,"n":"Moonrise Cleric","t":0,"c":"creature"},{"q":8,"n":"Starscape Cleric","t":0,"c":"creature"},{"q":6,"n":"Moonstone Harbinger","t":0,"c":"creature"},{"q":5,"n":"Essence Channeler","t":0,"c":"creature"},{"q":4,"n":"Darkstar Augur","t":0,"c":"creature"},{"q":1,"n":"Starseer Mentor","t":0,"c":"creature"},{"q":1,"n":"Star Charter","t":0,"c":"creature"},{"q":1,"n":"Zoraline, Cosmos Caller","t":0,"c":"creature"},{"q":5,"n":"Trumpet Blast","t":0,"c":"spell"},{"q":3,"n":"Barter in Blood","t":0,"c":"spell"},{"q":3,"n":"Overcome","t":0,"c":"spell"},{"q":2,"n":"Crippling Fear","t":0,"c":"spell"},{"q":2,"n":"Plague Wind","t":0,"c":"spell"},{"q":5,"n":"Bad Moon","t":0,"c":"permanent"},{"q":4,"n":"Cover of Darkness","t":0,"c":"permanent"},{"q":3,"n":"Sanguine Bond","t":0,"c":"permanent"},{"q":2,"n":"Shared Animosity","t":0,"c":"permanent"},{"q":2,"n":"Coat of Arms","t":0,"c":"permanent"},{"q":2,"n":"Anointed Procession","t":0,"c":"permanent"},{"q":1,"n":"Divine Visitation","t":0,"c":"permanent"}]}];
+const BUNDLED_DECKS = [{"name":"Zombies Horde","waveEnd":"nontoken","entries":[{"q":3,"n":"Corpse Knight","t":0,"c":"creature"},{"q":6,"n":"Death Baron","t":0,"c":"creature"},{"q":5,"n":"Diregraf Captain","t":0,"c":"creature"},{"q":3,"n":"Dread Slaver","t":0,"c":"creature"},{"q":2,"n":"Eternal Skylord","t":0,"c":"creature"},{"q":4,"n":"Fleshbag Marauder","t":0,"c":"creature"},{"q":2,"n":"Ghoultree","t":0,"c":"creature"},{"q":1,"n":"Gleaming Overseer","t":0,"c":"creature"},{"q":2,"n":"Grave Titan","t":0,"c":"creature"},{"q":3,"n":"Gray Merchant of Asphodel","t":0,"c":"creature"},{"q":1,"n":"Josu Vess, Lich Knight","t":0,"c":"creature"},{"q":2,"n":"Lotleth Giant","t":0,"c":"creature"},{"q":1,"n":"Mournwillow","t":0,"c":"creature"},{"q":3,"n":"Noosegraf Mob","t":0,"c":"creature"},{"q":2,"n":"Noxious Ghoul","t":0,"c":"creature"},{"q":4,"n":"Plague Belcher","t":0,"c":"creature"},{"q":3,"n":"Soulless One","t":0,"c":"creature"},{"q":5,"n":"Unbreathing Horde","t":0,"c":"creature"},{"q":2,"n":"Undead Alchemist","t":0,"c":"creature"},{"q":18,"n":"Undead Servant","t":0,"c":"creature"},{"q":4,"n":"Undead Warchief","t":0,"c":"creature"},{"q":1,"n":"Vengeful Pharaoh","t":0,"c":"creature"},{"q":2,"n":"Vulturous Zombie","t":0,"c":"creature"},{"q":2,"n":"Zombie Apocalypse","t":0,"c":"spell"},{"q":1,"n":"End Hostilities","t":0,"c":"spell"},{"q":1,"n":"Endless Ranks of the Dead","t":0,"c":"spell"},{"q":1,"n":"Footbottom Feast","t":0,"c":"spell"},{"q":1,"n":"Tainted Remedy","t":0,"c":"spell"},{"q":2,"n":"Plague Wind","t":0,"c":"spell"},{"q":2,"n":"Throne of the God-Pharaoh","t":0,"c":"spell"},{"q":1,"n":"Graf Harvest","t":0,"c":"spell"},{"q":2,"n":"Grave Betrayal","t":0,"c":"spell"},{"q":1,"n":"Creeping Corrosion","t":0,"c":"spell"},{"q":1,"n":"Aether Snap","t":0,"c":"spell"},{"q":1,"n":"Army of the Damned","t":0,"c":"spell"},{"q":3,"n":"Awaken the Erstwhile","t":0,"c":"spell"},{"q":1,"n":"Barter in Blood","t":0,"c":"spell"},{"q":1,"n":"Call to the Grave","t":0,"c":"spell"},{"q":187,"n":"Zombie","t":1,"c":"creature"},{"q":13,"n":"Zombie Giant","t":1,"c":"creature"}]},{"name":"Vampire Horde","waveEnd":"rarity","entries":[{"q":1,"n":"Anowon, the Ruin Sage","t":0,"c":"creature"},{"q":1,"n":"Arvad the Cursed","t":0,"c":"creature"},{"q":1,"n":"Ascendant Evincar","t":0,"c":"creature"},{"q":1,"n":"Astarion, the Decadent","t":0,"c":"creature"},{"q":1,"n":"Drana, Kalastria Bloodchief","t":0,"c":"creature"},{"q":1,"n":"Drana, Liberator of Malakir","t":0,"c":"creature"},{"q":1,"n":"Drana, the Last Bloodchief","t":0,"c":"creature"},{"q":1,"n":"Edgar Markov","t":0,"c":"creature"},{"q":1,"n":"Edgar, Charmed Groom","t":0,"c":"creature"},{"q":1,"n":"Elenda, the Dusk Rose","t":0,"c":"creature"},{"q":1,"n":"Etrata, the Silencer","t":0,"c":"creature"},{"q":1,"n":"Evelyn, the Covetous","t":0,"c":"creature"},{"q":1,"n":"Kalitas, Bloodchief of Ghet","t":0,"c":"creature"},{"q":1,"n":"Kalitas, Traitor of Ghet","t":0,"c":"creature"},{"q":1,"n":"Lord Xander, the Collector","t":0,"c":"creature"},{"q":1,"n":"Olivia Voldaren","t":0,"c":"creature"},{"q":1,"n":"Olivia, Crimson Bride","t":0,"c":"creature"},{"q":1,"n":"Timothar, Baron of Bats","t":0,"c":"creature"},{"q":1,"n":"Vito, Thorn of the Dusk Rose","t":0,"c":"creature"},{"q":1,"n":"Zagras, Thief of Heartbeats Vampire Support","t":0,"c":"creature"},{"q":10,"n":"Blood Artist","t":0,"c":"creature"},{"q":8,"n":"Butcher of Malakir","t":0,"c":"creature"},{"q":3,"n":"Captivating Vampire","t":0,"c":"creature"},{"q":23,"n":"Child of Night","t":0,"c":"creature"},{"q":1,"n":"Eldrazi Monument","t":0,"c":"creature"},{"q":7,"n":"Indulgent Aristocrat","t":0,"c":"creature"},{"q":8,"n":"Innocent Traveler","t":0,"c":"creature"},{"q":3,"n":"Olivia's Wrath","t":0,"c":"creature"},{"q":3,"n":"Patron of the Vein","t":0,"c":"creature"},{"q":8,"n":"Rakish Heir","t":0,"c":"creature"},{"q":1,"n":"Ruinous Ultimatum","t":0,"c":"creature"},{"q":7,"n":"Sanguine Bond","t":0,"c":"creature"},{"q":1,"n":"Shared Animosity","t":0,"c":"creature"},{"q":4,"n":"Stensia Masquerade","t":0,"c":"creature"},{"q":7,"n":"Stromkirk Captain","t":0,"c":"creature"},{"q":18,"n":"Vampire Envoy","t":0,"c":"creature"},{"q":10,"n":"Vampire Nighthawk","t":0,"c":"creature"},{"q":3,"n":"Vampire Nocturnus","t":0,"c":"creature"},{"q":5,"n":"Vampires' Vengeance","t":0,"c":"creature"},{"q":5,"n":"Vampire Knight","t":1,"c":"creature"},{"q":145,"n":"Vampire","t":1,"c":"creature"}]},{"name":"Eldrazi Titans Horde","waveEnd":"rarity","entries":[{"q":150,"n":"Eldrazi Scion","t":1,"c":"creature"},{"q":15,"n":"Eldrazi Skyspawner","t":0,"c":"creature"},{"q":3,"n":"Eldrazi Devastator","t":0,"c":"creature"},{"q":12,"n":"Ulamog's Crusher","t":0,"c":"creature"},{"q":8,"n":"Artisan of Kozilek","t":0,"c":"creature"},{"q":7,"n":"Bane of Bala Ged","t":0,"c":"creature"},{"q":7,"n":"Birthing Hulk","t":0,"c":"creature"},{"q":4,"n":"Breaker of Armies","t":0,"c":"creature"},{"q":4,"n":"Decimator of the Provinces","t":0,"c":"creature"},{"q":10,"n":"Desolation Twin","t":0,"c":"creature"},{"q":3,"n":"Eldrazi Ravager","t":0,"c":"creature"},{"q":8,"n":"Flayer Drone","t":0,"c":"creature"},{"q":1,"n":"Hideous Taskmaster","t":0,"c":"creature"},{"q":1,"n":"It That Betrays","t":0,"c":"creature"},{"q":2,"n":"Pathrazer of Ulamog","t":0,"c":"creature"},{"q":6,"n":"Reality Smasher","t":0,"c":"creature"},{"q":1,"n":"Sire of Stagnation","t":0,"c":"creature"},{"q":4,"n":"Titans' Vanguard","t":0,"c":"creature"},{"q":1,"n":"Twins of Discord","t":0,"c":"creature"},{"q":5,"n":"Vile Aggregate","t":0,"c":"creature"},{"q":1,"n":"Void Winnower","t":0,"c":"creature"},{"q":5,"n":"World Breaker","t":0,"c":"creature"},{"q":6,"n":"All Is Dust","t":0,"c":"spell"},{"q":3,"n":"Extinction Event","t":0,"c":"spell"},{"q":2,"n":"Overcome","t":0,"c":"spell"},{"q":4,"n":"Overrun","t":0,"c":"spell"},{"q":4,"n":"Overwhelming Stampede","t":0,"c":"spell"},{"q":5,"n":"Eldrazi Monument","t":0,"c":"permanent"},{"q":1,"n":"Eldrazi Conscription","t":0,"c":"permanent"},{"q":4,"n":"Everlasting Torment","t":0,"c":"permanent"},{"q":4,"n":"Molten Nursery","t":0,"c":"permanent"},{"q":2,"n":"Tainted Remedy Eldrazi Horde Decklist Bosses","t":0,"c":"permanent"},{"q":1,"n":"Emrakul, the Aeons Torn","t":0,"c":"creature"},{"q":1,"n":"Emrakul, the World Anew","t":0,"c":"creature"},{"q":1,"n":"Kozilek, Butcher of Truth","t":0,"c":"creature"},{"q":1,"n":"Kozilek, the Broken Reality","t":0,"c":"creature"},{"q":1,"n":"Kozilek, the Great Distortion","t":0,"c":"creature"},{"q":1,"n":"Ulamog, the Ceaseless Hunger","t":0,"c":"creature"},{"q":1,"n":"Ulamog, the Defiler","t":0,"c":"creature"},{"q":1,"n":"Ulamog, the Infinite Gyre","t":0,"c":"creature"}]},{"name":"Slivers Horde","waveEnd":"rarity","entries":[{"q":1,"n":"Sliver Hivelord","t":0,"c":"creature"},{"q":1,"n":"Sliver Legion","t":0,"c":"creature"},{"q":1,"n":"Sliver Overlord","t":0,"c":"creature"},{"q":1,"n":"Sliver Queen","t":0,"c":"creature"},{"q":1,"n":"The First Sliver Sliver Support","t":0,"c":"creature"},{"q":2,"n":"Battering Sliver","t":0,"c":"creature"},{"q":2,"n":"Belligerent Sliver","t":0,"c":"creature"},{"q":2,"n":"Bonesplitter Sliver","t":0,"c":"creature"},{"q":4,"n":"Brood Sliver","t":0,"c":"creature"},{"q":5,"n":"Cleaving Sliver","t":0,"c":"creature"},{"q":2,"n":"Crystalline Sliver","t":0,"c":"creature"},{"q":4,"n":"Diffusion Sliver","t":0,"c":"creature"},{"q":3,"n":"Fungus Sliver","t":0,"c":"creature"},{"q":3,"n":"Fury Sliver","t":0,"c":"creature"},{"q":4,"n":"Groundshaker Sliver","t":0,"c":"creature"},{"q":2,"n":"Harmonic Sliver","t":0,"c":"creature"},{"q":2,"n":"Horned Sliver","t":0,"c":"creature"},{"q":6,"n":"Lancer Sliver","t":0,"c":"creature"},{"q":5,"n":"Lavabelly Sliver","t":0,"c":"creature"},{"q":3,"n":"Leeching Sliver","t":0,"c":"creature"},{"q":1,"n":"Megantic Sliver","t":0,"c":"creature"},{"q":10,"n":"Metallic Sliver","t":0,"c":"creature"},{"q":2,"n":"Might Sliver","t":0,"c":"creature"},{"q":2,"n":"Muscle Sliver","t":0,"c":"creature"},{"q":3,"n":"Predatory Sliver","t":0,"c":"creature"},{"q":2,"n":"Pulmonic Sliver","t":0,"c":"creature"},{"q":1,"n":"Shadow Sliver","t":0,"c":"creature"},{"q":3,"n":"Shifting Sliver","t":0,"c":"creature"},{"q":2,"n":"Sidewinder Sliver","t":0,"c":"creature"},{"q":2,"n":"Sinew Sliver","t":0,"c":"creature"},{"q":2,"n":"Soul Shatter","t":0,"c":"creature"},{"q":1,"n":"Spined Sliver","t":0,"c":"creature"},{"q":2,"n":"Spiteful Sliver","t":0,"c":"creature"},{"q":4,"n":"Steelform Sliver","t":0,"c":"creature"},{"q":4,"n":"Striking Sliver","t":0,"c":"creature"},{"q":3,"n":"Talon Sliver","t":0,"c":"creature"},{"q":4,"n":"Tempered Sliver","t":0,"c":"creature"},{"q":2,"n":"Thorncaster Sliver","t":0,"c":"creature"},{"q":4,"n":"Two-Headed Sliver","t":0,"c":"creature"},{"q":2,"n":"Vampiric Sliver","t":0,"c":"creature"},{"q":3,"n":"Venom Sliver","t":0,"c":"creature"},{"q":2,"n":"Virulent Sliver","t":0,"c":"creature"},{"q":1,"n":"Watcher Sliver","t":0,"c":"creature"},{"q":5,"n":"Winged Sliver","t":0,"c":"creature"},{"q":2,"n":"Barter in Blood","t":0,"c":"spell"},{"q":5,"n":"Crackling Doom","t":0,"c":"spell"},{"q":2,"n":"Destructive Flow","t":0,"c":"spell"},{"q":1,"n":"Necrotic Hex","t":0,"c":"spell"},{"q":1,"n":"Simplify","t":0,"c":"spell"},{"q":1,"n":"Tranquility","t":0,"c":"spell"},{"q":1,"n":"Vona's Hunger","t":0,"c":"spell"},{"q":1,"n":"Wave of Vitriol","t":0,"c":"spell"},{"q":170,"n":"Metallic Sliver","t":1,"c":"creature"}]},{"name":"Angels & Demons — Clerics and Devils","waveEnd":"rarity","entries":[{"q":5,"n":"Whisper, Blood Liturgist","t":0,"c":"creature"},{"q":1,"n":"Lyzolda, the Blood Witch","t":0,"c":"creature"},{"q":1,"n":"Karlach, Fury of Avernus","t":0,"c":"creature"},{"q":1,"n":"Raphael, Fiendish Savior","t":0,"c":"creature"},{"q":60,"n":"Cleric","t":1,"c":"creature"},{"q":82,"n":"Devil","t":1,"c":"creature"},{"q":1,"n":"Vile Deacon","t":0,"c":"creature"},{"q":4,"n":"Shadow-Rite Priest","t":0,"c":"creature"},{"q":1,"n":"Pious Evangel","t":0,"c":"creature"},{"q":3,"n":"Priest of the Blood Rite","t":0,"c":"creature"},{"q":11,"n":"Demon's Disciple","t":0,"c":"creature"},{"q":9,"n":"Havoc Jester","t":0,"c":"creature"},{"q":4,"n":"Hellrider","t":0,"c":"creature"},{"q":8,"n":"Mayhem Devil","t":0,"c":"creature"},{"q":6,"n":"Pyretic Prankster","t":0,"c":"creature"},{"q":7,"n":"Scourge Devil","t":0,"c":"creature"},{"q":2,"n":"Tibalt, Rakish Instigator","t":0,"c":"permanent"},{"q":4,"n":"Rite of Belzenlok","t":0,"c":"permanent"}]},{"name":"Angels & Demons — Demons","waveEnd":"rarity","entries":[{"q":1,"n":"Be'lakor, the Dark Master","t":0,"c":"creature"},{"q":1,"n":"Griselbrand","t":0,"c":"creature"},{"q":1,"n":"Demonlord Belzenlok","t":0,"c":"creature"},{"q":1,"n":"Jerren, Corrupted Bishop","t":0,"c":"creature"},{"q":1,"n":"Kothophed, Soul Hoarder","t":0,"c":"creature"},{"q":1,"n":"Nefarox, Overlord of Grixis","t":0,"c":"creature"},{"q":1,"n":"Ob Nixilis, Unshackled","t":0,"c":"creature"},{"q":1,"n":"Orca, Siege Demon","t":0,"c":"creature"},{"q":1,"n":"Orcus, Prince of Undeath","t":0,"c":"creature"},{"q":1,"n":"Rakdos the Defiler","t":0,"c":"creature"},{"q":1,"n":"Rakdos, the Showstopper","t":0,"c":"creature"},{"q":1,"n":"Ravenous Demon","t":0,"c":"creature"},{"q":1,"n":"Razaketh, the Foulblooded","t":0,"c":"creature"},{"q":1,"n":"Shimatsu the Bloodcloaked","t":0,"c":"creature"},{"q":1,"n":"Westvale Abbey","t":0,"c":"creature"},{"q":11,"n":"Demon","t":1,"c":"creature"},{"q":1,"n":"Balor","t":0,"c":"creature"},{"q":1,"n":"Defiler of Souls","t":0,"c":"creature"},{"q":1,"n":"Demon of Catastrophes","t":0,"c":"creature"},{"q":1,"n":"Demon of Dark Schemes","t":0,"c":"creature"},{"q":1,"n":"Demon of Loathing","t":0,"c":"creature"},{"q":1,"n":"Demon of Wailing Agonies","t":0,"c":"creature"},{"q":1,"n":"Demonic Taskmaster","t":0,"c":"creature"},{"q":1,"n":"Demonlord of Ashmouth","t":0,"c":"creature"},{"q":2,"n":"Desecration Demon","t":0,"c":"creature"},{"q":1,"n":"Butcher of the Horde","t":0,"c":"creature"},{"q":9,"n":"Carnifex Demon","t":0,"c":"creature"},{"q":2,"n":"Abhorrent Overlord","t":0,"c":"creature"},{"q":1,"n":"Apocalypse Demon","t":0,"c":"creature"},{"q":1,"n":"Archfiend of Depravity","t":0,"c":"creature"},{"q":1,"n":"Archfiend of Despair","t":0,"c":"creature"},{"q":4,"n":"Archfiend of Sorrows","t":0,"c":"creature"},{"q":1,"n":"Archfiend of Spite","t":0,"c":"creature"},{"q":1,"n":"Doom Whisperer","t":0,"c":"creature"},{"q":1,"n":"Dreadfeast Demon","t":0,"c":"creature"},{"q":5,"n":"Dreadhound","t":0,"c":"creature"},{"q":2,"n":"Eater of Hope","t":0,"c":"creature"},{"q":1,"n":"Embodiment of Agonies","t":0,"c":"creature"},{"q":10,"n":"Goremand","t":0,"c":"creature"},{"q":1,"n":"Harvester of Souls","t":0,"c":"creature"},{"q":1,"n":"Herald of Torment","t":0,"c":"creature"},{"q":1,"n":"Indulgent Tormentor","t":0,"c":"creature"},{"q":1,"n":"Liege of the Pit","t":0,"c":"creature"},{"q":1,"n":"Lord of the Forsaken","t":0,"c":"creature"},{"q":1,"n":"Lord of the Pit","t":0,"c":"creature"},{"q":1,"n":"Lord of the Void","t":0,"c":"creature"},{"q":1,"n":"Minion of Leshrac","t":0,"c":"creature"},{"q":1,"n":"Overseer of the Damned","t":0,"c":"creature"},{"q":2,"n":"Rakshasa Debaser","t":0,"c":"creature"},{"q":1,"n":"Razorjaw Oni","t":0,"c":"creature"},{"q":1,"n":"Reaper from the Abyss","t":0,"c":"creature"},{"q":1,"n":"Shadowborn Demon","t":0,"c":"creature"},{"q":1,"n":"Shadowgrange Archfiend","t":0,"c":"creature"},{"q":2,"n":"Tyrannical Pitlord","t":0,"c":"creature"},{"q":1,"n":"Woebringer Demon","t":0,"c":"creature"},{"q":2,"n":"Xathrid Demon","t":0,"c":"creature"}]},{"name":"D&D Dungeon — Lv1 Oozes","waveEnd":"rarity","entries":[{"q":38,"n":"Ooze","t":1,"c":"creature"},{"q":18,"n":"Expanding Ooze","t":0,"c":"creature"},{"q":2,"n":"Baleful Beholder","t":0,"c":"creature"},{"q":6,"n":"Acidic Slime","t":0,"c":"creature"},{"q":1,"n":"Biogenic Ooze","t":0,"c":"creature"},{"q":13,"n":"Gelatinous Cube","t":0,"c":"creature"},{"q":1,"n":"Ravenous Slime","t":0,"c":"creature"},{"q":1,"n":"Predator Ooze","t":0,"c":"creature"},{"q":2,"n":"Sludge Monster","t":0,"c":"creature"},{"q":1,"n":"Uchuulon","t":0,"c":"creature"},{"q":1,"n":"Aeve, Progenitor Ooze","t":0,"c":"creature"},{"q":1,"n":"Slurrk, All-Ingesting","t":0,"c":"creature"},{"q":1,"n":"Arms of Hadar","t":0,"c":"spell"},{"q":1,"n":"Creeping Renaissance","t":0,"c":"spell"},{"q":2,"n":"Crippling Fear","t":0,"c":"spell"},{"q":1,"n":"Power Word Kill","t":0,"c":"spell"},{"q":6,"n":"Slime Against Humanity","t":0,"c":"spell"},{"q":2,"n":"Split The Party","t":0,"c":"spell"},{"q":1,"n":"Gutter Grime","t":0,"c":"permanent"},{"q":1,"n":"March of the World Ooze","t":0,"c":"permanent"}]},{"name":"D&D Dungeon — Lv2 Goblins & Skeletons","waveEnd":"rarity","entries":[{"q":55,"n":"Goblin","t":1,"c":"creature"},{"q":4,"n":"Goblin Wizard","t":1,"c":"creature"},{"q":25,"n":"Stingscourger","t":0,"c":"creature"},{"q":4,"n":"Goblin Arsonist","t":0,"c":"creature"},{"q":11,"n":"Putrid Goblin","t":0,"c":"creature"},{"q":2,"n":"Scuzzback Marauders","t":0,"c":"creature"},{"q":9,"n":"Skeleton Archer","t":0,"c":"creature"},{"q":1,"n":"Persistent Specimen","t":0,"c":"creature"},{"q":14,"n":"Carnage Gladiator","t":0,"c":"creature"},{"q":3,"n":"Ankle Shanker","t":0,"c":"creature"},{"q":1,"n":"Goblin Trashmaster","t":0,"c":"creature"},{"q":1,"n":"Death Tyrant","t":0,"c":"creature"},{"q":5,"n":"Gut, True Soul Zealot","t":0,"c":"creature"},{"q":1,"n":"Bladewing, Deathless Tyrant","t":0,"c":"creature"},{"q":1,"n":"Krenko, Mob Boss","t":0,"c":"creature"},{"q":10,"n":"Arms of Hadar","t":0,"c":"spell"},{"q":1,"n":"Austere Command","t":0,"c":"spell"},{"q":1,"n":"Rampage of the Clans","t":0,"c":"spell"},{"q":1,"n":"Vandalblast","t":0,"c":"spell"},{"q":12,"n":"Empty the Warrens","t":0,"c":"spell"},{"q":8,"n":"Goblin Grenade","t":0,"c":"spell"},{"q":12,"n":"Trumpet Blast","t":0,"c":"spell"},{"q":4,"n":"Turn to Slag","t":0,"c":"spell"},{"q":5,"n":"War Drums","t":0,"c":"permanent"},{"q":7,"n":"Skeletal Swarming","t":0,"c":"permanent"},{"q":2,"n":"Rite of the Dragoncaller","t":0,"c":"permanent"},{"q":2,"n":"Gruul War Chant","t":0,"c":"permanent"}]},{"name":"D&D Dungeon — Lv3 Giants & Dragons","waveEnd":"rarity","entries":[{"q":70,"n":"Giant Wizard","t":1,"c":"creature"},{"q":12,"n":"Baleful Beholder","t":0,"c":"creature"},{"q":6,"n":"Rimeshield Frost Giant","t":0,"c":"creature"},{"q":5,"n":"Benthic Giant","t":0,"c":"creature"},{"q":4,"n":"Cinderheart Giant","t":0,"c":"creature"},{"q":8,"n":"Writhing Necromass","t":0,"c":"creature"},{"q":8,"n":"Sparktongue Dragon","t":0,"c":"creature"},{"q":8,"n":"Noxious Dragon","t":0,"c":"creature"},{"q":8,"n":"Borderland Behemoth","t":0,"c":"creature"},{"q":8,"n":"Sunrise Sovereign","t":0,"c":"creature"},{"q":5,"n":"Quakebringer","t":0,"c":"creature"},{"q":3,"n":"Calamity Bearer","t":0,"c":"creature"},{"q":1,"n":"Palisade Giant","t":0,"c":"creature"},{"q":1,"n":"Kalemne's Captain","t":0,"c":"creature"},{"q":1,"n":"Xanathar, Guild Kingpin","t":0,"c":"creature"},{"q":1,"n":"Storvald, Frost Giant Jarl","t":0,"c":"creature"},{"q":1,"n":"Icingdeath, Frost Tongue","t":0,"c":"creature"},{"q":20,"n":"Arms of Hadar","t":0,"c":"spell"},{"q":3,"n":"Eyes of the Beholder","t":0,"c":"spell"},{"q":4,"n":"Squash","t":0,"c":"spell"},{"q":1,"n":"Vandalblast","t":0,"c":"spell"},{"q":3,"n":"Slaughter the Strong","t":0,"c":"spell"},{"q":8,"n":"Split the Party","t":0,"c":"spell"},{"q":1,"n":"Seismic Stomp","t":0,"c":"spell"},{"q":8,"n":"You Come to a River","t":0,"c":"spell"},{"q":1,"n":"Twilight's Call","t":0,"c":"spell"},{"q":1,"n":"Campfire","t":0,"c":"permanent"}]},{"name":"Bloomburrow — Rabbit Warren","waveEnd":"rarity","entries":[{"q":185,"n":"Rabbit","t":1,"c":"creature"},{"q":20,"n":"Hare Apparent","t":0,"c":"creature"},{"q":12,"n":"Intrepid Rabbit","t":0,"c":"creature"},{"q":10,"n":"Warren Elder","t":0,"c":"creature"},{"q":8,"n":"Head of the Homestead","t":0,"c":"creature"},{"q":8,"n":"Brave-Kin Duo","t":0,"c":"creature"},{"q":6,"n":"Treeguard Duo","t":0,"c":"creature"},{"q":5,"n":"Seasoned Warrenguard","t":0,"c":"creature"},{"q":4,"n":"Burrowguard Mentor","t":0,"c":"creature"},{"q":4,"n":"Harvestrite Host","t":0,"c":"creature"},{"q":3,"n":"Pawpatch Recruit","t":0,"c":"creature"},{"q":2,"n":"Warren Warleader","t":0,"c":"creature"},{"q":1,"n":"Valley Questcaller","t":0,"c":"creature"},{"q":1,"n":"Jacked Rabbit","t":0,"c":"creature"},{"q":1,"n":"Byrke, Long Ear of the Law","t":0,"c":"creature"},{"q":1,"n":"Finneas, Ace Archer","t":0,"c":"creature"},{"q":1,"n":"Baylen, the Haymaker","t":0,"c":"creature"},{"q":4,"n":"Hop to It","t":0,"c":"spell"},{"q":4,"n":"Trumpet Blast","t":0,"c":"spell"},{"q":2,"n":"Overrun","t":0,"c":"spell"},{"q":1,"n":"Overwhelming Stampede","t":0,"c":"spell"},{"q":1,"n":"Plague Wind","t":0,"c":"spell"},{"q":1,"n":"Slaughter the Strong","t":0,"c":"spell"},{"q":4,"n":"Carrot Cake","t":0,"c":"permanent"},{"q":3,"n":"Intangible Virtue","t":0,"c":"permanent"},{"q":2,"n":"Glorious Anthem","t":0,"c":"permanent"},{"q":2,"n":"Coat of Arms","t":0,"c":"permanent"},{"q":1,"n":"Shared Animosity","t":0,"c":"permanent"},{"q":1,"n":"Cathars' Crusade","t":0,"c":"permanent"},{"q":1,"n":"Anointed Procession","t":0,"c":"permanent"},{"q":1,"n":"Divine Visitation","t":0,"c":"permanent"}]},{"name":"Bloomburrow — Bat Coven","waveEnd":"rarity","entries":[{"q":178,"n":"Bat","t":1,"c":"creature"},{"q":16,"n":"Lifecreed Duo","t":0,"c":"creature"},{"q":14,"n":"Wax-Wane Witness","t":0,"c":"creature"},{"q":12,"n":"Glidedive Duo","t":0,"c":"creature"},{"q":10,"n":"Starlit Soothsayer","t":0,"c":"creature"},{"q":10,"n":"Moonrise Cleric","t":0,"c":"creature"},{"q":8,"n":"Starscape Cleric","t":0,"c":"creature"},{"q":6,"n":"Moonstone Harbinger","t":0,"c":"creature"},{"q":5,"n":"Essence Channeler","t":0,"c":"creature"},{"q":4,"n":"Darkstar Augur","t":0,"c":"creature"},{"q":1,"n":"Starseer Mentor","t":0,"c":"creature"},{"q":1,"n":"Star Charter","t":0,"c":"creature"},{"q":1,"n":"Zoraline, Cosmos Caller","t":0,"c":"creature"},{"q":5,"n":"Trumpet Blast","t":0,"c":"spell"},{"q":3,"n":"Barter in Blood","t":0,"c":"spell"},{"q":3,"n":"Overcome","t":0,"c":"spell"},{"q":2,"n":"Crippling Fear","t":0,"c":"spell"},{"q":2,"n":"Plague Wind","t":0,"c":"spell"},{"q":5,"n":"Bad Moon","t":0,"c":"permanent"},{"q":4,"n":"Cover of Darkness","t":0,"c":"permanent"},{"q":3,"n":"Sanguine Bond","t":0,"c":"permanent"},{"q":2,"n":"Shared Animosity","t":0,"c":"permanent"},{"q":2,"n":"Coat of Arms","t":0,"c":"permanent"},{"q":2,"n":"Anointed Procession","t":0,"c":"permanent"},{"q":1,"n":"Divine Visitation","t":0,"c":"permanent"}]},{"name":"Bloomburrow — Squirrel Hoard","waveEnd":"rarity","entries":[{"q":172,"n":"Squirrel","t":1,"c":"creature"},{"q":11,"n":"Bakersbane Duo","t":0,"c":"creature"},{"q":10,"n":"Corpseberry Cultivator","t":0,"c":"creature"},{"q":9,"n":"Daggerfang Duo","t":0,"c":"creature"},{"q":8,"n":"Honored Dreyleader","t":0,"c":"creature"},{"q":8,"n":"Bushy Bodyguard","t":0,"c":"creature"},{"q":7,"n":"Valley Rotcaller","t":0,"c":"creature"},{"q":6,"n":"Vinereap Mentor","t":0,"c":"creature"},{"q":6,"n":"Treetop Sentries","t":0,"c":"creature"},{"q":5,"n":"Curious Forager","t":0,"c":"creature"},{"q":4,"n":"Bonebind Orator","t":0,"c":"creature"},{"q":4,"n":"Bonecache Overseer","t":0,"c":"creature"},{"q":3,"n":"Osteomancer Adept","t":0,"c":"creature"},{"q":3,"n":"Thornvault Forager","t":0,"c":"creature"},{"q":3,"n":"Squirrel Mob","t":0,"c":"creature"},{"q":3,"n":"Ravenous Squirrel","t":0,"c":"creature"},{"q":2,"n":"Nut Collector","t":0,"c":"creature"},{"q":2,"n":"Deep Forest Hermit","t":0,"c":"creature"},{"q":2,"n":"Cloakwood Hermit","t":0,"c":"creature"},{"q":2,"n":"Scurry Oak","t":0,"c":"creature"},{"q":2,"n":"Squirrel Wrangler","t":0,"c":"creature"},{"q":1,"n":"Squirrel Sovereign","t":0,"c":"creature"},{"q":1,"n":"Camellia, the Seedmiser","t":0,"c":"creature"},{"q":1,"n":"Hazel of the Rootbloom","t":0,"c":"creature"},{"q":1,"n":"Chatterfang, Squirrel General","t":0,"c":"creature"},{"q":1,"n":"Toski, Bearer of Secrets","t":0,"c":"creature"},{"q":3,"n":"Acorn Harvest","t":0,"c":"spell"},{"q":3,"n":"Chatter of the Squirrel","t":0,"c":"spell"},{"q":2,"n":"Overrun","t":0,"c":"spell"},{"q":1,"n":"Overwhelming Stampede","t":0,"c":"spell"},{"q":1,"n":"Slaughter the Strong","t":0,"c":"spell"},{"q":3,"n":"Squirrel Nest","t":0,"c":"permanent"},{"q":2,"n":"Chitterspitter","t":0,"c":"permanent"},{"q":2,"n":"Patchwork Banner","t":0,"c":"permanent"},{"q":2,"n":"Coat of Arms","t":0,"c":"permanent"},{"q":1,"n":"Shared Animosity","t":0,"c":"permanent"},{"q":1,"n":"Beastmaster Ascension","t":0,"c":"permanent"},{"q":1,"n":"Parallel Lives","t":0,"c":"permanent"},{"q":1,"n":"Intangible Virtue","t":0,"c":"permanent"}]},{"name":"Bloomburrow — Raccoon Ruckus","waveEnd":"rarity","entries":[{"q":166,"n":"Raccoon","t":1,"c":"creature"},{"q":12,"n":"Beast","t":1,"c":"creature"},{"q":16,"n":"Bark-Knuckle Boxer","t":0,"c":"creature"},{"q":14,"n":"Raccoon Rallier","t":0,"c":"creature"},{"q":12,"n":"Wandertale Mentor","t":0,"c":"creature"},{"q":10,"n":"Roughshod Duo","t":0,"c":"creature"},{"q":9,"n":"Junkblade Bruiser","t":0,"c":"creature"},{"q":8,"n":"Valley Mightcaller","t":0,"c":"creature"},{"q":7,"n":"Brambleguard Veteran","t":0,"c":"creature"},{"q":6,"n":"Keen-Eyed Curator","t":0,"c":"creature"},{"q":5,"n":"Rust-Shield Rampager","t":0,"c":"creature"},{"q":4,"n":"Teapot Slinger","t":0,"c":"creature"},{"q":3,"n":"Scrapshooter","t":0,"c":"creature"},{"q":1,"n":"Muerra, Trash Tactician","t":0,"c":"creature"},{"q":1,"n":"Craterhoof Behemoth","t":0,"c":"creature"},{"q":1,"n":"Ghalta, Primal Hunger","t":0,"c":"creature"},{"q":4,"n":"Trumpet Blast","t":0,"c":"spell"},{"q":3,"n":"Overrun","t":0,"c":"spell"},{"q":2,"n":"Overwhelming Stampede","t":0,"c":"spell"},{"q":2,"n":"Overcome","t":0,"c":"spell"},{"q":1,"n":"Slaughter the Strong","t":0,"c":"spell"},{"q":1,"n":"Plague Wind","t":0,"c":"spell"},{"q":2,"n":"Gruul War Chant","t":0,"c":"permanent"},{"q":2,"n":"Coat of Arms","t":0,"c":"permanent"},{"q":2,"n":"Shared Animosity","t":0,"c":"permanent"},{"q":2,"n":"Patchwork Banner","t":0,"c":"permanent"},{"q":2,"n":"Beastmaster Ascension","t":0,"c":"permanent"},{"q":1,"n":"War Drums","t":0,"c":"permanent"},{"q":1,"n":"Cathars' Crusade","t":0,"c":"permanent"}]},{"name":"Bloomburrow — Druid Circle","waveEnd":"rarity","entries":[{"q":159,"n":"Elf Druid","t":1,"c":"creature"},{"q":15,"n":"Beast","t":1,"c":"creature"},{"q":12,"n":"Druid of the Cowl","t":0,"c":"creature"},{"q":10,"n":"Leaf Gilder","t":0,"c":"creature"},{"q":8,"n":"Elvish Mystic","t":0,"c":"creature"},{"q":8,"n":"Llanowar Elves","t":0,"c":"creature"},{"q":8,"n":"Werebear","t":0,"c":"creature"},{"q":8,"n":"Krosan Restorer","t":0,"c":"creature"},{"q":7,"n":"Devoted Druid","t":0,"c":"creature"},{"q":6,"n":"Birchlore Rangers","t":0,"c":"creature"},{"q":6,"n":"Elvish Rejuvenator","t":0,"c":"creature"},{"q":5,"n":"Priest of Titania","t":0,"c":"creature"},{"q":5,"n":"Wirewood Channeler","t":0,"c":"creature"},{"q":4,"n":"Elvish Archdruid","t":0,"c":"creature"},{"q":4,"n":"Beast Whisperer","t":0,"c":"creature"},{"q":3,"n":"Circle of Dreams Druid","t":0,"c":"creature"},{"q":2,"n":"Gilt-Leaf Archdruid","t":0,"c":"creature"},{"q":2,"n":"Rishkar, Peema Renegade","t":0,"c":"creature"},{"q":2,"n":"Marwyn, the Nurturer","t":0,"c":"creature"},{"q":1,"n":"Seton, Krosan Protector","t":0,"c":"creature"},{"q":1,"n":"Kamahl, Fist of Krosa","t":0,"c":"creature"},{"q":1,"n":"Bristly Bill, Spine Sower","t":0,"c":"creature"},{"q":1,"n":"Hazel of the Rootbloom","t":0,"c":"creature"},{"q":3,"n":"Overrun","t":0,"c":"spell"},{"q":2,"n":"Overwhelming Stampede","t":0,"c":"spell"},{"q":2,"n":"Overcome","t":0,"c":"spell"},{"q":2,"n":"Triumph of the Hordes","t":0,"c":"spell"},{"q":1,"n":"Slaughter the Strong","t":0,"c":"spell"},{"q":1,"n":"Plague Wind","t":0,"c":"spell"},{"q":2,"n":"Coat of Arms","t":0,"c":"permanent"},{"q":2,"n":"Beastmaster Ascension","t":0,"c":"permanent"},{"q":2,"n":"Patchwork Banner","t":0,"c":"permanent"},{"q":2,"n":"Cathars' Crusade","t":0,"c":"permanent"},{"q":1,"n":"Shared Animosity","t":0,"c":"permanent"},{"q":1,"n":"Parallel Lives","t":0,"c":"permanent"},{"q":1,"n":"Intangible Virtue","t":0,"c":"permanent"}]}];
 
 /* =========================================================================
    Helpers
@@ -1105,6 +1126,16 @@ const el = (tag, cls, text) => {
 };
 const uid = () => Math.random().toString(36).slice(2, 10);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* The mill pad and the token quantity pad are the same widget: a digit, a
+   clear, or a backspace over a string of at most four digits. */
+function padPress(current, btn) {
+  const { d, k } = btn.dataset;
+  if (d != null) return current.length < 4 ? (current + d).replace(/^0+(?=\d)/, "") : current;
+  if (k === "clear") return "";
+  if (k === "back") return current.slice(0, -1);
+  return current;
+}
 
 function toast(msg) {
   const t = el("div", "toast", msg);
@@ -1235,13 +1266,6 @@ function parseDecklist(text, opts = {}) {
       // A wrapped continuation always wins over a header guess when the
       // previous line was an entry and this line isn't count-suffixed.
       const canContinue = joinWrapped && entries.length && !h && !line.endsWith(":");
-      if (isHeader && !canContinue) {
-        const label = (h ? h[1] : line.replace(/:$/, "")).trim();
-        sectionIsToken = /token/i.test(label) ? true : false;
-        sectionCat = catFromSection(label, sectionIsToken);
-        sawHeader = true;
-        continue;
-      }
       if (canContinue) {
         const prev = entries[entries.length - 1];
         prev.name = (prev.name.endsWith("-") ? prev.name : prev.name + " ") + line;
@@ -1250,7 +1274,7 @@ function parseDecklist(text, opts = {}) {
       }
       if (isHeader) {
         const label = (h ? h[1] : line.replace(/:$/, "")).trim();
-        sectionIsToken = /token/i.test(label) ? true : false;
+        sectionIsToken = /token/i.test(label);
         sectionCat = catFromSection(label, sectionIsToken);
         sawHeader = true;
         continue;
@@ -1545,6 +1569,19 @@ function categoryOf(card) {
 const ptString = (card) =>
   (card.power == null || card.toughness == null) ? null : card.power + "/" + card.toughness;
 
+/* The one-line description under a card: whatever of type, P/T and rarity is
+   known, in that order. Built here so the reveal stage, the full-card view and
+   the import review all read the same. */
+function cardMeta(card, opts = {}) {
+  const bits = [card.typeLine || opts.unknownType || (card.isToken ? "Token" : "Card")];
+  const pt = ptString(card);
+  if (pt) bits.push(pt);
+  if (card.rarity) bits.push(card.rarity);
+  if (opts.defender && card.hasDefender) bits.push("Defender (blocks, doesn't attack)");
+  if (opts.notFound && !card.resolved) bits.push("not found");
+  return bits.join(" \u00b7 ");
+}
+
 /* Wraps a card face in its container-query slot, optionally making it a button.
    Cards render small on a crowded board, so every one of them is tappable to
    open the full-size view. */
@@ -1670,6 +1707,12 @@ const RULESETS = [
 
 const rulesetById = (id) => RULESETS.find((r) => r.id === id) || RULESETS[0];
 
+/* Chips are a radio group built out of buttons, so the selected one is marked
+   with aria-pressed rather than a checked input. */
+const setChips = (containerSel, value) =>
+  $$(containerSel + " .chip").forEach((c) =>
+    c.setAttribute("aria-pressed", String(c.dataset.v === value)));
+
 /* A decklist is built for a wave rule, so the deck picks the opening ruleset. */
 function defaultRulesetFor(deck) {
   if (deck.ruleset && RULESETS.some((r) => r.id === deck.ruleset)) return deck.ruleset;
@@ -1732,6 +1775,7 @@ function newGame(deck, opts) {
     waveEnd: opts.waveEnd,
     wavePattern: opts.wavePattern,
     legendaryRule: opts.legendaryRule,
+    peakCreatures: 0,     // high-water mark of the board, for the end screen
     hordeTurn: 0,         // how many turns the Horde has actually taken
     turn: 1,
     setupTurnsLeft: opts.setupTurns,
@@ -1774,6 +1818,13 @@ function attackingPower() {
    no stats, and reporting a confident "0" there would be a lie. */
 function powerIsPartial() {
   return attackers().some((s) => !Number.isFinite(parseInt(G.cards[s.cardKey].power, 10)));
+}
+
+/* The high-water mark of the Horde's board, kept for the end screen. Games
+   saved before it existed simply start counting from now. */
+function notePeak() {
+  const n = creatureCount();
+  if (n > (G.peakCreatures || 0)) G.peakCreatures = n;
 }
 
 function addToBoard(cardKey, n = 1) {
@@ -1851,6 +1902,7 @@ function resolveReveal() {
   G.revealed = [];
   G.spellTargets = {};
   G.phase = PHASE.COMBAT;
+  notePeak();
   checkEnd();
   persistGame();
 }
@@ -1890,8 +1942,10 @@ function millCards(n) {
   if (moved < n) logit("The library ran out mid-mill.");
 
   // Recommended rule: a legendary milled by damage enters the battlefield and
-  // immediately phases out. Surface it rather than resolving it silently.
-  G.milledLegends = legends;
+  // immediately phases out. Surface it rather than resolving it silently, and
+  // add to the reminder rather than replacing it — two mills in one turn are
+  // ordinary, and the first legendary is still owed its ETB.
+  G.milledLegends = (G.milledLegends || []).concat(legends);
   for (const key of legends) {
     logit(G.cards[key].name + " was milled — it enters the battlefield, then phases out.");
   }
@@ -1902,7 +1956,12 @@ function millCards(n) {
 
 function adjustLife(delta) {
   snapshot();
+  const before = G.life;
   G.life = Math.max(0, G.life + delta);
+  if (G.life !== before) {
+    logit((delta < 0 ? "Survivors take " + (before - G.life) : "Survivors gain " + (G.life - before)) +
+      " \u2014 " + G.life + " life.");
+  }
   if (G.life === 0) logit("The survivors are out of life.");
   checkEnd();
   persistGame();
@@ -1910,7 +1969,9 @@ function adjustLife(delta) {
 
 function adjustPoison(delta) {
   snapshot();
+  const before = G.poison;
   G.poison = Math.max(0, G.poison + delta);
+  if (G.poison !== before) logit("Poison: " + G.poison + " of " + G.poisonLimit + ".");
   checkEnd();
   persistGame();
 }
@@ -1933,6 +1994,7 @@ function createTokens(card, n) {
   if (!G.cards[card.key]) G.cards[card.key] = card;
   addToBoard(card.key, n);
   logit("+" + n + " " + card.name + (n === 1 ? " token" : " tokens") + ".");
+  notePeak();
   persistGame();
 }
 
@@ -1971,8 +2033,32 @@ function showScreen(id) {
   $$(".screen").forEach((s) => s.classList.toggle("active", s.id === id));
   $("#btn-home").hidden = id === "screen-decks";
   if (id === "screen-decks") applyDeckTheme(null);
+  setWakeLock(id === "screen-game");
   window.scrollTo(0, 0);
 }
+
+/* A tablet propped on the table shouldn't dim between waves. Held only while
+   the game screen is up; the browser drops the lock whenever the tab is
+   hidden, so it's re-taken on the way back. Unsupported browsers no-op. */
+let wakeLock = null;
+async function setWakeLock(want) {
+  if (!("wakeLock" in navigator)) return;
+  try {
+    if (want && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; });
+    } else if (!want && wakeLock) {
+      const held = wakeLock;
+      wakeLock = null;
+      await held.release();
+    }
+  } catch { wakeLock = null; }  // denied, or the page lost focus mid-request
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    setWakeLock($("#screen-game").classList.contains("active"));
+  }
+});
 
 /* Bundled decks are stored compactly and enriched from Scryfall on first use;
    until then they play as text cards with the token flag from the decklist. */
@@ -2136,10 +2222,8 @@ function renderReview(warnings) {
     nameInput.addEventListener("input", () => { card.name = nameInput.value; redraw(); });
     mid.appendChild(nameInput);
     mid.appendChild(el("div", "tiny muted",
-      reviewEntries[i].qty + "× · " + (card.typeLine || "unknown type") +
-      (card.rarity ? " · " + card.rarity : "") +
-      (ptString(card) ? " · " + ptString(card) : "") +
-      (card.resolved ? "" : " · not found")));
+      reviewEntries[i].qty + "× · " +
+      cardMeta(card, { unknownType: "unknown type", notFound: true })));
     row.appendChild(mid);
 
     const toggle = el("button", "toggle", card.isToken ? "Token" : "Card");
@@ -2371,17 +2455,14 @@ function renderSetupRules() {
       box.appendChild(chip);
     });
   }
-  $$("#opt-ruleset .chip").forEach((c) =>
-    c.setAttribute("aria-pressed", String(c.dataset.v === setupRuleset)));
+  setChips("#opt-ruleset", setupRuleset);
 
   const rs = rulesetById(setupRuleset);
   $("#ruleset-blurb").textContent = rs.blurb;
   $("#setup-custom").hidden = !rs.custom;
 
-  $$("#opt-waveend .chip").forEach((c) =>
-    c.setAttribute("aria-pressed", String(c.dataset.v === setupWaveEnd)));
-  $$("#opt-wavepattern .chip").forEach((c) =>
-    c.setAttribute("aria-pressed", String(c.dataset.v === setupWavePattern)));
+  setChips("#opt-waveend", setupWaveEnd);
+  setChips("#opt-wavepattern", setupWavePattern);
 
   // House rules edit the values in place, so the read-out would only repeat them.
   const list = $("#setup-rules");
@@ -2500,6 +2581,7 @@ function renderGame() {
   takeAll.textContent = pw > 0 ? "Take all " + pw : "Nothing is attacking";
   takeAll.disabled = pw <= 0;
   $("#life-partial").hidden = !powerIsPartial();
+  $("#btn-undo").disabled = undoStack.length === 0;
 
   renderStage();
   renderBoard();
@@ -2626,24 +2708,23 @@ function renderRevealStage(body) {
   const kw = el("p", "stage-type");
   if (hero.isLegendary) kw.appendChild(el("span", "kw leg", "Legendary"));
   if (hero.hasDefender) kw.appendChild(el("span", "kw def", "Defender"));
-  kw.appendChild(document.createTextNode(
-    (hero.typeLine || (hero.isToken ? "Token" : "Card")) +
-    (ptString(hero) ? " · " + ptString(hero) : "") +
-    (hero.rarity ? " · " + hero.rarity : "")));
+  kw.appendChild(document.createTextNode(cardMeta(hero)));
   meta.appendChild(kw);
 
-  const spellIdx = Object.keys(G.spellTargets)[0];
-  if (spellIdx !== undefined) {
-    const target = G.players.find((p) => p.id === G.spellTargets[spellIdx]);
-    if (target) {
-      const t = el("div", "target");
-      t.appendChild(el("span", "small muted", "Random target"));
-      t.appendChild(el("span", "who", target.name));
-      const re = el("button", "btn sm ghost", "Re-roll");
-      re.addEventListener("click", () => { rerollTarget(spellIdx); renderGame(); });
-      t.appendChild(re);
-      meta.appendChild(t);
-    }
+  // A wave can hold more than one spell, and each rolled its own victim, so
+  // every target gets a row. With several, the label names the spell.
+  const spellIdxs = Object.keys(G.spellTargets);
+  for (const idx of spellIdxs) {
+    const target = G.players.find((p) => p.id === G.spellTargets[idx]);
+    if (!target) continue;
+    const t = el("div", "target");
+    t.appendChild(el("span", "small muted",
+      spellIdxs.length > 1 ? G.cards[G.revealed[idx]].name : "Random target"));
+    t.appendChild(el("span", "who", target.name));
+    const re = el("button", "btn sm ghost", "Re-roll");
+    re.addEventListener("click", () => { rerollTarget(idx); renderGame(); });
+    t.appendChild(re);
+    meta.appendChild(t);
   }
 
   if (hero.oracleText) meta.appendChild(el("p", "stage-oracle", hero.oracleText));
@@ -2683,6 +2764,34 @@ function renderBoard() {
   }
 }
 
+/* What's in the graveyard, collapsed the way the board is: one tile per card
+   with a count. Worth having on tap \u2014 plenty of horde cards care about it
+   (Grave Betrayal, Footbottom Feast, Unbreathing Horde), and it's otherwise the
+   one part of the game state with no way to look at it. */
+function yardStacks() {
+  const counts = new Map();
+  for (const key of G.graveyard) counts.set(key, (counts.get(key) || 0) + 1);
+  return Array.from(counts, ([cardKey, count]) => ({ cardKey, count }))
+    .sort((a, b) => b.count - a.count ||
+      G.cards[a.cardKey].name.localeCompare(G.cards[b.cardKey].name));
+}
+
+function renderYard() {
+  const stacks = yardStacks();
+  const grid = $("#yd-grid");
+  grid.textContent = "";
+  $("#yd-empty").hidden = stacks.length > 0;
+  $("#yd-sub").textContent = stacks.length
+    ? G.graveyard.length + " card" + (G.graveyard.length === 1 ? "" : "s") + " \u00b7 " +
+      stacks.length + " distinct \u00b7 " + G.library.length + " left in the library"
+    : G.library.length + " cards left in the library.";
+  for (const stack of stacks) {
+    grid.appendChild(cardSlot(G.cards[stack.cardKey],
+      { count: stack.count, rule: G.waveEnd },
+      () => openCardDialog(stack.cardKey)));
+  }
+}
+
 function renderLog() {
   const box = $("#log");
   box.textContent = "";
@@ -2700,6 +2809,21 @@ function renderEnd() {
   $("#end-sub").textContent = won
     ? "Library empty, board clear — you made it out after " + (G.turn - 1) + " rounds."
     : "The survivors are down after " + (G.turn - 1) + " rounds.";
+
+  const stats = $("#end-stats");
+  stats.textContent = "";
+  const rows = [
+    [G.turn - 1, "Rounds"],
+    [G.library.length, "Left in library"],
+    [G.graveyard.length, "Graveyard"],
+    [G.peakCreatures || 0, "Peak board"],
+  ];
+  for (const [n, k] of rows) {
+    const box = el("div", "t");
+    box.appendChild(el("span", "n", String(n)));
+    box.appendChild(el("span", "k", k));
+    stats.appendChild(box);
+  }
   showScreen("screen-end");
 }
 
@@ -2721,11 +2845,7 @@ function openCardDialog(keyOrCard, opts = {}) {
   slot.appendChild(cardFace(card, { badge: true, rule: G ? G.waveEnd : null }));
 
   $("#cv-name").textContent = card.name;
-  $("#cv-type").textContent =
-    (card.typeLine || (card.isToken ? "Token" : "Card")) +
-    (ptString(card) ? " · " + ptString(card) : "") +
-    (card.rarity ? " · " + card.rarity : "") +
-    (card.hasDefender ? " · Defender (blocks, doesn't attack)" : "");
+  $("#cv-type").textContent = cardMeta(card, { defender: true });
 
   const hasArt = !!(card.scryfallId && objectUrls.get(card.scryfallId));
   const oracle = $("#cv-oracle");
@@ -2777,8 +2897,7 @@ function tokenSubtitle(card) {
 
 function tokenChoice(card, onPick, nameLine) {
   const slot = el("div", "slot");
-  const btn = el("button");
-  btn.style.cssText = "all:unset; cursor:pointer; display:block; width:100%;";
+  const btn = el("button", "plainbtn");
   btn.setAttribute("aria-label", "Create " + card.name + " tokens");
   btn.appendChild(cardFace(card, { rule: G.waveEnd, badge: false }));
   slot.appendChild(btn);
@@ -3015,9 +3134,19 @@ $("#tile-life").addEventListener("click", () => {
 });
 $("#ld-close").addEventListener("click", () => $("#life-dialog").close());
 
+$("#tile-yard").addEventListener("click", () => {
+  renderYard();
+  $("#yard-dialog").showModal();
+});
+$("#yd-close").addEventListener("click", () => $("#yard-dialog").close());
+
 $("#btn-random").addEventListener("click", () => {
   const p = pick(G.players);
-  if (p) toast("Random survivor: " + p.name);
+  if (!p) return;
+  toast("Random survivor: " + p.name);
+  logit("Rolled a random survivor: " + p.name + ".");
+  persistGame();
+  renderGame();
 });
 
 $("#btn-quit").addEventListener("click", () => {
@@ -3034,14 +3163,7 @@ $("#btn-quit").addEventListener("click", () => {
 $("#mill-pad").addEventListener("click", (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
-  const { d, k } = btn.dataset;
-  if (d != null) {
-    if (millInput.length < 4) millInput = (millInput + d).replace(/^0+(?=\d)/, "");
-  } else if (k === "clear") {
-    millInput = "";
-  } else if (k === "back") {
-    millInput = millInput.slice(0, -1);
-  }
+  millInput = padPress(millInput, btn);
   renderGame();
 });
 
@@ -3111,14 +3233,7 @@ $("#tc-next").addEventListener("click", () => {
 $("#token-qty-pad").addEventListener("click", (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
-  const { d, k } = btn.dataset;
-  if (d != null) {
-    if (tokenQtyInput.length < 4) tokenQtyInput = (tokenQtyInput + d).replace(/^0+(?=\d)/, "");
-  } else if (k === "clear") {
-    tokenQtyInput = "";
-  } else if (k === "back") {
-    tokenQtyInput = tokenQtyInput.slice(0, -1);
-  }
+  tokenQtyInput = padPress(tokenQtyInput, btn);
   renderTokenQty();
 });
 $("#tq-add").addEventListener("click", () => {
@@ -3168,10 +3283,32 @@ $("#btn-end-home").addEventListener("click", () => {
   showScreen("screen-decks");
 });
 
+/* Shortcuts for a laptop driving the game. Anything focusable keeps its own
+   keys — a focused button already answers Space and Enter itself, and typing
+   into a field must never advance the turn. */
+const SHORTCUTS = {
+  u: undo,
+  " ": () => $("#btn-action").click(),
+  enter: () => $("#btn-action").click(),
+  d: () => $("#tile-damage").click(),
+  l: () => $("#tile-life").click(),
+  g: () => $("#tile-yard").click(),
+};
+
 document.addEventListener("keydown", (e) => {
-  if (e.target.matches("input, textarea")) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (!$("#screen-game").classList.contains("active")) return;
-  if (e.key === "u" || e.key === "U") { undo(); e.preventDefault(); }
+  if ($("dialog[open]")) return;
+  const t = e.target instanceof Element ? e.target : null;
+  if (t && t.closest("input, textarea, select, [contenteditable]")) return;
+  const key = e.key.toLowerCase();
+  // A focused button already answers Space and Enter, and firing both would
+  // take two turns on one press.
+  if ((key === " " || key === "enter") && t && t.closest("button, a")) return;
+  const run = SHORTCUTS[key];
+  if (!run) return;
+  e.preventDefault();
+  run();
 });
 
 /* =========================================================================
@@ -3193,8 +3330,9 @@ window.__horde = {
   RULESETS, rulesetById, defaultRulesetFor, rulesetOfGame, effectiveRules,
   get G() { return G; },
   set G(v) { G = v; },
-  newGame, flipHordeTurn, resolveReveal, endHordeTurn, millCards, adjustLife,
-  killFromStack, attackingPower, powerIsPartial, creatureCount, primeImages, renderGame, showScreen,
+  newGame, flipHordeTurn, resolveReveal, endHordeTurn, millCards, adjustLife, adjustPoison,
+  killFromStack, createTokens, attackingPower, powerIsPartial, creatureCount, yardStacks,
+  cardMeta, padPress, primeImages, renderGame, showScreen,
 };
 </script>
 </body>
