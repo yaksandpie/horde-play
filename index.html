@@ -37,6 +37,24 @@
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.45);
   }
 
+  /* Bloomburrow forest theme: applied to <body> while a Bloomburrow deck is
+     selected for setup or in play. See applyDeckTheme() in the script. */
+  body.theme-bloomburrow {
+    --bg: #0f1a12;
+    --bg-deep: #0a120c;
+    --surface: #16261b;
+    --surface-2: #1e3326;
+    --surface-3: #2a4433;
+    --ink: #eef5ec;
+    --ink-soft: #cbdcc9;
+    --muted: #86a488;
+    --line: #35503d;
+    --accent: #3f7d43;
+    --accent-hot: #5fae5a;
+    --accent-ink: #f3fff0;
+    --token: #a68b3f;
+  }
+
   * { box-sizing: border-box; }
 
   html, body {
@@ -1812,6 +1830,7 @@ function checkEnd() {
 function showScreen(id) {
   $$(".screen").forEach((s) => s.classList.toggle("active", s.id === id));
   $("#btn-home").hidden = id === "screen-decks";
+  if (id === "screen-decks") applyDeckTheme(null);
   window.scrollTo(0, 0);
 }
 
@@ -1836,6 +1855,22 @@ function allDecks() {
   const savedIds = new Set(saved.map((d) => d.id));
   const builtin = BUNDLED_DECKS.map(hydrateBundled).filter((d) => !savedIds.has(d.id));
   return saved.concat(builtin);
+}
+
+/* ---- Set theme ----
+   Bloomburrow decks get a forest-green skin (body.theme-bloomburrow) for as
+   long as they're selected — through setup, into the game, and on resume. */
+const DEFAULT_THEME_COLOR = "#12100f";
+const BLOOMBURROW_THEME_COLOR = "#0f1a12";
+
+function isBloomburrowDeck(deck) {
+  return !!deck && /^Bloomburrow\b/i.test(deck.name);
+}
+
+function applyDeckTheme(deck) {
+  const bloom = isBloomburrowDeck(deck);
+  document.body.classList.toggle("theme-bloomburrow", bloom);
+  $('meta[name="theme-color"]').setAttribute("content", bloom ? BLOOMBURROW_THEME_COLOR : DEFAULT_THEME_COLOR);
 }
 
 function renderDecks() {
@@ -2114,6 +2149,7 @@ let setupWavePattern = "fixed";
 
 function openSetup(deck) {
   setupDeck = deck;
+  applyDeckTheme(deck);
   setupRuleset = defaultRulesetFor(deck);
   const rs = rulesetById(setupRuleset);
   setupWaveEnd = rs.waveEnd || deck.waveEnd || "rarity";
@@ -2288,6 +2324,7 @@ async function resumeGame() {
   G = saved;
   undoStack = [];
   millInput = "";
+  applyDeckTheme(allDecks().find((d) => d.id === G.deckId));
   await primeImages(Object.values(G.cards));
   renderGame();
   showScreen("screen-game");
