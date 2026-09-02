@@ -30,10 +30,13 @@ installs to a home screen and runs offline once a deck has been loaded.
   after (2 players = 85). Poison tracked too.
 - **Random targeting** for the Horde's instants and sorceries, with a re-roll.
 - **Undo** on every action, and the game survives a reload or a screen lock.
+- **The ban list**, offline and searchable — type a card name to find out whether
+  it's legal in a survivor's deck.
 
 ## Decks
 
-Nine horde libraries from hordemagic.com are built in:
+Nine horde libraries transcribed from hordemagic.com are built in, plus two
+Bloomburrow tribal hordes built for this app:
 
 | Deck | Cards | Tokens | Opens on |
 |---|---|---|---|
@@ -46,8 +49,21 @@ Nine horde libraries from hordemagic.com are built in:
 | D&D Dungeon — Lv1 Oozes | 100 | 38 | Horde Magic |
 | D&D Dungeon — Lv2 Goblins & Skeletons | 202 | 59 | Horde Magic |
 | D&D Dungeon — Lv3 Giants & Dragons | 200 | 70 | Horde Magic |
+| Bloomburrow — Rabbit Warren | 300 | 185 | Horde Magic |
+| Bloomburrow — Bat Coven | 300 | 178 | Horde Magic |
 
-Counts match each decklist's own stated totals.
+Counts match each decklist's own stated totals. The two Bloomburrow hordes aren't
+published lists — they're a Rabbit swarm and a Bat air force built here out of
+real cards, each 300 with a spine of tribal creatures, a handful of anthems and
+wraths, and a boss or two.
+
+## Ban list
+
+**Ban list** on the decks screen carries the 36 cards banned at
+[hordemagic.com](https://hordemagic.com/ban-list/), the two banned combos, and the
+rules of thumb behind them. They bind the *survivors'* EDH decks, not the Horde's
+library, so nothing is enforced — type a name into the box and it tells you
+whether that card is out. It works offline like the rest of the app.
 
 **Multi-library decks aren't automated.** The D&D dungeon is three levels played in
 sequence and Angels & Demons runs two libraries simultaneously; each is listed as a
