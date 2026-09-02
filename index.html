@@ -1054,7 +1054,7 @@ Tokens: (200)
       </div>
     </div>
 
-    <details class="panel logbox">
+    <details class="panel logbox" open>
       <summary>Log</summary>
       <ul class="log" id="log"></ul>
     </details>
@@ -3687,7 +3687,7 @@ function encodeSnapshot(G) {
     sp: G.spellTargets,
     ov: G.over || null,
     gy: stacksOf(G.graveyard, refOf),
-    lg: G.log.slice(-SHARE_LOG).map((e) => [e.t, e.msg]),
+    lg: G.log.slice(0, SHARE_LOG).map((e) => [e.t, e.msg]),
   };
 
   /* A card with no Scryfall id can't be looked up, so it has to travel whole.

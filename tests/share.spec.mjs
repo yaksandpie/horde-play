@@ -198,6 +198,26 @@ test.describe("the wire format", () => {
     expect(rows.some((r) => r.length === 3)).toBe(true);
   });
 
+  test("the viewer's log is the newest lines, not the oldest", async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+
+    const out = await app.evaluate(() => {
+      const H = window.__horde;
+      const G = H.G;
+      /* logit() unshifts, so index 0 is the newest line. A slice from the wrong
+         end leaves a viewer reading the opening of a game that has moved on. */
+      G.log = Array.from({ length: 40 }, (_, i) => ({ t: 1, msg: "line " + i }));
+      const snap = H.encodeSnapshot(G);
+      const V = H.decodeSnapshot(snap, {});
+      return { host: G.log.slice(0, 3).map((e) => e.msg), viewer: V.log.map((e) => e.msg) };
+    });
+
+    // The host renders G.log top-down, so the viewer's first lines must match.
+    expect(out.viewer.slice(0, 3)).toEqual(out.host);
+    expect(out.viewer[0]).toBe("line 0");
+    expect(out.viewer).not.toContain("line 39");
+  });
+
   test("an oversized board sheds the log, then the graveyard breakdown, keeping the count",
     async ({ app }) => {
       await startGame(app, "Zombies Horde");
@@ -418,6 +438,13 @@ test.describe("sharing a game", () => {
     await app.locator("#btn-resume").click();
     await expect(app.locator("#screen-game")).toBeVisible();
     await expect(app.locator("#btn-share")).toBeVisible();
+  });
+
+  test("the log is open on arrival", async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+    // Reference you read mid-turn, so it shouldn't need finding first.
+    await expect(app.locator(".logbox")).toHaveAttribute("open", "");
+    await expect(app.locator("#log")).toBeVisible();
   });
 
   test("a live share shows its code in the header", async ({ app }) => {
