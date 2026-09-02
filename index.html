@@ -106,6 +106,8 @@
   .btn:hover { background: var(--surface-3); }
   .btn:active { transform: translateY(1px); }
   .btn[disabled] { opacity: .4; cursor: not-allowed; }
+  /* Strips a button back to its contents, for tiles that are a card face. */
+  .plainbtn { all: unset; cursor: pointer; display: block; width: 100%; }
   .btn.primary {
     background: var(--accent);
     border-color: var(--accent-hot);
@@ -276,6 +278,10 @@
   .counter .n { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 24px; line-height: 1.1; display: block; }
   .counter .k { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
   .counter.hot .n { color: #ff9d6e; }
+  button.counter { width: 100%; transition: border-color .12s ease, background .12s ease; }
+  button.counter:hover { background: var(--surface-3); border-color: var(--accent); }
+  button.counter:active { transform: translateY(1px); }
+  button.counter .k::after { content: " \203A"; }
 
   /* ---------- Players ---------- */
 
@@ -784,7 +790,9 @@ Tokens: (200)
       <div class="counter hot"><span class="n" id="c-library">0</span><span class="k">Library</span></div>
       <div class="counter"><span class="n" id="c-board">0</span><span class="k">Creatures</span></div>
       <div class="counter"><span class="n" id="c-power">0</span><span class="k">Attacking</span></div>
-      <div class="counter"><span class="n" id="c-yard">0</span><span class="k">Graveyard</span></div>
+      <button class="counter" id="tile-yard" aria-label="Open the graveyard">
+        <span class="n" id="c-yard">0</span><span class="k">Graveyard</span>
+      </button>
       <div class="counter"><span class="n" id="c-turn">1</span><span class="k">Round</span></div>
     </div>
 
@@ -859,7 +867,8 @@ Tokens: (200)
   <section class="screen" id="screen-end">
     <div class="panel" style="text-align:center; padding:34px 20px">
       <h2 id="end-title" style="font-size:30px; text-transform:none; letter-spacing:0; color:var(--ink)"></h2>
-      <p class="muted" id="end-sub" style="margin-bottom:22px"></p>
+      <p class="muted" id="end-sub" style="margin-bottom:18px"></p>
+      <div class="counters" id="end-stats" style="margin-bottom:22px"></div>
       <div class="row" style="justify-content:center">
         <button class="btn primary" id="btn-again">Play again</button>
         <button class="btn ghost" id="btn-end-home">Back to decks</button>
@@ -1001,6 +1010,16 @@ Tokens: (200)
   </div>
 </dialog>
 
+<dialog id="yard-dialog" class="sheet">
+  <h3 style="margin:0 0 4px">Graveyard</h3>
+  <p class="muted small" id="yd-sub" style="margin:0 0 12px"></p>
+  <div class="cardgrid tokengrid" id="yd-grid" style="margin-bottom:6px"></div>
+  <p class="muted small" id="yd-empty" hidden>
+    Nothing here yet &mdash; damage mills the Horde, and its dead creatures land here too.
+  </p>
+  <button class="btn ghost" id="yd-close" style="width:100%; margin-top:10px">Close</button>
+</dialog>
+
 <dialog id="confirm-dialog">
   <h3 style="margin:0 0 6px" id="cd-title"></h3>
   <p class="muted small" id="cd-body" style="margin:0 0 16px"></p>
@@ -1032,6 +1051,16 @@ const el = (tag, cls, text) => {
 };
 const uid = () => Math.random().toString(36).slice(2, 10);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* The mill pad and the token quantity pad are the same widget: a digit, a
+   clear, or a backspace over a string of at most four digits. */
+function padPress(current, btn) {
+  const { d, k } = btn.dataset;
+  if (d != null) return current.length < 4 ? (current + d).replace(/^0+(?=\d)/, "") : current;
+  if (k === "clear") return "";
+  if (k === "back") return current.slice(0, -1);
+  return current;
+}
 
 function toast(msg) {
   const t = el("div", "toast", msg);
@@ -1162,13 +1191,6 @@ function parseDecklist(text, opts = {}) {
       // A wrapped continuation always wins over a header guess when the
       // previous line was an entry and this line isn't count-suffixed.
       const canContinue = joinWrapped && entries.length && !h && !line.endsWith(":");
-      if (isHeader && !canContinue) {
-        const label = (h ? h[1] : line.replace(/:$/, "")).trim();
-        sectionIsToken = /token/i.test(label) ? true : false;
-        sectionCat = catFromSection(label, sectionIsToken);
-        sawHeader = true;
-        continue;
-      }
       if (canContinue) {
         const prev = entries[entries.length - 1];
         prev.name = (prev.name.endsWith("-") ? prev.name : prev.name + " ") + line;
@@ -1177,7 +1199,7 @@ function parseDecklist(text, opts = {}) {
       }
       if (isHeader) {
         const label = (h ? h[1] : line.replace(/:$/, "")).trim();
-        sectionIsToken = /token/i.test(label) ? true : false;
+        sectionIsToken = /token/i.test(label);
         sectionCat = catFromSection(label, sectionIsToken);
         sawHeader = true;
         continue;
@@ -1472,6 +1494,19 @@ function categoryOf(card) {
 const ptString = (card) =>
   (card.power == null || card.toughness == null) ? null : card.power + "/" + card.toughness;
 
+/* The one-line description under a card: whatever of type, P/T and rarity is
+   known, in that order. Built here so the reveal stage, the full-card view and
+   the import review all read the same. */
+function cardMeta(card, opts = {}) {
+  const bits = [card.typeLine || opts.unknownType || (card.isToken ? "Token" : "Card")];
+  const pt = ptString(card);
+  if (pt) bits.push(pt);
+  if (card.rarity) bits.push(card.rarity);
+  if (opts.defender && card.hasDefender) bits.push("Defender (blocks, doesn't attack)");
+  if (opts.notFound && !card.resolved) bits.push("not found");
+  return bits.join(" \u00b7 ");
+}
+
 /* Wraps a card face in its container-query slot, optionally making it a button.
    Cards render small on a crowded board, so every one of them is tappable to
    open the full-size view. */
@@ -1597,6 +1632,12 @@ const RULESETS = [
 
 const rulesetById = (id) => RULESETS.find((r) => r.id === id) || RULESETS[0];
 
+/* Chips are a radio group built out of buttons, so the selected one is marked
+   with aria-pressed rather than a checked input. */
+const setChips = (containerSel, value) =>
+  $$(containerSel + " .chip").forEach((c) =>
+    c.setAttribute("aria-pressed", String(c.dataset.v === value)));
+
 /* A decklist is built for a wave rule, so the deck picks the opening ruleset. */
 function defaultRulesetFor(deck) {
   if (deck.ruleset && RULESETS.some((r) => r.id === deck.ruleset)) return deck.ruleset;
@@ -1659,6 +1700,7 @@ function newGame(deck, opts) {
     waveEnd: opts.waveEnd,
     wavePattern: opts.wavePattern,
     legendaryRule: opts.legendaryRule,
+    peakCreatures: 0,     // high-water mark of the board, for the end screen
     hordeTurn: 0,         // how many turns the Horde has actually taken
     turn: 1,
     setupTurnsLeft: opts.setupTurns,
@@ -1701,6 +1743,13 @@ function attackingPower() {
    no stats, and reporting a confident "0" there would be a lie. */
 function powerIsPartial() {
   return attackers().some((s) => !Number.isFinite(parseInt(G.cards[s.cardKey].power, 10)));
+}
+
+/* The high-water mark of the Horde's board, kept for the end screen. Games
+   saved before it existed simply start counting from now. */
+function notePeak() {
+  const n = creatureCount();
+  if (n > (G.peakCreatures || 0)) G.peakCreatures = n;
 }
 
 function addToBoard(cardKey, n = 1) {
@@ -1778,6 +1827,7 @@ function resolveReveal() {
   G.revealed = [];
   G.spellTargets = {};
   G.phase = PHASE.COMBAT;
+  notePeak();
   checkEnd();
   persistGame();
 }
@@ -1817,8 +1867,10 @@ function millCards(n) {
   if (moved < n) logit("The library ran out mid-mill.");
 
   // Recommended rule: a legendary milled by damage enters the battlefield and
-  // immediately phases out. Surface it rather than resolving it silently.
-  G.milledLegends = legends;
+  // immediately phases out. Surface it rather than resolving it silently, and
+  // add to the reminder rather than replacing it — two mills in one turn are
+  // ordinary, and the first legendary is still owed its ETB.
+  G.milledLegends = (G.milledLegends || []).concat(legends);
   for (const key of legends) {
     logit(G.cards[key].name + " was milled — it enters the battlefield, then phases out.");
   }
@@ -1829,7 +1881,12 @@ function millCards(n) {
 
 function adjustLife(delta) {
   snapshot();
+  const before = G.life;
   G.life = Math.max(0, G.life + delta);
+  if (G.life !== before) {
+    logit((delta < 0 ? "Survivors take " + (before - G.life) : "Survivors gain " + (G.life - before)) +
+      " \u2014 " + G.life + " life.");
+  }
   if (G.life === 0) logit("The survivors are out of life.");
   checkEnd();
   persistGame();
@@ -1837,7 +1894,9 @@ function adjustLife(delta) {
 
 function adjustPoison(delta) {
   snapshot();
+  const before = G.poison;
   G.poison = Math.max(0, G.poison + delta);
+  if (G.poison !== before) logit("Poison: " + G.poison + " of " + G.poisonLimit + ".");
   checkEnd();
   persistGame();
 }
@@ -1860,6 +1919,7 @@ function createTokens(card, n) {
   if (!G.cards[card.key]) G.cards[card.key] = card;
   addToBoard(card.key, n);
   logit("+" + n + " " + card.name + (n === 1 ? " token" : " tokens") + ".");
+  notePeak();
   persistGame();
 }
 
@@ -1898,8 +1958,32 @@ function showScreen(id) {
   $$(".screen").forEach((s) => s.classList.toggle("active", s.id === id));
   $("#btn-home").hidden = id === "screen-decks";
   if (id === "screen-decks") applyDeckTheme(null);
+  setWakeLock(id === "screen-game");
   window.scrollTo(0, 0);
 }
+
+/* A tablet propped on the table shouldn't dim between waves. Held only while
+   the game screen is up; the browser drops the lock whenever the tab is
+   hidden, so it's re-taken on the way back. Unsupported browsers no-op. */
+let wakeLock = null;
+async function setWakeLock(want) {
+  if (!("wakeLock" in navigator)) return;
+  try {
+    if (want && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; });
+    } else if (!want && wakeLock) {
+      const held = wakeLock;
+      wakeLock = null;
+      await held.release();
+    }
+  } catch { wakeLock = null; }  // denied, or the page lost focus mid-request
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    setWakeLock($("#screen-game").classList.contains("active"));
+  }
+});
 
 /* Bundled decks are stored compactly and enriched from Scryfall on first use;
    until then they play as text cards with the token flag from the decklist. */
@@ -2063,10 +2147,8 @@ function renderReview(warnings) {
     nameInput.addEventListener("input", () => { card.name = nameInput.value; redraw(); });
     mid.appendChild(nameInput);
     mid.appendChild(el("div", "tiny muted",
-      reviewEntries[i].qty + "× · " + (card.typeLine || "unknown type") +
-      (card.rarity ? " · " + card.rarity : "") +
-      (ptString(card) ? " · " + ptString(card) : "") +
-      (card.resolved ? "" : " · not found")));
+      reviewEntries[i].qty + "× · " +
+      cardMeta(card, { unknownType: "unknown type", notFound: true })));
     row.appendChild(mid);
 
     const toggle = el("button", "toggle", card.isToken ? "Token" : "Card");
@@ -2298,17 +2380,14 @@ function renderSetupRules() {
       box.appendChild(chip);
     });
   }
-  $$("#opt-ruleset .chip").forEach((c) =>
-    c.setAttribute("aria-pressed", String(c.dataset.v === setupRuleset)));
+  setChips("#opt-ruleset", setupRuleset);
 
   const rs = rulesetById(setupRuleset);
   $("#ruleset-blurb").textContent = rs.blurb;
   $("#setup-custom").hidden = !rs.custom;
 
-  $$("#opt-waveend .chip").forEach((c) =>
-    c.setAttribute("aria-pressed", String(c.dataset.v === setupWaveEnd)));
-  $$("#opt-wavepattern .chip").forEach((c) =>
-    c.setAttribute("aria-pressed", String(c.dataset.v === setupWavePattern)));
+  setChips("#opt-waveend", setupWaveEnd);
+  setChips("#opt-wavepattern", setupWavePattern);
 
   // House rules edit the values in place, so the read-out would only repeat them.
   const list = $("#setup-rules");
@@ -2427,6 +2506,7 @@ function renderGame() {
   takeAll.textContent = pw > 0 ? "Take all " + pw : "Nothing is attacking";
   takeAll.disabled = pw <= 0;
   $("#life-partial").hidden = !powerIsPartial();
+  $("#btn-undo").disabled = undoStack.length === 0;
 
   renderStage();
   renderBoard();
@@ -2534,24 +2614,23 @@ function renderRevealStage(body) {
   const kw = el("p", "stage-type");
   if (hero.isLegendary) kw.appendChild(el("span", "kw leg", "Legendary"));
   if (hero.hasDefender) kw.appendChild(el("span", "kw def", "Defender"));
-  kw.appendChild(document.createTextNode(
-    (hero.typeLine || (hero.isToken ? "Token" : "Card")) +
-    (ptString(hero) ? " · " + ptString(hero) : "") +
-    (hero.rarity ? " · " + hero.rarity : "")));
+  kw.appendChild(document.createTextNode(cardMeta(hero)));
   meta.appendChild(kw);
 
-  const spellIdx = Object.keys(G.spellTargets)[0];
-  if (spellIdx !== undefined) {
-    const target = G.players.find((p) => p.id === G.spellTargets[spellIdx]);
-    if (target) {
-      const t = el("div", "target");
-      t.appendChild(el("span", "small muted", "Random target"));
-      t.appendChild(el("span", "who", target.name));
-      const re = el("button", "btn sm ghost", "Re-roll");
-      re.addEventListener("click", () => { rerollTarget(spellIdx); renderGame(); });
-      t.appendChild(re);
-      meta.appendChild(t);
-    }
+  // A wave can hold more than one spell, and each rolled its own victim, so
+  // every target gets a row. With several, the label names the spell.
+  const spellIdxs = Object.keys(G.spellTargets);
+  for (const idx of spellIdxs) {
+    const target = G.players.find((p) => p.id === G.spellTargets[idx]);
+    if (!target) continue;
+    const t = el("div", "target");
+    t.appendChild(el("span", "small muted",
+      spellIdxs.length > 1 ? G.cards[G.revealed[idx]].name : "Random target"));
+    t.appendChild(el("span", "who", target.name));
+    const re = el("button", "btn sm ghost", "Re-roll");
+    re.addEventListener("click", () => { rerollTarget(idx); renderGame(); });
+    t.appendChild(re);
+    meta.appendChild(t);
   }
 
   if (hero.oracleText) meta.appendChild(el("p", "stage-oracle", hero.oracleText));
@@ -2591,6 +2670,34 @@ function renderBoard() {
   }
 }
 
+/* What's in the graveyard, collapsed the way the board is: one tile per card
+   with a count. Worth having on tap \u2014 plenty of horde cards care about it
+   (Grave Betrayal, Footbottom Feast, Unbreathing Horde), and it's otherwise the
+   one part of the game state with no way to look at it. */
+function yardStacks() {
+  const counts = new Map();
+  for (const key of G.graveyard) counts.set(key, (counts.get(key) || 0) + 1);
+  return Array.from(counts, ([cardKey, count]) => ({ cardKey, count }))
+    .sort((a, b) => b.count - a.count ||
+      G.cards[a.cardKey].name.localeCompare(G.cards[b.cardKey].name));
+}
+
+function renderYard() {
+  const stacks = yardStacks();
+  const grid = $("#yd-grid");
+  grid.textContent = "";
+  $("#yd-empty").hidden = stacks.length > 0;
+  $("#yd-sub").textContent = stacks.length
+    ? G.graveyard.length + " card" + (G.graveyard.length === 1 ? "" : "s") + " \u00b7 " +
+      stacks.length + " distinct \u00b7 " + G.library.length + " left in the library"
+    : G.library.length + " cards left in the library.";
+  for (const stack of stacks) {
+    grid.appendChild(cardSlot(G.cards[stack.cardKey],
+      { count: stack.count, rule: G.waveEnd },
+      () => openCardDialog(stack.cardKey)));
+  }
+}
+
 function renderLog() {
   const box = $("#log");
   box.textContent = "";
@@ -2608,6 +2715,21 @@ function renderEnd() {
   $("#end-sub").textContent = won
     ? "Library empty, board clear — you made it out after " + (G.turn - 1) + " rounds."
     : "The survivors are down after " + (G.turn - 1) + " rounds.";
+
+  const stats = $("#end-stats");
+  stats.textContent = "";
+  const rows = [
+    [G.turn - 1, "Rounds"],
+    [G.library.length, "Left in library"],
+    [G.graveyard.length, "Graveyard"],
+    [G.peakCreatures || 0, "Peak board"],
+  ];
+  for (const [n, k] of rows) {
+    const box = el("div", "counter");
+    box.appendChild(el("span", "n", String(n)));
+    box.appendChild(el("span", "k", k));
+    stats.appendChild(box);
+  }
   showScreen("screen-end");
 }
 
@@ -2629,11 +2751,7 @@ function openCardDialog(keyOrCard, opts = {}) {
   slot.appendChild(cardFace(card, { badge: true, rule: G ? G.waveEnd : null }));
 
   $("#cv-name").textContent = card.name;
-  $("#cv-type").textContent =
-    (card.typeLine || (card.isToken ? "Token" : "Card")) +
-    (ptString(card) ? " · " + ptString(card) : "") +
-    (card.rarity ? " · " + card.rarity : "") +
-    (card.hasDefender ? " · Defender (blocks, doesn't attack)" : "");
+  $("#cv-type").textContent = cardMeta(card, { defender: true });
 
   const hasArt = !!(card.scryfallId && objectUrls.get(card.scryfallId));
   const oracle = $("#cv-oracle");
@@ -2685,8 +2803,7 @@ function tokenSubtitle(card) {
 
 function tokenChoice(card, onPick, nameLine) {
   const slot = el("div", "slot");
-  const btn = el("button");
-  btn.style.cssText = "all:unset; cursor:pointer; display:block; width:100%;";
+  const btn = el("button", "plainbtn");
   btn.setAttribute("aria-label", "Create " + card.name + " tokens");
   btn.appendChild(cardFace(card, { rule: G.waveEnd, badge: false }));
   slot.appendChild(btn);
@@ -2923,9 +3040,19 @@ $("#tile-life").addEventListener("click", () => {
 });
 $("#ld-close").addEventListener("click", () => $("#life-dialog").close());
 
+$("#tile-yard").addEventListener("click", () => {
+  renderYard();
+  $("#yard-dialog").showModal();
+});
+$("#yd-close").addEventListener("click", () => $("#yard-dialog").close());
+
 $("#btn-random").addEventListener("click", () => {
   const p = pick(G.players);
-  if (p) toast("Random survivor: " + p.name);
+  if (!p) return;
+  toast("Random survivor: " + p.name);
+  logit("Rolled a random survivor: " + p.name + ".");
+  persistGame();
+  renderGame();
 });
 
 $("#btn-quit").addEventListener("click", () => {
@@ -2942,14 +3069,7 @@ $("#btn-quit").addEventListener("click", () => {
 $("#mill-pad").addEventListener("click", (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
-  const { d, k } = btn.dataset;
-  if (d != null) {
-    if (millInput.length < 4) millInput = (millInput + d).replace(/^0+(?=\d)/, "");
-  } else if (k === "clear") {
-    millInput = "";
-  } else if (k === "back") {
-    millInput = millInput.slice(0, -1);
-  }
+  millInput = padPress(millInput, btn);
   renderGame();
 });
 
@@ -3019,14 +3139,7 @@ $("#tc-next").addEventListener("click", () => {
 $("#token-qty-pad").addEventListener("click", (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
-  const { d, k } = btn.dataset;
-  if (d != null) {
-    if (tokenQtyInput.length < 4) tokenQtyInput = (tokenQtyInput + d).replace(/^0+(?=\d)/, "");
-  } else if (k === "clear") {
-    tokenQtyInput = "";
-  } else if (k === "back") {
-    tokenQtyInput = tokenQtyInput.slice(0, -1);
-  }
+  tokenQtyInput = padPress(tokenQtyInput, btn);
   renderTokenQty();
 });
 $("#tq-add").addEventListener("click", () => {
@@ -3076,10 +3189,32 @@ $("#btn-end-home").addEventListener("click", () => {
   showScreen("screen-decks");
 });
 
+/* Shortcuts for a laptop driving the game. Anything focusable keeps its own
+   keys — a focused button already answers Space and Enter itself, and typing
+   into a field must never advance the turn. */
+const SHORTCUTS = {
+  u: undo,
+  " ": () => $("#btn-action").click(),
+  enter: () => $("#btn-action").click(),
+  d: () => $("#tile-damage").click(),
+  l: () => $("#tile-life").click(),
+  g: () => $("#tile-yard").click(),
+};
+
 document.addEventListener("keydown", (e) => {
-  if (e.target.matches("input, textarea")) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (!$("#screen-game").classList.contains("active")) return;
-  if (e.key === "u" || e.key === "U") { undo(); e.preventDefault(); }
+  if ($("dialog[open]")) return;
+  const t = e.target instanceof Element ? e.target : null;
+  if (t && t.closest("input, textarea, select, [contenteditable]")) return;
+  const key = e.key.toLowerCase();
+  // A focused button already answers Space and Enter, and firing both would
+  // take two turns on one press.
+  if ((key === " " || key === "enter") && t && t.closest("button, a")) return;
+  const run = SHORTCUTS[key];
+  if (!run) return;
+  e.preventDefault();
+  run();
 });
 
 /* =========================================================================
@@ -3101,8 +3236,9 @@ window.__horde = {
   RULESETS, rulesetById, defaultRulesetFor, rulesetOfGame, effectiveRules,
   get G() { return G; },
   set G(v) { G = v; },
-  newGame, flipHordeTurn, resolveReveal, endHordeTurn, millCards, adjustLife,
-  killFromStack, attackingPower, powerIsPartial, creatureCount, primeImages, renderGame, showScreen,
+  newGame, flipHordeTurn, resolveReveal, endHordeTurn, millCards, adjustLife, adjustPoison,
+  killFromStack, createTokens, attackingPower, powerIsPartial, creatureCount, yardStacks,
+  cardMeta, padPress, primeImages, renderGame, showScreen,
 };
 </script>
 </body>
