@@ -33,13 +33,26 @@ installs to a home screen and runs offline once a deck has been loaded.
   manual add that doesn't touch the library, graveyard, or wave count, and the type
   stays on the list for the rest of the game.
 - **Damage → mill.** A numeric pad; the Horde has no life total. Legendaries milled
-  by damage are called out so you can apply the ETB-and-phase-out rule.
+  by damage are called out so you can apply the ETB-and-phase-out rule, and they
+  stay called out until the turn ends — two mills in one turn is ordinary, and the
+  first legendary is still owed its trigger.
+- **The graveyard, on tap.** The Graveyard counter opens it, collapsed into stacks
+  the way the board is. Plenty of horde cards care what's in there — Grave
+  Betrayal, Footbottom Feast, Unbreathing Horde — and it's the only part of the
+  game state you otherwise can't look at.
 - **Attacks.** Everything is goaded and attacking; `Defender` creatures are held
   back as blockers and excluded from the attacking total.
 - **Shared life**, per the site's rules: 100 for one survivor, 15 less for each one
   after (2 players = 85). Poison tracked too.
-- **Random targeting** for the Horde's instants and sorceries, with a re-roll.
+- **Random targeting** for the Horde's instants and sorceries, with a re-roll. A
+  wave can carry several spells, and each one shows its own victim.
 - **Undo** on every action, and the game survives a reload or a screen lock.
+- **The screen stays awake** while a game is up, so a tablet propped on the table
+  doesn't dim between waves.
+- **Keyboard shortcuts** for a laptop driving the game: `space` takes the turn,
+  `u` undoes, `d` opens damage, `l` life, `g` the graveyard.
+- **An end screen that says how it went** — rounds survived, cards left in the
+  library, graveyard size, and the biggest the Horde's board ever got.
 - **The ban list**, offline and searchable — type a card name to find out whether
   it's legal in a survivor's deck.
 
