@@ -103,7 +103,7 @@ All three published rulesets use the site's table rules: three survivor setup
 turns, 100 shared life less 15 per extra survivor, a poison limit of 10, and a
 legendary milled by damage entering and then phasing out. Only **House rules**
 hands those back as editable fields. The ruleset in play is printed under the
-counters for the whole game.
+tally for the whole game.
 
 ### Importing your own
 
