@@ -1,0 +1,6 @@
+node_modules/
+tests/playwright-report/
+tests/test-results/
+tests/blob-report/
+_site/
+.DS_Store

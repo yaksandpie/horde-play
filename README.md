@@ -168,11 +168,55 @@ than pretending to know stats it doesn't have.
 
 ## Hosting it on GitHub Pages
 
+Pushes to `main` deploy themselves — `.github/workflows/deploy.yml` publishes the
+site. One-time setup:
+
 1. Push this repo to GitHub.
-2. **Settings → Pages** → Source: **Deploy from a branch**, branch `main`, folder `/(root)`. Save.
-3. Wait a minute, then open `https://<your-username>.github.io/horde-play/`.
+2. **Settings → Pages** → Source: **GitHub Actions**. Save.
+3. Push to `main`. The **Deploy to GitHub Pages** workflow runs, and the site
+   lands at `https://<your-username>.github.io/horde-play/`.
 4. On the tablet you'll play on, use **Add to Home Screen**. It installs as a real
    offline-capable app.
+
+The workflow publishes the repo root minus `.github/` and `tests/`, so what
+Pages serves is exactly the app.
+
+## CI
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request:
+
+- **Static checks** (`node tests/check-static.mjs`, no dependencies) — parses the
+  inline script and `sw.js`, validates `manifest.json`, and proves every file the
+  page and the service worker reference actually exists. There's no bundler here
+  to catch a typo, so this does the job a build would.
+- **Service worker cache version** — a pull request that touches `index.html`,
+  `manifest.json` or an icon has to bump `CACHE_VERSION` in `sw.js`, or installed
+  copies keep serving the old shell.
+- **Browser tests** — Playwright drives real Chromium against the real page:
+  `tests/rules.spec.mjs` unit-tests the game rules through the `window.__horde`
+  harness the app already exposes, and `tests/app.spec.mjs` plays a game through
+  the UI — setup, a wave, damage as mill, undo, reload-and-resume, the ban list,
+  and an import.
+
+Scryfall is stubbed out in every test, so the suite runs offline, deterministically,
+and without hammering a free public API on each push. That also means CI exercises
+the app's offline path, which is the one that matters on game night.
+
+### Running them locally
+
+The app has no dependencies; the tests do, and they keep them to themselves:
+
+```sh
+cd tests
+npm install
+npx playwright install chromium
+npm run check   # static checks
+npm test        # browser tests
+```
+
+`npm run serve` alone starts the same static server on
+<http://127.0.0.1:4173> if you just want to poke at the app over a real
+origin (service workers and IndexedDB don't work over `file://`).
 
 ## Files
 
@@ -180,6 +224,8 @@ than pretending to know stats it doesn't have.
 - `manifest.json` — web app manifest
 - `sw.js` — service worker (network-first on page loads, cache-first on assets)
 - `icon-192.png`, `icon-512.png`, `icon-180.png` — app icons
+- `tests/` — the checks CI runs, and the only place with dependencies
+- `.github/workflows/` — CI and the Pages deploy
 
 ## Not automated on purpose
 
