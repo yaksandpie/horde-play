@@ -227,7 +227,7 @@
     padding: 16px;
   }
   .stage-hero { display: flex; gap: 18px; align-items: flex-start; }
-  .stage-hero .slot { width: min(240px, 38vw); flex: none; container-type: inline-size; }
+  .stage-hero .slot { width: min(280px, 40vw); flex: none; container-type: inline-size; }
   .stage-hero .meta { flex: 1; min-width: 0; }
   .stage-title { font-size: clamp(20px, 3.6vw, 30px); margin: 0 0 4px; }
   .stage-type { color: var(--ink-soft); margin: 0 0 10px; }
@@ -345,6 +345,46 @@
   }
   .poisonrow button:hover { background: var(--surface-3); }
   .poisonrow b { color: var(--ink); font-size: 18px; min-width: 22px; text-align: center; }
+
+  /* ---------- Full card view ---------- */
+
+  dialog.cardview {
+    max-width: min(94vw, 520px);
+    max-height: 92vh; overflow-y: auto;
+    text-align: center;
+  }
+  .cv-art { display: flex; justify-content: center; margin-bottom: 14px; }
+  /* The slot is the container query root, so sizing it sizes generated faces too. */
+  #cv-slot { container-type: inline-size; width: min(84vw, 440px); }
+  @media (max-height: 820px) { #cv-slot { width: min(56vh, 440px); } }
+  .cardview h3 { margin: 0 0 3px; font-size: 22px; }
+  .cardview .sub { color: var(--ink-soft); font-size: 14px; margin: 0 0 10px; }
+  .cardview .cv-oracle {
+    white-space: pre-wrap; text-align: left;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 12px;
+    font-size: 14px; color: var(--ink-soft); margin: 0 0 14px;
+  }
+
+  .cardbtn { all: unset; cursor: pointer; display: block; width: 100%; }
+  .cardbtn:focus-visible { outline: 2px solid var(--accent-hot); outline-offset: 2px; border-radius: 10px; }
+
+  /* ---------- Log, tucked away at the bottom ---------- */
+
+  .logbox { margin-top: 14px; }
+  .logbox > summary {
+    cursor: pointer; list-style: none;
+    font-size: 16px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); font-family: "Cinzel", Georgia, serif; font-weight: 700;
+  }
+  .logbox > summary::-webkit-details-marker { display: none; }
+  .logbox > summary::after { content: " \25B8"; }
+  .logbox[open] > summary::after { content: " \25BE"; }
+  .logbox[open] > summary { margin-bottom: 10px; }
+  .logbox .log { max-height: 320px; }
+
+  .narrow-hide { display: inline; }
+  @media (max-width: 560px) { .narrow-hide { display: none; } }
 
   /* ---------- Import review ---------- */
 
@@ -662,7 +702,7 @@ Tokens: (200)
           <line x1="19" y1="21" x2="21" y2="19"/>
         </svg>
         <span>
-          <span class="at-label">Damage the Horde</span>
+          <span class="at-label">Damage<span class="narrow-hide"> the Horde</span></span>
           <span class="at-val" id="tile-damage-val">Mill</span>
         </span>
         <span class="at-hint" aria-hidden="true">&rsaquo;</span>
@@ -680,20 +720,8 @@ Tokens: (200)
       </button>
     </div>
 
-    <div class="cols two">
-      <div>
-        <div class="stage" id="stage">
-          <div id="stage-body"></div>
-        </div>
-
-      </div>
-
-      <div>
-        <div class="panel">
-          <h2>Log</h2>
-          <ul class="log" id="log"></ul>
-        </div>
-      </div>
+    <div class="stage" id="stage">
+      <div id="stage-body"></div>
     </div>
 
     <div class="panel board-panel">
@@ -719,6 +747,11 @@ Tokens: (200)
         <button class="btn sm ghost danger" id="btn-quit">End game</button>
       </div>
     </div>
+
+    <details class="panel logbox">
+      <summary>Log</summary>
+      <ul class="log" id="log"></ul>
+    </details>
   </section>
 
   <!-- ================= END ================= -->
@@ -784,14 +817,16 @@ Tokens: (200)
   <button class="btn ghost" id="ld-close" style="width:100%; margin-top:14px">Done</button>
 </dialog>
 
-<dialog id="stack-dialog">
-  <h3 style="margin:0 0 4px" id="sd-name"></h3>
-  <p class="muted small" id="sd-sub" style="margin:0 0 14px"></p>
-  <div class="stack">
-    <button class="btn" id="sd-kill1" style="width:100%">Kill one &rarr; graveyard</button>
-    <button class="btn" id="sd-killall" style="width:100%">Kill the whole stack</button>
-    <button class="btn ghost" id="sd-close" style="width:100%">Cancel</button>
+<dialog id="card-dialog" class="cardview">
+  <div class="cv-art"><div class="slot" id="cv-slot"></div></div>
+  <h3 id="cv-name"></h3>
+  <p class="sub" id="cv-type"></p>
+  <p class="cv-oracle" id="cv-oracle"></p>
+  <div class="stack" id="cv-actions">
+    <button class="btn" id="cv-kill1" style="width:100%">Kill one &rarr; graveyard</button>
+    <button class="btn" id="cv-killall" style="width:100%">Kill the whole stack</button>
   </div>
+  <button class="btn ghost" id="cv-close" style="width:100%; margin-top:10px">Close</button>
 </dialog>
 
 <dialog id="confirm-dialog">
@@ -1248,6 +1283,23 @@ function categoryOf(card) {
 
 const ptString = (card) =>
   (card.power == null || card.toughness == null) ? null : card.power + "/" + card.toughness;
+
+/* Wraps a card face in its container-query slot, optionally making it a button.
+   Cards render small on a crowded board, so every one of them is tappable to
+   open the full-size view. */
+function cardSlot(card, opts = {}, onClick) {
+  const slot = el("div", "slot" + (opts.slotClass ? " " + opts.slotClass : ""));
+  if (!onClick) {
+    slot.appendChild(cardFace(card, opts));
+    return slot;
+  }
+  const btn = el("button", "cardbtn");
+  btn.setAttribute("aria-label", "View " + card.name);
+  btn.appendChild(cardFace(card, opts));
+  btn.addEventListener("click", onClick);
+  slot.appendChild(btn);
+  return slot;
+}
 
 /* Returns an element, not a string, so image object URLs never round-trip
    through innerHTML. */
@@ -1709,7 +1761,14 @@ function renderReview(warnings) {
     const row = el("div", "review-row");
 
     const slot = el("div", "slot");
-    const redraw = () => { slot.textContent = ""; slot.appendChild(cardFace(card, { badge: false })); };
+    const redraw = () => {
+      slot.textContent = "";
+      const btn = el("button", "cardbtn");
+      btn.setAttribute("aria-label", "View " + card.name);
+      btn.appendChild(cardFace(card, { badge: false }));
+      btn.addEventListener("click", () => openCardDialog(card));
+      slot.appendChild(btn);
+    };
     redraw();
     row.appendChild(slot);
 
@@ -1996,9 +2055,9 @@ function renderStage() {
   if (count) {
     const grid = el("div", "cardgrid lg");
     for (const stack of attackers()) {
-      const slot = el("div", "slot");
-      slot.appendChild(cardFace(G.cards[stack.cardKey], { count: stack.count, rule: G.waveEnd }));
-      grid.appendChild(slot);
+      grid.appendChild(cardSlot(G.cards[stack.cardKey],
+        { count: stack.count, rule: G.waveEnd },
+        () => openCardDialog(stack.cardKey, { stack: true })));
     }
     body.appendChild(grid);
   }
@@ -2022,9 +2081,8 @@ function renderRevealStage(body) {
     G.revealed.filter((k) => isWaveEnder(G.cards[k], G.waveEnd)).length));
 
   const wrapEl = el("div", "stage-hero flipin");
-  const slot = el("div", "slot");
-  slot.appendChild(cardFace(hero, { rule: G.waveEnd }));
-  wrapEl.appendChild(slot);
+  wrapEl.appendChild(cardSlot(hero, { rule: G.waveEnd },
+    () => openCardDialog(G.revealed[heroIdx])));
 
   const meta = el("div", "meta");
   meta.appendChild(el("h2", "stage-title", hero.name));
@@ -2063,9 +2121,8 @@ function renderRevealStage(body) {
     body.appendChild(el("h3", "small muted", "Cast this wave, in order"));
     const grid = el("div", "cardgrid");
     G.revealed.forEach((key) => {
-      const s = el("div", "slot flipin");
-      s.appendChild(cardFace(G.cards[key], { rule: G.waveEnd }));
-      grid.appendChild(s);
+      grid.appendChild(cardSlot(G.cards[key], { rule: G.waveEnd, slotClass: "flipin" },
+        () => openCardDialog(key)));
     });
     body.appendChild(grid);
   }
@@ -2084,14 +2141,8 @@ function renderBoard() {
 
   for (const stack of G.board) {
     const card = G.cards[stack.cardKey];
-    const slot = el("div", "slot");
-    const btn = el("button");
-    btn.style.cssText = "all:unset; cursor:pointer; display:block; width:100%;";
-    btn.setAttribute("aria-label", "Remove " + card.name + " from the battlefield");
-    btn.appendChild(cardFace(card, { count: stack.count, rule: G.waveEnd }));
-    btn.addEventListener("click", () => openStackDialog(stack.cardKey));
-    slot.appendChild(btn);
-    box.appendChild(slot);
+    box.appendChild(cardSlot(card, { count: stack.count, rule: G.waveEnd },
+      () => openCardDialog(stack.cardKey, { stack: true })));
   }
 }
 
@@ -2119,19 +2170,40 @@ function renderEnd() {
    Dialogs
    ========================================================================= */
 
-let stackDialogKey = null;
+let cardDialogKey = null;
 
-function openStackDialog(cardKey) {
-  const card = G.cards[cardKey];
-  const stack = G.board.find((s) => s.cardKey === cardKey);
-  if (!stack) return;
-  stackDialogKey = cardKey;
-  $("#sd-name").textContent = card.name;
-  $("#sd-sub").textContent = stack.count + " on the battlefield" +
+/* Accepts a board/library card key, or a bare card object for the import
+   review where there is no game in progress. */
+function openCardDialog(keyOrCard, opts = {}) {
+  const card = typeof keyOrCard === "string" ? G.cards[keyOrCard] : keyOrCard;
+  if (!card) return;
+  cardDialogKey = typeof keyOrCard === "string" ? keyOrCard : null;
+
+  const slot = $("#cv-slot");
+  slot.textContent = "";
+  slot.appendChild(cardFace(card, { badge: true, rule: G ? G.waveEnd : null }));
+
+  $("#cv-name").textContent = card.name;
+  $("#cv-type").textContent =
+    (card.typeLine || (card.isToken ? "Token" : "Card")) +
     (ptString(card) ? " · " + ptString(card) : "") +
+    (card.rarity ? " · " + card.rarity : "") +
     (card.hasDefender ? " · Defender (blocks, doesn't attack)" : "");
-  $("#sd-killall").textContent = "Kill all " + stack.count + " → graveyard";
-  $("#stack-dialog").showModal();
+
+  const hasArt = !!(card.scryfallId && objectUrls.get(card.scryfallId));
+  const oracle = $("#cv-oracle");
+  oracle.textContent = hasArt ? "" : (card.oracleText ||
+    (card.resolved ? "" : "Not found on Scryfall — play it from the paper card or memory."));
+  oracle.hidden = !oracle.textContent;
+
+  const stack = cardDialogKey && G ? G.board.find((s) => s.cardKey === cardDialogKey) : null;
+  const showKill = !!opts.stack && !!stack;
+  $("#cv-actions").hidden = !showKill;
+  if (showKill) {
+    $("#cv-kill1").textContent = "Kill one → graveyard";
+    $("#cv-killall").textContent = "Kill all " + stack.count + " → graveyard";
+  }
+  $("#card-dialog").showModal();
 }
 
 let confirmCb = null;
@@ -2266,18 +2338,31 @@ $$("[data-poison]").forEach((b) =>
   b.addEventListener("click", () => { adjustPoison(parseInt(b.dataset.poison, 10)); renderGame(); }));
 
 // --- stack dialog ---
-$("#sd-close").addEventListener("click", () => $("#stack-dialog").close());
-$("#sd-kill1").addEventListener("click", () => {
-  killFromStack(stackDialogKey, 1);
-  $("#stack-dialog").close();
+$("#cv-close").addEventListener("click", () => $("#card-dialog").close());
+$("#cv-kill1").addEventListener("click", () => {
+  killFromStack(cardDialogKey, 1);
+  $("#card-dialog").close();
   renderGame();
 });
-$("#sd-killall").addEventListener("click", () => {
-  const stack = G.board.find((s) => s.cardKey === stackDialogKey);
-  killFromStack(stackDialogKey, stack ? stack.count : 1);
-  $("#stack-dialog").close();
+$("#cv-killall").addEventListener("click", () => {
+  const stack = G.board.find((s) => s.cardKey === cardDialogKey);
+  killFromStack(cardDialogKey, stack ? stack.count : 1);
+  $("#card-dialog").close();
   renderGame();
 });
+
+/* Clicking the backdrop closes any dialog. The click lands on the <dialog>
+   itself, so compare against its box rather than the event target — padding
+   inside the dialog reports the same target and would close it wrongly. */
+for (const d of $$("dialog")) {
+  d.addEventListener("click", (e) => {
+    if (e.target !== d) return;
+    const r = d.getBoundingClientRect();
+    const inside = e.clientX >= r.left && e.clientX <= r.right &&
+                   e.clientY >= r.top && e.clientY <= r.bottom;
+    if (!inside) d.close();
+  });
+}
 
 // --- confirm dialog ---
 $("#cd-no").addEventListener("click", () => $("#confirm-dialog").close());
