@@ -5,7 +5,7 @@ import { test, expect, startGame } from "./fixtures.mjs";
 test("the decks screen lists the built-in hordes", async ({ app }) => {
   await expect(app.locator("#screen-decks")).toBeVisible();
   const rows = app.locator(".deckrow");
-  await expect(rows).toHaveCount(11);
+  await expect(rows).toHaveCount(14);
   await expect(rows.filter({ hasText: "Zombies Horde" })).toContainText("300 cards");
   await expect(rows.filter({ hasText: "Zombies Horde" })).toContainText("Original Horde rules");
 });

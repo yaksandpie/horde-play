@@ -162,6 +162,9 @@ test.describe("bundled decks", () => {
       "D&D Dungeon — Lv3 Giants & Dragons": 200,
       "Bloomburrow — Rabbit Warren": 300,
       "Bloomburrow — Bat Coven": 300,
+      "Bloomburrow — Squirrel Hoard": 300,
+      "Bloomburrow — Raccoon Ruckus": 300,
+      "Bloomburrow — Druid Circle": 300,
     });
   });
 
