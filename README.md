@@ -185,10 +185,12 @@ than pretending to know stats it doesn't have.
 ## Watching a game
 
 The Horde runs on one screen, but everyone wants to read the cards. **Share this
-game** on the game screen mints a six-character code; anyone else opens the app,
+game** in the header mints a six-character code; anyone else opens the app,
 taps **Watch a game**, and types it. They get the real board — art and all —
 updated as the host acts, and no controls at all. **Copy link** gives a URL that
-opens the join box with the code already filled in.
+opens the join box with the code already filled in. While a share is live the
+header carries the code, so it's readable without opening anything — and its dot
+goes amber if the relay stops answering.
 
 A viewer needs a connection: card art is fetched from Scryfall on their own
 device. The host needs one too, and while the host is offline the status says so

@@ -217,11 +217,12 @@
   @keyframes livepulse { 50% { opacity: .35; } }
   @media (prefers-reduced-motion: reduce) { .dotlive.on { animation: none; } }
 
-  .sharerow { margin: -4px 0 14px; }
-  .sharerow .btn.on {
-    border-color: var(--good);
-    color: #9fe0c0;
-  }
+  /* In the header the code has to fit beside the brand on a phone, so a live
+     share reads as a dot and the code rather than a sentence. */
+  .sharebtn { display: flex; align-items: center; gap: 6px; }
+  .sharebtn.on { border-color: var(--good); color: #9fe0c0; }
+  .sharebtn.warn { border-color: #b08a2e; color: #e6c877; }
+  .sharebtn .dotlive { width: 7px; height: 7px; flex: 0 0 7px; }
 
   .codebox {
     background: var(--bg-deep);
@@ -754,6 +755,7 @@
         Horde Play
       </h1>
       <div class="spacer"></div>
+      <button class="btn sm ghost sharebtn" id="btn-share" hidden>Share</button>
       <button class="btn sm ghost" id="btn-home" hidden>Decks</button>
     </div>
   </header>
@@ -1023,10 +1025,6 @@ Tokens: (200)
 
     <p class="tiny muted rulesline" id="game-rules"></p>
 
-    <div class="row tight sharerow" id="share-row">
-      <button class="btn sm ghost" id="btn-share">Share this game</button>
-      <span class="tiny muted" id="share-status"></span>
-    </div>
 
     <div class="panel board-panel">
       <div class="row" style="margin-bottom:8px">
@@ -1056,7 +1054,7 @@ Tokens: (200)
       </div>
     </div>
 
-    <details class="panel logbox">
+    <details class="panel logbox" open>
       <summary>Log</summary>
       <ul class="log" id="log"></ul>
     </details>
@@ -2388,6 +2386,7 @@ function checkEnd() {
 function showScreen(id) {
   $$(".screen").forEach((s) => s.classList.toggle("active", s.id === id));
   $("#btn-home").hidden = id === "screen-decks" || viewerMode;
+  renderShare();
   if (id === "screen-decks") applyDeckTheme(null);
   setWakeLock(id === "screen-game");
   window.scrollTo(0, 0);
@@ -3688,7 +3687,7 @@ function encodeSnapshot(G) {
     sp: G.spellTargets,
     ov: G.over || null,
     gy: stacksOf(G.graveyard, refOf),
-    lg: G.log.slice(-SHARE_LOG).map((e) => [e.t, e.msg]),
+    lg: G.log.slice(0, SHARE_LOG).map((e) => [e.t, e.msg]),
   };
 
   /* A card with no Scryfall id can't be looked up, so it has to travel whole.
@@ -3867,15 +3866,25 @@ function shareLink() {
 }
 
 function renderShare() {
-  const row = $("#share-row");
-  if (row) row.hidden = viewerMode || !G;
+  /* The header is up on every screen, so this one answers to the game as well
+     as to the share: there is nothing to share from the decks screen, and a
+     viewer is watching a game that isn't theirs to share. */
   const btn = $("#btn-share");
   if (btn) {
-    btn.textContent = shareOn ? "Sharing · " + shareCode : "Share this game";
-    btn.classList.toggle("on", shareOn);
+    btn.hidden = viewerMode || !G ||
+      !$("#screen-game").classList.contains("active");
+    btn.textContent = "";
+    if (shareOn) {
+      btn.appendChild(el("span", "dotlive" + (shareError ? " bad" : " on")));
+      btn.appendChild(document.createTextNode(shareCode));
+      btn.title = shareError || "Sharing live — tap for the code";
+    } else {
+      btn.textContent = "Share";
+      btn.title = "Let others watch this game";
+    }
+    btn.classList.toggle("on", shareOn && !shareError);
+    btn.classList.toggle("warn", shareOn && !!shareError);
   }
-  const status = $("#share-status");
-  if (status) status.textContent = shareOn ? (shareError || "Viewers can watch live.") : "";
   const toggle = $("#sh-toggle");
   if (toggle) toggle.textContent = shareOn ? "Stop sharing" : "Start sharing";
   const code = $("#share-code");
@@ -4093,7 +4102,7 @@ async function viewerResolve(snap) {
 function applyViewerMode() {
   const on = viewerMode;
   $("#viewer-bar").hidden = !on;
-  $("#share-row").hidden = on || !G;
+  renderShare();
   $("#screen-game .sticky-action").hidden = on;
   $("#btn-add-tokens").hidden = on;
   $("#tile-damage").disabled = on;

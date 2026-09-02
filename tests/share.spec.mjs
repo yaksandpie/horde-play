@@ -198,6 +198,26 @@ test.describe("the wire format", () => {
     expect(rows.some((r) => r.length === 3)).toBe(true);
   });
 
+  test("the viewer's log is the newest lines, not the oldest", async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+
+    const out = await app.evaluate(() => {
+      const H = window.__horde;
+      const G = H.G;
+      /* logit() unshifts, so index 0 is the newest line. A slice from the wrong
+         end leaves a viewer reading the opening of a game that has moved on. */
+      G.log = Array.from({ length: 40 }, (_, i) => ({ t: 1, msg: "line " + i }));
+      const snap = H.encodeSnapshot(G);
+      const V = H.decodeSnapshot(snap, {});
+      return { host: G.log.slice(0, 3).map((e) => e.msg), viewer: V.log.map((e) => e.msg) };
+    });
+
+    // The host renders G.log top-down, so the viewer's first lines must match.
+    expect(out.viewer.slice(0, 3)).toEqual(out.host);
+    expect(out.viewer[0]).toBe("line 0");
+    expect(out.viewer).not.toContain("line 39");
+  });
+
   test("an oversized board sheds the log, then the graveyard breakdown, keeping the count",
     async ({ app }) => {
       await startGame(app, "Zombies Horde");
@@ -338,7 +358,7 @@ test.describe("viewer mode", () => {
     // Nothing here can change a game that belongs to another screen.
     await expect(app.locator("#screen-game .sticky-action")).toBeHidden();
     await expect(app.locator("#btn-add-tokens")).toBeHidden();
-    await expect(app.locator("#share-row")).toBeHidden();
+    await expect(app.locator("#btn-share")).toBeHidden();
     await expect(app.locator("#tile-damage")).toBeDisabled();
     await expect(app.locator("#tile-life")).toBeDisabled();
     await expect(app.locator("#btn-home")).toBeHidden();
@@ -376,8 +396,8 @@ test.describe("sharing a game", () => {
   test("nothing is sent until the host says so", async ({ app }) => {
     await startGame(app, "Zombies Horde");
 
-    await expect(app.locator("#share-row")).toBeVisible();
-    await expect(app.locator("#btn-share")).toHaveText("Share this game");
+    await expect(app.locator("#btn-share")).toBeVisible();
+    await expect(app.locator("#btn-share")).toHaveText("Share");
     // No code exists yet, so nothing could have been published.
     expect(await app.evaluate(() => localStorage.getItem("horde.share"))).toBeNull();
   });
@@ -403,6 +423,41 @@ test.describe("sharing a game", () => {
     await expect(app.locator("#btn-share")).toContainText(code);
   });
 
+  test("the header only offers Share on a game the host is running", async ({ app }) => {
+    // Nothing to share from the decks screen, even with a game saved.
+    await expect(app.locator("#btn-share")).toBeHidden();
+
+    await startGame(app, "Zombies Horde");
+    await expect(app.locator("#btn-share")).toBeVisible();
+
+    await app.locator("#btn-home").click();
+    await expect(app.locator("#screen-decks")).toBeVisible();
+    await expect(app.locator("#btn-share")).toBeHidden();
+
+    // And it comes back with the game.
+    await app.locator("#btn-resume").click();
+    await expect(app.locator("#screen-game")).toBeVisible();
+    await expect(app.locator("#btn-share")).toBeVisible();
+  });
+
+  test("the log is open on arrival", async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+    // Reference you read mid-turn, so it shouldn't need finding first.
+    await expect(app.locator(".logbox")).toHaveAttribute("open", "");
+    await expect(app.locator("#log")).toBeVisible();
+  });
+
+  test("a live share shows its code in the header", async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+    await app.locator("#btn-share").click();
+    await app.locator("#sh-toggle").click();
+    await app.locator("#sh-close").click();
+
+    const code = await app.locator("#share-code").textContent();
+    await expect(app.locator("#btn-share")).toHaveText(code);
+    await expect(app.locator("#btn-share .dotlive")).toBeVisible();
+  });
+
   test("stopping puts the host back to private", async ({ app }) => {
     await startGame(app, "Zombies Horde");
     await app.locator("#btn-share").click();
@@ -410,7 +465,7 @@ test.describe("sharing a game", () => {
     await app.locator("#sh-toggle").click();
 
     await expect(app.locator("#sh-toggle")).toHaveText("Start sharing");
-    await expect(app.locator("#btn-share")).toHaveText("Share this game");
+    await expect(app.locator("#btn-share")).toHaveText("Share");
     expect(await app.evaluate(() =>
       JSON.parse(localStorage.getItem("horde.share")).on)).toBe(false);
   });
