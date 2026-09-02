@@ -195,15 +195,31 @@ relay, over plain HTTP out and Server-Sent Events back. No account, no API key,
 no library. The trade-off is real and worth stating plainly:
 
 - The board of your game passes through a server neither you nor this project
-  controls, and ntfy holds recent messages briefly so a late joiner can sync.
-- The code is the only thing keeping a game private. It's drawn from a CSPRNG
-  over a 31-character alphabet, so guessing one is impractical, but anyone you
-  give it to can watch.
+  controls, under its uptime, its logging and its retention. ntfy caches recent
+  messages so a late joiner can sync, so the last few snapshots outlive the
+  moment you sent them.
+- The code is the only thing protecting a game, and an ntfy topic is
+  unauthenticated **in both directions**. Anyone holding the code can publish to
+  it as well as read it — a viewer, or anyone you forwarded the link to, could
+  push a fake board that other viewers would render as real. Viewer mode is
+  read-only in the app; it is not read-only on the wire.
+- Guessing a code you didn't hand out is impractical (six characters over a
+  31-character alphabet, from a CSPRNG, is about 900 million), so the exposure
+  is to people you gave it to — which is why the app tells you to treat it like
+  a password rather than a room name.
 - Nothing else is sent — no decklists, no identifiers, and no names beyond the
   survivor names you typed on the setup screen.
 
+There's no clean fix for the write side. Signing snapshots would need a secret
+the viewers also hold, and the code *is* that secret — so it would stop someone
+guessing a topic, who already faces those 900 million, and not the people you
+handed the code to. For a Magic board around one table that's the right place to
+stop; it's documented rather than engineered around.
+
 If that isn't a trade you want, don't press the button: everything else in the
-app still works with no network at all.
+app still works with no network at all. ntfy is also self-hostable, and the
+relay is a single constant (`NTFY`) in `index.html` if you'd rather point it at
+your own.
 
 **What actually crosses the wire.** ntfy caps a message at 4 KB, so a snapshot
 carries Scryfall ids and counts, not cards — the viewer resolves them through the

@@ -1192,7 +1192,7 @@ Tokens: (200)
 
 <dialog id="share-dialog" class="sheet">
   <h3 style="margin:0 0 4px">Share this game</h3>
-  <p class="sub">Read-only. Anyone with the code sees the board, the wave and the counters, and can change nothing.</p>
+  <p class="sub">Viewers get the board, the wave and the counters, with no controls to press. Give the code out the way you'd give out a password.</p>
 
   <div class="codebox" id="share-codebox">
     <span class="tiny muted">Code</span>
@@ -1206,8 +1206,10 @@ Tokens: (200)
   <p class="tiny muted" id="sh-note" style="margin:12px 0 0"></p>
   <p class="tiny muted" style="margin:10px 0 0">
     Sharing sends the board to <b>ntfy.sh</b>, a free public relay, so viewers on other
-    devices can read it. The code is the only thing keeping the game private, and the app
-    can’t share while it’s offline. Nothing is sent until you start.
+    devices can read it. The code is the only thing protecting the game, and it works
+    both ways — anyone holding it can send to the game as well as watch it, so treat it
+    as something you hand to your table and not to a group chat. Nothing is sent until
+    you start, and the app can’t share while it’s offline.
   </p>
   <button class="btn ghost" id="sh-close" style="width:100%; margin-top:12px">Close</button>
 </dialog>
