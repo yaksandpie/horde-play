@@ -30,6 +30,8 @@
     --accent: #c2410c;
     --accent-hot: #ea580c;
     --accent-ink: #fff4ec;
+    --accent-wash: rgba(194, 65, 12, .16);
+    --accent-glow: rgba(234, 88, 12, .55);
     --good: #4d9a72;
     --bad: #b4453a;
     --token: #6d5bd0;
@@ -52,6 +54,8 @@
     --accent: #3f7d43;
     --accent-hot: #5fae5a;
     --accent-ink: #f3fff0;
+    --accent-wash: rgba(63, 125, 67, .2);
+    --accent-glow: rgba(95, 174, 90, .55);
     --token: #a68b3f;
   }
 
@@ -236,13 +240,63 @@
   .cardgrid .slot { container-type: inline-size; }
   .cardgrid.lg { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 
+  /* ---------- Arena: the live action area ---------- */
+
+  .arena {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 10px;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  /* The Horde acting is the loud state; the survivors' turn is the quiet one. */
+  .arena[data-phase="reveal"], .arena[data-phase="combat"] {
+    border-color: var(--accent);
+    box-shadow: var(--shadow), 0 0 44px -20px var(--accent-hot);
+  }
+
+  .arena-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 14px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+  }
+  .arena[data-phase="reveal"] .arena-head,
+  .arena[data-phase="combat"] .arena-head { background: var(--accent-wash); }
+
+  .arena-phase {
+    display: inline-flex; align-items: center; gap: 9px; min-width: 0;
+    font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .arena-phase .pulse {
+    width: 9px; height: 9px; flex: none; border-radius: 50%;
+    background: var(--muted);
+  }
+  .arena[data-phase="reveal"] .pulse,
+  .arena[data-phase="combat"] .pulse {
+    background: var(--accent-hot);
+    animation: pulse 1.8s ease-out infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 var(--accent-glow); }
+    70%, 100% { box-shadow: 0 0 0 9px transparent; }
+  }
+  .arena-round {
+    margin-left: auto; flex: none;
+    font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted);
+  }
+  .arena-round b {
+    font-family: "Cinzel", Georgia, serif; font-size: 15px; color: var(--ink); margin-left: 3px;
+  }
+
   /* ---------- Reveal stage ---------- */
 
   .stage {
     background: radial-gradient(120% 90% at 50% 0%, #24201d 0%, var(--bg-deep) 72%);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 16px;
+    padding: 16px 14px;
   }
   .stage-hero { display: flex; gap: 18px; align-items: flex-start; }
   .stage-hero .slot { width: min(280px, 40vw); flex: none; container-type: inline-size; }
@@ -253,7 +307,7 @@
 
   .target {
     display: inline-flex; align-items: center; gap: 10px;
-    background: rgba(194,65,12,.16); border: 1px solid var(--accent);
+    background: var(--accent-wash); border: 1px solid var(--accent);
     border-radius: 12px; padding: 10px 14px; margin-bottom: 10px;
   }
   .target .who { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 19px; color: #ffb08a; }
@@ -261,16 +315,23 @@
   @keyframes flipin { from { opacity: 0; transform: translateY(10px) scale(.94); } to { opacity: 1; transform: none; } }
   .flipin { animation: flipin .22s ease both; }
 
-  /* ---------- Counters ---------- */
+  /* ---------- Tally (the standing numbers) ---------- */
 
-  .counters { display: grid; grid-template-columns: repeat(auto-fit, minmax(94px, 1fr)); gap: 8px; }
-  .counter {
-    background: var(--surface-2); border: 1px solid var(--line);
-    border-radius: 11px; padding: 9px 10px; text-align: center;
+  .tally {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1px; background: var(--line);
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
   }
-  .counter .n { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 24px; line-height: 1.1; display: block; }
-  .counter .k { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
-  .counter.hot .n { color: #ff9d6e; }
+  .tally .t {
+    display: flex; align-items: baseline; justify-content: center; gap: 6px;
+    padding: 7px 8px; min-width: 0; background: var(--surface);
+  }
+  .tally .n { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 18px; line-height: 1.1; }
+  .tally .k {
+    font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); white-space: nowrap;
+  }
+  .tally .t.hot .n { color: #ff9d6e; }
 
   /* ---------- Players ---------- */
 
@@ -296,17 +357,19 @@
 
   /* ---------- Action tiles ---------- */
 
-  .actions { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; margin-bottom: 14px; }
+  .actions {
+    display: grid; gap: 8px; grid-template-columns: 1fr 1fr;
+    padding: 10px; border-top: 1px solid var(--line);
+  }
 
   .actiontile {
     display: flex; align-items: center; gap: 12px;
-    background: var(--surface); border: 1px solid var(--line);
-    border-radius: var(--radius); padding: 12px 16px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 10px 14px;
     text-align: left; width: 100%;
-    box-shadow: var(--shadow);
     transition: border-color .12s ease, background .12s ease;
   }
-  .actiontile:hover { background: var(--surface-2); border-color: var(--accent); }
+  .actiontile:hover { background: var(--surface-3); border-color: var(--accent); }
   .actiontile:active { transform: translateY(1px); }
   .actiontile svg { width: 26px; height: 26px; flex: none; }
   .actiontile .at-label {
@@ -315,8 +378,10 @@
   }
   .actiontile .at-val {
     font-family: "Cinzel", Georgia, serif; font-weight: 700;
-    font-size: 24px; line-height: 1.15; display: block;
+    font-size: 22px; line-height: 1.15; display: block;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .actiontile > span { min-width: 0; }
   .actiontile .at-hint { margin-left: auto; color: var(--muted); font-size: 20px; line-height: 1; }
   #tile-damage svg { color: var(--accent-hot); }
   #tile-life svg { color: #e0566b; }
@@ -493,7 +558,7 @@
 
   .wave-chip {
     display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(194,65,12,.16); border: 1px solid var(--accent);
+    background: var(--accent-wash); border: 1px solid var(--accent);
     border-radius: 999px; padding: 5px 14px; margin-bottom: 10px;
     font-family: "Cinzel", Georgia, serif; font-weight: 700;
   }
@@ -520,7 +585,7 @@
     text-transform: uppercase; color: var(--muted);
   }
   .rules dd { flex: 1; margin: 0; font-size: 14px; color: var(--ink); }
-  .rulesline { margin: -6px 0 14px; }
+  .rulesline { margin: 8px 2px 14px; }
 
   .bansec { margin-bottom: 16px; }
   .bansec h3 {
@@ -774,47 +839,55 @@ Tokens: (200)
 
   <!-- ================= GAME ================= -->
   <section class="screen" id="screen-game">
-    <div class="counters" style="margin-bottom:14px">
-      <div class="counter hot"><span class="n" id="c-library">0</span><span class="k">Library</span></div>
-      <div class="counter"><span class="n" id="c-board">0</span><span class="k">Creatures</span></div>
-      <div class="counter"><span class="n" id="c-power">0</span><span class="k">Attacking</span></div>
-      <div class="counter"><span class="n" id="c-yard">0</span><span class="k">Graveyard</span></div>
-      <div class="counter"><span class="n" id="c-turn">1</span><span class="k">Round</span></div>
+    <!-- The arena: what the Horde is doing right now, and what you do about it. -->
+    <div class="arena" id="arena" data-phase="survivors">
+      <div class="arena-head">
+        <span class="arena-phase"><i class="pulse" aria-hidden="true"></i><span id="arena-phase-label">Survivors&rsquo; turn</span></span>
+        <span class="arena-round">Round <b id="c-turn">1</b></span>
+      </div>
+
+      <div class="stage" id="stage">
+        <div id="stage-body"></div>
+      </div>
+
+      <div class="actions">
+        <button class="actiontile" id="tile-damage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/>
+            <line x1="13" y1="19" x2="19" y2="13"/>
+            <line x1="16" y1="16" x2="20" y2="20"/>
+            <line x1="19" y1="21" x2="21" y2="19"/>
+          </svg>
+          <span>
+            <span class="at-label">Damage<span class="narrow-hide"> the Horde</span></span>
+            <span class="at-val" id="tile-damage-val">Mill</span>
+          </span>
+          <span class="at-hint" aria-hidden="true">&rsaquo;</span>
+        </button>
+
+        <button class="actiontile" id="tile-life">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 20.5s-7.5-4.6-7.5-9.6A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 3.3c0 5-7.5 9.6-7.5 9.6z"/>
+          </svg>
+          <span>
+            <span class="at-label">Survivors</span>
+            <span class="at-val" id="tile-life-val">0</span>
+          </span>
+          <span class="at-hint" aria-hidden="true">&rsaquo;</span>
+        </button>
+      </div>
     </div>
 
-    <p class="small muted rulesline" id="game-rules"></p>
-
-    <div class="actions">
-      <button class="actiontile" id="tile-damage">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/>
-          <line x1="13" y1="19" x2="19" y2="13"/>
-          <line x1="16" y1="16" x2="20" y2="20"/>
-          <line x1="19" y1="21" x2="21" y2="19"/>
-        </svg>
-        <span>
-          <span class="at-label">Damage<span class="narrow-hide"> the Horde</span></span>
-          <span class="at-val" id="tile-damage-val">Mill</span>
-        </span>
-        <span class="at-hint" aria-hidden="true">&rsaquo;</span>
-      </button>
-
-      <button class="actiontile" id="tile-life">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M12 20.5s-7.5-4.6-7.5-9.6A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 3.3c0 5-7.5 9.6-7.5 9.6z"/>
-        </svg>
-        <span>
-          <span class="at-label">Survivors</span>
-          <span class="at-val" id="tile-life-val">0</span>
-        </span>
-        <span class="at-hint" aria-hidden="true">&rsaquo;</span>
-      </button>
+    <!-- The ledger: reference numbers, deliberately quiet next to the arena. -->
+    <div class="tally">
+      <div class="t hot"><span class="n" id="c-library">0</span><span class="k">Library</span></div>
+      <div class="t"><span class="n" id="c-board">0</span><span class="k">Creatures</span></div>
+      <div class="t"><span class="n" id="c-power">0</span><span class="k">Attacking</span></div>
+      <div class="t"><span class="n" id="c-yard">0</span><span class="k">Graveyard</span></div>
     </div>
 
-    <div class="stage" id="stage">
-      <div id="stage-body"></div>
-    </div>
+    <p class="tiny muted rulesline" id="game-rules"></p>
 
     <div class="panel board-panel">
       <div class="row" style="margin-bottom:8px">
@@ -2377,12 +2450,20 @@ function waveChip(size, castSoFar) {
   return chip;
 }
 
+/* The arena header names whose turn it is, so the stage below can lead with
+   content instead of restating the phase. */
+function setArenaPhase(phase, label) {
+  $("#arena").dataset.phase = phase;
+  $("#arena-phase-label").textContent = label;
+}
+
 function renderStage() {
   const body = $("#stage-body");
   body.textContent = "";
   const btn = $("#btn-action");
 
   if (G.phase === PHASE.SETUP) {
+    setArenaPhase("setup", "Setup");
     body.appendChild(el("h2", "stage-title", "Survivors are digging in"));
     body.appendChild(el("p", "stage-oracle",
       G.setupTurnsLeft + " setup turn" + (G.setupTurnsLeft === 1 ? "" : "s") +
@@ -2392,8 +2473,9 @@ function renderStage() {
   }
 
   if (G.phase === PHASE.SURVIVORS) {
+    setArenaPhase("survivors", "Survivors' turn");
     body.appendChild(waveChip(currentWaveSize(), 0));
-    body.appendChild(el("h2", "stage-title", "Survivors' turn"));
+    body.appendChild(el("h2", "stage-title", "The Horde is holding"));
     body.appendChild(el("p", "stage-oracle",
       "Attack, block, cast. Damage you deal to the Horde goes in the pad and mills it. " +
       "Kill its creatures by tapping them below. The next wave is " + currentWaveSize() + "."));
@@ -2404,12 +2486,14 @@ function renderStage() {
 
   if (G.phase === PHASE.REVEAL) {
     if (!G.revealed.length) {
+      setArenaPhase("reveal", "The Horde is spent");
       body.appendChild(el("h2", "stage-title", "Empty library"));
       body.appendChild(el("p", "stage-oracle",
         "The Horde has nothing left to cast. Clear its board and you've won."));
       btn.textContent = "Continue";
       return;
     }
+    setArenaPhase("reveal", "The Horde casts");
     renderRevealStage(body);
     btn.textContent = "Resolve the wave";
     return;
@@ -2419,13 +2503,21 @@ function renderStage() {
   const power = attackingPower();
   const count = attackers().reduce((n, s) => n + s.count, 0);
   const defenders = creatureCount() - count;
-  body.appendChild(el("h2", "stage-title", "The Horde attacks"));
-  const line = el("p", "stage-type");
-  line.textContent = count
-    ? count + " creature" + (count === 1 ? "" : "s") + " attacking for " + power +
-      (powerIsPartial() ? "+ power (some stats unknown — check the cards)." : " power.")
-    : "Nothing attacks this turn.";
-  body.appendChild(line);
+  setArenaPhase("combat", "The Horde attacks");
+  const creatures = count + " creature" + (count === 1 ? "" : "s");
+  /* Offline imports can have no stats at all, so lead with the count rather
+     than a power total that would read "0+". */
+  const noPower = power === 0 && powerIsPartial();
+  body.appendChild(el("h2", "stage-title",
+    !count ? "Nothing attacks this turn"
+    : noPower ? creatures + " coming at you"
+    : power + (powerIsPartial() ? "+" : "") + " power coming at you"));
+  if (count) {
+    body.appendChild(el("p", "stage-type",
+      noPower ? "Their power isn't known here — read it off the cards."
+      : creatures + " attacking" +
+        (powerIsPartial() ? " — some stats are unknown, check the cards." : ".")));
+  }
   body.appendChild(el("p", "stage-oracle",
     "Everything is goaded and attacking." +
     (defenders ? " " + defenders + " with Defender stayed back to block." : "") +
