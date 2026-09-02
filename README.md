@@ -56,6 +56,10 @@ installs to a home screen and runs offline once a deck has been loaded.
   `u` undoes, `d` opens damage, `l` life, `g` the graveyard.
 - **An end screen that says how it went** — rounds survived, cards left in the
   library, graveyard size, and the biggest the Horde's board ever got.
+- **Watching from another seat.** One screen runs the game; anyone else can open
+  the app on their phone, type the six-character code, and see the same board —
+  card art, the wave, life, poison, the graveyard — with nothing on it to press.
+  Off by default; see [Watching a game](#watching-a-game).
 - **The ban list**, offline and searchable — type a card name to find out whether
   it's legal in a survivor's deck.
 
@@ -169,6 +173,45 @@ connection. If Scryfall can't be reached the app says so and plays with generate
 text cards — readable, just not pretty. Attacking power then shows as `6+?` rather
 than pretending to know stats it doesn't have.
 
+## Watching a game
+
+The Horde runs on one screen, but everyone wants to read the cards. **Share this
+game** on the game screen mints a six-character code; anyone else opens the app,
+taps **Watch a game**, and types it. They get the real board — art and all —
+updated as the host acts, and no controls at all. **Copy link** gives a URL that
+opens the join box with the code already filled in.
+
+A viewer needs a connection: card art is fetched from Scryfall on their own
+device. The host needs one too, and while the host is offline the status says so
+and viewers stop updating rather than drifting silently. Nothing is sent until
+you press start, and stopping tells the viewers rather than leaving them on a
+board that has quietly stopped moving. A reload mid-game keeps the code, so a
+tablet that goes to sleep doesn't strand the table.
+
+**Where the data goes.** The app is a static page with no backend, and there is
+no serverless way to push state between devices — so this one feature borrows
+one. Snapshots go through [ntfy.sh](https://ntfy.sh), a free public pub/sub
+relay, over plain HTTP out and Server-Sent Events back. No account, no API key,
+no library. The trade-off is real and worth stating plainly:
+
+- The board of your game passes through a server neither you nor this project
+  controls, and ntfy holds recent messages briefly so a late joiner can sync.
+- The code is the only thing keeping a game private. It's drawn from a CSPRNG
+  over a 31-character alphabet, so guessing one is impractical, but anyone you
+  give it to can watch.
+- Nothing else is sent — no decklists, no identifiers, and no names beyond the
+  survivor names you typed on the setup screen.
+
+If that isn't a trade you want, don't press the button: everything else in the
+app still works with no network at all.
+
+**What actually crosses the wire.** ntfy caps a message at 4 KB, so a snapshot
+carries Scryfall ids and counts, not cards — the viewer resolves them through the
+same Scryfall endpoint and image cache the deck import already uses. A typical
+board is about 1.4 KB. When a long game won't fit, the snapshot sheds the log
+first, then the graveyard breakdown (its *count* always survives), so the board
+and the counters are the last things to go.
+
 ## Hosting it on GitHub Pages
 
 Pushes to `main` deploy themselves — `.github/workflows/deploy.yml` publishes the
@@ -197,7 +240,8 @@ Pages serves is exactly the app.
   copies keep serving the old shell.
 - **Browser tests** — Playwright drives real Chromium against the real page:
   `tests/rules.spec.mjs` unit-tests the game rules through the `window.__horde`
-  harness the app already exposes, and `tests/app.spec.mjs` plays a game through
+  harness the app already exposes, `tests/share.spec.mjs` covers the live-share
+  wire format and proves a viewer has no controls, and `tests/app.spec.mjs` plays a game through
   the UI — setup, a wave, damage as mill, undo, reload-and-resume, the ban list,
   and an import.
 
