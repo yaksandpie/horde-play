@@ -338,7 +338,7 @@ test.describe("viewer mode", () => {
     // Nothing here can change a game that belongs to another screen.
     await expect(app.locator("#screen-game .sticky-action")).toBeHidden();
     await expect(app.locator("#btn-add-tokens")).toBeHidden();
-    await expect(app.locator("#share-row")).toBeHidden();
+    await expect(app.locator("#btn-share")).toBeHidden();
     await expect(app.locator("#tile-damage")).toBeDisabled();
     await expect(app.locator("#tile-life")).toBeDisabled();
     await expect(app.locator("#btn-home")).toBeHidden();
@@ -376,8 +376,8 @@ test.describe("sharing a game", () => {
   test("nothing is sent until the host says so", async ({ app }) => {
     await startGame(app, "Zombies Horde");
 
-    await expect(app.locator("#share-row")).toBeVisible();
-    await expect(app.locator("#btn-share")).toHaveText("Share this game");
+    await expect(app.locator("#btn-share")).toBeVisible();
+    await expect(app.locator("#btn-share")).toHaveText("Share");
     // No code exists yet, so nothing could have been published.
     expect(await app.evaluate(() => localStorage.getItem("horde.share"))).toBeNull();
   });
@@ -403,6 +403,34 @@ test.describe("sharing a game", () => {
     await expect(app.locator("#btn-share")).toContainText(code);
   });
 
+  test("the header only offers Share on a game the host is running", async ({ app }) => {
+    // Nothing to share from the decks screen, even with a game saved.
+    await expect(app.locator("#btn-share")).toBeHidden();
+
+    await startGame(app, "Zombies Horde");
+    await expect(app.locator("#btn-share")).toBeVisible();
+
+    await app.locator("#btn-home").click();
+    await expect(app.locator("#screen-decks")).toBeVisible();
+    await expect(app.locator("#btn-share")).toBeHidden();
+
+    // And it comes back with the game.
+    await app.locator("#btn-resume").click();
+    await expect(app.locator("#screen-game")).toBeVisible();
+    await expect(app.locator("#btn-share")).toBeVisible();
+  });
+
+  test("a live share shows its code in the header", async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+    await app.locator("#btn-share").click();
+    await app.locator("#sh-toggle").click();
+    await app.locator("#sh-close").click();
+
+    const code = await app.locator("#share-code").textContent();
+    await expect(app.locator("#btn-share")).toHaveText(code);
+    await expect(app.locator("#btn-share .dotlive")).toBeVisible();
+  });
+
   test("stopping puts the host back to private", async ({ app }) => {
     await startGame(app, "Zombies Horde");
     await app.locator("#btn-share").click();
@@ -410,7 +438,7 @@ test.describe("sharing a game", () => {
     await app.locator("#sh-toggle").click();
 
     await expect(app.locator("#sh-toggle")).toHaveText("Start sharing");
-    await expect(app.locator("#btn-share")).toHaveText("Share this game");
+    await expect(app.locator("#btn-share")).toHaveText("Share");
     expect(await app.evaluate(() =>
       JSON.parse(localStorage.getItem("horde.share")).on)).toBe(false);
   });
