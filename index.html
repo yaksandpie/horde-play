@@ -90,6 +90,8 @@
   .screen { display: none; }
   .screen.active { display: block; }
   .hidden { display: none !important; }
+  /* A display rule on a class would otherwise outrank the hidden attribute. */
+  [hidden] { display: none !important; }
 
   /* ---------- Buttons ---------- */
 
@@ -234,6 +236,9 @@
   .cardgrid.board { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
   .board-panel { margin-top: 14px; }
   .cardgrid .slot { container-type: inline-size; }
+  .cardgrid .tokname { font-weight: 700; margin-bottom: -6px; }
+  /* A long token list scrolls inside the sheet, so Back stays where you left it. */
+  .cardgrid.tokengrid { max-height: 42vh; overflow-y: auto; }
   .cardgrid.lg { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 
   /* ---------- Reveal stage ---------- */
@@ -419,6 +424,7 @@
     padding: 9px 11px; font: inherit; width: 100%;
   }
   input.num { width: 84px; text-align: center; }
+  input.num.sm { width: 60px; }
   label.field { display: block; margin-bottom: 12px; }
   label.field > span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; letter-spacing: .04em; text-transform: uppercase; }
 
@@ -928,12 +934,54 @@ Tokens: (200)
   <div id="token-step-pick">
     <h3 style="margin:0 0 4px">Create tokens</h3>
     <p class="muted small" id="token-pick-sub" style="margin:0 0 12px">
-      Cards that make more of a token type already in this deck &mdash; Hare Apparent, Hop to It, Empty
-      the Warrens and the like. Pick which token, then how many.
+      Anything that puts tokens on the battlefield &mdash; Hare Apparent, Empty the Warrens, Skeletal
+      Swarming, Rite of Belzenlok. A manual add: the library, graveyard and wave count are untouched.
     </p>
-    <div class="cardgrid" id="token-pick-grid" style="margin-bottom:6px"></div>
-    <p class="muted small" id="token-pick-empty" hidden>This deck has no token-type cards.</p>
+    <form class="row tight" id="token-search-form" style="margin-bottom:14px">
+      <input class="txt grow" id="token-search" type="search" autocomplete="off"
+             placeholder="Any token &mdash; Skeleton, Demon, Food&hellip;">
+      <button class="btn sm" type="submit">Find</button>
+    </form>
+    <p class="tiny muted" id="token-pick-label" style="margin:0 0 8px">In this deck</p>
+    <div class="cardgrid tokengrid" id="token-pick-grid" style="margin-bottom:6px"></div>
+    <p class="muted small" id="token-pick-empty" hidden>
+      This deck defines no token types &mdash; search above for the one you need.
+    </p>
     <button class="btn ghost" id="token-pick-close" style="width:100%; margin-top:8px">Close</button>
+  </div>
+  <div id="token-step-search" hidden>
+    <h3 style="margin:0 0 4px" id="ts-title"></h3>
+    <p class="muted small" id="ts-sub" style="margin:0 0 12px"></p>
+    <div class="cardgrid tokengrid" id="token-search-grid" style="margin-bottom:10px"></div>
+    <div class="row">
+      <button class="btn ghost grow" id="ts-custom">Make a plain token</button>
+      <button class="btn ghost" id="ts-back">Back</button>
+    </div>
+  </div>
+  <div id="token-step-custom" hidden>
+    <h3 style="margin:0 0 4px">Plain token</h3>
+    <p class="muted small" style="margin:0 0 14px">
+      No art or rules text &mdash; just enough for the board and the attacking total.
+    </p>
+    <label class="field">
+      <span>Name</span>
+      <input class="txt" id="tc-name" placeholder="Skeleton" autocomplete="off">
+    </label>
+    <div class="row tight" style="margin-bottom:12px">
+      <button class="toggle" id="tc-kind" aria-pressed="true">Creature</button>
+      <span class="tiny muted" id="tc-kind-note">Counted in the attacking total</span>
+    </div>
+    <div class="row tight" id="tc-pt" style="margin-bottom:16px">
+      <span class="tiny muted">Power / toughness</span>
+      <span class="grow"></span>
+      <input class="txt num sm" id="tc-power" inputmode="numeric" placeholder="1" aria-label="Power">
+      <span class="muted" aria-hidden="true">/</span>
+      <input class="txt num sm" id="tc-tough" inputmode="numeric" placeholder="1" aria-label="Toughness">
+    </div>
+    <div class="row">
+      <button class="btn primary grow" id="tc-next">Continue</button>
+      <button class="btn ghost" id="tc-back">Back</button>
+    </div>
   </div>
   <div id="token-step-qty" hidden>
     <h3 style="margin:0 0 4px" id="tq-name"></h3>
@@ -1387,6 +1435,22 @@ async function primeImages(cards) {
   }
 }
 
+/* One card's art, on demand: a token created mid-game never went through the
+   import-time cache pass, so it fetches (and stores) its own image. */
+async function primeImage(card) {
+  if (!card.scryfallId || !card.imageUri || objectUrls.has(card.scryfallId)) return;
+  try {
+    let blob = await getImage(card.scryfallId);
+    if (!blob) {
+      const res = await fetch(card.imageUri);
+      if (!res.ok) return;
+      blob = await res.blob();
+      await putImage(card.scryfallId, blob);
+    }
+    objectUrls.set(card.scryfallId, URL.createObjectURL(blob));
+  } catch { /* the generated text face is the fallback */ }
+}
+
 function colorClass(card) {
   const c = card.colors || [];
   if (c.length > 1) return "c-M";
@@ -1786,13 +1850,16 @@ function killFromStack(cardKey, n) {
   persistGame();
 }
 
-/* Cards like Hare Apparent, Hop to It or Empty the Warrens make more of a
-   token type the library already defines. They're a manual add, not a draw:
-   the library, graveyard and wave count are all untouched. */
-function createTokens(cardKey, n) {
+/* Tokens put onto the battlefield by hand — by Hare Apparent and Empty the
+   Warrens, but equally by Skeletal Swarming or Rite of Belzenlok, whose tokens
+   the library never contains. A manual add, not a draw: the library, graveyard
+   and wave count are all untouched. A token type the deck didn't define joins
+   G.cards here, so it stacks, persists and is one tap away next time. */
+function createTokens(card, n) {
   snapshot();
-  addToBoard(cardKey, n);
-  logit("+" + n + " " + G.cards[cardKey].name + (n === 1 ? "" : " token") + ".");
+  if (!G.cards[card.key]) G.cards[card.key] = card;
+  addToBoard(card.key, n);
+  logit("+" + n + " " + card.name + (n === 1 ? " token" : " tokens") + ".");
   persistGame();
 }
 
@@ -2571,7 +2638,8 @@ function openCardDialog(keyOrCard, opts = {}) {
   const hasArt = !!(card.scryfallId && objectUrls.get(card.scryfallId));
   const oracle = $("#cv-oracle");
   oracle.textContent = hasArt ? "" : (card.oracleText ||
-    (card.resolved ? "" : "Not found on Scryfall — play it from the paper card or memory."));
+    (card.handmade ? "Made by hand — no card text to show." :
+     card.resolved ? "" : "Not found on Scryfall — play it from the paper card or memory."));
   oracle.hidden = !oracle.textContent;
 
   const stack = cardDialogKey && G ? G.board.find((s) => s.cardKey === cardDialogKey) : null;
@@ -2584,8 +2652,10 @@ function openCardDialog(keyOrCard, opts = {}) {
   $("#card-dialog").showModal();
 }
 
-let tokenPickKey = null;
+let tokenPickCard = null;
 let tokenQtyInput = "";
+let tokenQtyBack = "pick";  // the step the quantity pad was reached from
+let tokenSearchSeq = 0;     // so a slow search can't overwrite a newer one
 
 function tokenTypes() {
   return Object.values(G.cards)
@@ -2593,36 +2663,149 @@ function tokenTypes() {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function tokenStep(step) {
+  $("#token-step-pick").hidden = step !== "pick";
+  $("#token-step-search").hidden = step !== "search";
+  $("#token-step-custom").hidden = step !== "custom";
+  $("#token-step-qty").hidden = step !== "qty";
+}
+
+/* A tile in either token grid: the face, then what it is and how many are out.
+   Text faces carry their own name and stats, but art faces are 120px wide at
+   the table, so the line under them is where a 1/1 and a 4/4 Skeleton part. */
+function tokenSubtitle(card) {
+  const onBoard = G.board.find((s) => s.cardKey === card.key);
+  const where = onBoard ? onBoard.count + " on the battlefield" : null;
+  // P/T identifies a creature token; anything else leans on its type line.
+  const what = ptString(card) || (categoryOf(card) === "creature" ? null :
+    (card.typeLine || "").replace(/^Token\s+/i, "") || null);
+  if (what && where) return what + " \u00b7 " + where;
+  return what || where || "None on the battlefield yet";
+}
+
+function tokenChoice(card, onPick, nameLine) {
+  const slot = el("div", "slot");
+  const btn = el("button");
+  btn.style.cssText = "all:unset; cursor:pointer; display:block; width:100%;";
+  btn.setAttribute("aria-label", "Create " + card.name + " tokens");
+  btn.appendChild(cardFace(card, { rule: G.waveEnd, badge: false }));
+  slot.appendChild(btn);
+  // Search results get their name spelled out: the printed one on a 120px face
+  // is unreadable, and "Skeleton" and "Skeleton Warrior" are a tap apart.
+  if (nameLine) slot.appendChild(el("p", "tiny tokname", card.name));
+  slot.appendChild(el("p", "tiny muted", tokenSubtitle(card)));
+  btn.addEventListener("click", onPick);
+  return slot;
+}
+
 function openTokenDialog() {
   const grid = $("#token-pick-grid");
   grid.textContent = "";
   const types = tokenTypes();
   $("#token-pick-empty").hidden = types.length > 0;
-  types.forEach((card) => {
-    const onBoard = G.board.find((s) => s.cardKey === card.key);
-    const slot = el("div", "slot");
-    const btn = el("button");
-    btn.style.cssText = "all:unset; cursor:pointer; display:block; width:100%;";
-    btn.setAttribute("aria-label", "Create " + card.name + " tokens");
-    btn.appendChild(cardFace(card, { rule: G.waveEnd, badge: false }));
-    slot.appendChild(btn);
-    slot.appendChild(el("p", "tiny muted", onBoard ? onBoard.count + " on the battlefield" : "None on the battlefield yet"));
-    btn.addEventListener("click", () => openTokenQtyStep(card.key));
-    grid.appendChild(slot);
-  });
-  $("#token-step-pick").hidden = false;
-  $("#token-step-qty").hidden = true;
+  $("#token-pick-label").hidden = types.length === 0;
+  types.forEach((card) => grid.appendChild(tokenChoice(card, () => openTokenQtyStep(card, "pick"))));
+  $("#token-search").value = "";
+  tokenSearchSeq++;
+  tokenStep("pick");
   $("#token-dialog").showModal();
 }
 
-function openTokenQtyStep(cardKey) {
-  tokenPickKey = cardKey;
+/* =========================================================================
+   Tokens the library doesn't define
+
+   Plenty of horde cards make tokens that appear nowhere in the decklist —
+   Skeletal Swarming's Skeletons, Rite of Belzenlok's Demons, Carrot Cake's
+   Food. Those come from Scryfall's token search, with a typed-in plain token
+   as the fallback when there's no connection or no printed token to match.
+   ========================================================================= */
+
+/* Kept apart from the import-time lookup on purpose: a search that fails at
+   the table shouldn't trip networkDead and mark the whole session offline. */
+async function searchTokenCards(term) {
+  const q = term.replace(/[^\w\s',-]/g, " ").trim() + " is:token";
+  const res = await fetch(SCRYFALL + "/cards/search?q=" + encodeURIComponent(q) +
+    "&unique=cards&order=name");
+  if (res.status === 404) return [];      // Scryfall's "no results"
+  if (!res.ok) throw new Error("Scryfall " + res.status);
+  const data = await res.json();
+  const seen = new Set();
+  const out = [];
+  for (const sf of data.data || []) {
+    const card = cardFromScryfall(sf, { name: sf.name });
+    card.isToken = true;                  // a token search returns only tokens
+    // Reprints differ by art alone, which is no help when you're picking one.
+    const dedupe = card.name.toLowerCase() + "|" + card.typeLine + "|" + ptString(card);
+    if (seen.has(dedupe)) continue;
+    seen.add(dedupe);
+    out.push(card);
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+
+async function runTokenSearch(term) {
+  const seq = ++tokenSearchSeq;
+  $("#ts-title").textContent = "\u201c" + term + "\u201d";
+  $("#ts-sub").textContent = "Searching Scryfall\u2026";
+  $("#token-search-grid").textContent = "";
+  tokenStep("search");
+
+  let cards;
+  try {
+    cards = await searchTokenCards(term);
+  } catch {
+    if (seq !== tokenSearchSeq) return;
+    $("#ts-sub").textContent = "Couldn't reach Scryfall. Make a plain token instead.";
+    return;
+  }
+  if (seq !== tokenSearchSeq) return;
+  if (!cards.length) {
+    $("#ts-sub").textContent = "No printed token by that name. Make a plain token instead.";
+    return;
+  }
+  // Art first, then one render: the faces would otherwise pop in one by one.
+  await Promise.all(cards.map(primeImage));
+  if (seq !== tokenSearchSeq) return;
+  $("#ts-sub").textContent = cards.length === 1 ? "One token." : cards.length + " tokens.";
+  const grid = $("#token-search-grid");
+  grid.textContent = "";
+  cards.forEach((card) =>
+    grid.appendChild(tokenChoice(card, () => openTokenQtyStep(card, "search"), true)));
+}
+
+/* Searching for a token the deck already has should feed the existing stack,
+   not stand a second one next to it. */
+function existingTokenLike(card) {
+  const want = card.name.toLowerCase();
+  return Object.values(G.cards).find((c) => c.isToken && c.name.toLowerCase() === want);
+}
+
+function buildPlainToken() {
+  const name = normName($("#tc-name").value);
+  if (!name) { toast("Name the token first"); return null; }
+  const isCreature = $("#tc-kind").getAttribute("aria-pressed") === "true";
+  const card = cardFromEntry({ name, tokenHint: true });
+  card.typeLine = isCreature ? "Token Creature" : "Token";
+  card.handmade = true;   // never looked up, so not a Scryfall miss
+  const power = $("#tc-power").value.trim();
+  const tough = $("#tc-tough").value.trim();
+  // Left blank, P/T stays null and the attacking total honestly reads "n+?".
+  if (isCreature && power !== "" && tough !== "") {
+    card.power = power;
+    card.toughness = tough;
+  }
+  return card;
+}
+
+function openTokenQtyStep(card, from) {
+  tokenPickCard = existingTokenLike(card) || card;
+  tokenQtyBack = from;
   tokenQtyInput = "1";
-  const card = G.cards[cardKey];
-  $("#tq-name").textContent = card.name;
-  $("#tq-sub").textContent = "How many enter the battlefield?";
-  $("#token-step-pick").hidden = true;
-  $("#token-step-qty").hidden = false;
+  $("#tq-name").textContent = tokenPickCard.name;
+  const pt = ptString(tokenPickCard);
+  $("#tq-sub").textContent = (pt ? pt + " \u2014 h" : "H") + "ow many enter the battlefield?";
+  tokenStep("qty");
   renderTokenQty();
 }
 
@@ -2804,9 +2987,34 @@ $("#cv-killall").addEventListener("click", () => {
 // --- token dialog ---
 $("#btn-add-tokens").addEventListener("click", openTokenDialog);
 $("#token-pick-close").addEventListener("click", () => $("#token-dialog").close());
-$("#tq-back").addEventListener("click", () => {
-  $("#token-step-pick").hidden = false;
-  $("#token-step-qty").hidden = true;
+$("#tq-back").addEventListener("click", () => tokenStep(tokenQtyBack));
+$("#token-search-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const term = $("#token-search").value.trim();
+  if (!term) { toast("Type a token name first"); return; }
+  runTokenSearch(term);
+});
+$("#ts-back").addEventListener("click", () => tokenStep("pick"));
+$("#ts-custom").addEventListener("click", () => {
+  $("#tc-name").value = $("#token-search").value.trim();
+  $("#tc-power").value = "";
+  $("#tc-tough").value = "";
+  tokenStep("custom");
+  $("#tc-pt").hidden = $("#tc-kind").getAttribute("aria-pressed") !== "true";
+  $("#tc-name").focus();
+});
+$("#tc-back").addEventListener("click", () => tokenStep("search"));
+$("#tc-kind").addEventListener("click", (e) => {
+  const on = e.currentTarget.getAttribute("aria-pressed") !== "true";
+  e.currentTarget.setAttribute("aria-pressed", String(on));
+  e.currentTarget.textContent = on ? "Creature" : "Other permanent";
+  // A Treasure or a Clue has no P/T, and shouldn't be counted as an attacker.
+  $("#tc-kind-note").textContent = on ? "Counted in the attacking total" : "Not an attacker";
+  $("#tc-pt").hidden = !on;
+});
+$("#tc-next").addEventListener("click", () => {
+  const card = buildPlainToken();
+  if (card) openTokenQtyStep(card, "custom");
 });
 $("#token-qty-pad").addEventListener("click", (e) => {
   const btn = e.target.closest("button");
@@ -2824,8 +3032,8 @@ $("#token-qty-pad").addEventListener("click", (e) => {
 $("#tq-add").addEventListener("click", () => {
   const n = parseInt(tokenQtyInput, 10);
   if (!(n > 0)) { toast("Enter an amount first"); return; }
-  const name = G.cards[tokenPickKey].name;
-  createTokens(tokenPickKey, n);
+  const name = tokenPickCard.name;
+  createTokens(tokenPickCard, n);
   $("#token-dialog").close();
   renderGame();
   toast("+" + n + " " + name);

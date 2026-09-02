@@ -24,10 +24,14 @@ installs to a home screen and runs offline once a deck has been loaded.
   Vampire tokens is one card, not 145. Tap any card — on the board, in a wave, or
   in the import review — to open it full size and actually read it; board cards
   carry kill-one / kill-all from there.
-- **Create tokens.** Cards like Hare Apparent, Hop to It, or Empty the Warrens make
-  more of a token type the library already defines. **+ Create tokens** on the
-  board lets you pick that type and add however many enter — a manual add that
-  doesn't touch the library, graveyard, or wave count.
+- **Create tokens.** **+ Create tokens** on the board takes any token, not just the
+  deck's own. Hare Apparent and Empty the Warrens make more of a type the library
+  already defines — those are one tap. Skeletal Swarming's Skeletons, Rite of
+  Belzenlok's Demons and Carrot Cake's Food are in no decklist, so search for them
+  and they arrive from Scryfall with their real art; offline, or for a token with no
+  printed version, type a plain one (name, creature or not, P/T). Either way it's a
+  manual add that doesn't touch the library, graveyard, or wave count, and the type
+  stays on the list for the rest of the game.
 - **Damage → mill.** A numeric pad; the Horde has no life total. Legendaries milled
   by damage are called out so you can apply the ETB-and-phase-out rule.
 - **Attacks.** Everything is goaded and attacking; `Defender` creatures are held
