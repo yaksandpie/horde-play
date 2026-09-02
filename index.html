@@ -780,6 +780,9 @@ Tokens: (200)
         Haste, goaded, attacking every turn. Only <span class="kw def">Defender</span> can block.
         Tap a stack to kill one or all.
       </p>
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn sm ghost" id="btn-add-tokens">+ Create tokens</button>
+      </div>
       <div class="cardgrid board" id="board"></div>
       <p class="muted small" id="board-empty">Nothing on the battlefield.</p>
     </div>
@@ -865,6 +868,35 @@ Tokens: (200)
     <button class="btn" id="sd-kill1" style="width:100%">Kill one &rarr; graveyard</button>
     <button class="btn" id="sd-killall" style="width:100%">Kill the whole stack</button>
     <button class="btn ghost" id="sd-close" style="width:100%">Cancel</button>
+  </div>
+</dialog>
+
+<dialog id="token-dialog" class="sheet">
+  <div id="token-step-pick">
+    <h3 style="margin:0 0 4px">Create tokens</h3>
+    <p class="muted small" id="token-pick-sub" style="margin:0 0 12px">
+      Cards that make more of a token type already in this deck &mdash; Hare Apparent, Hop to It, Empty
+      the Warrens and the like. Pick which token, then how many.
+    </p>
+    <div class="cardgrid" id="token-pick-grid" style="margin-bottom:6px"></div>
+    <p class="muted small" id="token-pick-empty" hidden>This deck has no token-type cards.</p>
+    <button class="btn ghost" id="token-pick-close" style="width:100%; margin-top:8px">Close</button>
+  </div>
+  <div id="token-step-qty" hidden>
+    <h3 style="margin:0 0 4px" id="tq-name"></h3>
+    <p class="muted small" id="tq-sub" style="margin:0 0 14px"></p>
+    <div class="bignum" id="tq-out">0</div>
+    <div class="pad" id="token-qty-pad">
+      <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
+      <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
+      <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
+      <button data-k="clear">C</button><button data-d="0">0</button>
+      <button data-k="back" aria-label="Backspace">&larr;</button>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn primary grow" id="tq-add">Add</button>
+      <button class="btn ghost" id="tq-back">Back</button>
+    </div>
   </div>
 </dialog>
 
@@ -1684,6 +1716,16 @@ function killFromStack(cardKey, n) {
   persistGame();
 }
 
+/* Cards like Hare Apparent, Hop to It or Empty the Warrens make more of a
+   token type the library already defines. They're a manual add, not a draw:
+   the library, graveyard and wave count are all untouched. */
+function createTokens(cardKey, n) {
+  snapshot();
+  addToBoard(cardKey, n);
+  logit("+" + n + " " + G.cards[cardKey].name + (n === 1 ? "" : " token") + ".");
+  persistGame();
+}
+
 function rerollTarget(index) {
   snapshot();
   const target = pick(G.players);
@@ -2433,6 +2475,52 @@ function openStackDialog(cardKey) {
   $("#stack-dialog").showModal();
 }
 
+let tokenPickKey = null;
+let tokenQtyInput = "";
+
+function tokenTypes() {
+  return Object.values(G.cards)
+    .filter((c) => c.isToken)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function openTokenDialog() {
+  const grid = $("#token-pick-grid");
+  grid.textContent = "";
+  const types = tokenTypes();
+  $("#token-pick-empty").hidden = types.length > 0;
+  types.forEach((card) => {
+    const onBoard = G.board.find((s) => s.cardKey === card.key);
+    const slot = el("div", "slot");
+    const btn = el("button");
+    btn.style.cssText = "all:unset; cursor:pointer; display:block; width:100%;";
+    btn.setAttribute("aria-label", "Create " + card.name + " tokens");
+    btn.appendChild(cardFace(card, { rule: G.waveEnd, badge: false }));
+    slot.appendChild(btn);
+    slot.appendChild(el("p", "tiny muted", onBoard ? onBoard.count + " on the battlefield" : "None on the battlefield yet"));
+    btn.addEventListener("click", () => openTokenQtyStep(card.key));
+    grid.appendChild(slot);
+  });
+  $("#token-step-pick").hidden = false;
+  $("#token-step-qty").hidden = true;
+  $("#token-dialog").showModal();
+}
+
+function openTokenQtyStep(cardKey) {
+  tokenPickKey = cardKey;
+  tokenQtyInput = "1";
+  const card = G.cards[cardKey];
+  $("#tq-name").textContent = card.name;
+  $("#tq-sub").textContent = "How many enter the battlefield?";
+  $("#token-step-pick").hidden = true;
+  $("#token-step-qty").hidden = false;
+  renderTokenQty();
+}
+
+function renderTokenQty() {
+  $("#tq-out").textContent = tokenQtyInput || "0";
+}
+
 let confirmCb = null;
 function confirmDialog(title, body, onYes) {
   $("#cd-title").textContent = title;
@@ -2602,6 +2690,36 @@ $("#sd-killall").addEventListener("click", () => {
   killFromStack(stackDialogKey, stack ? stack.count : 1);
   $("#stack-dialog").close();
   renderGame();
+});
+
+// --- token dialog ---
+$("#btn-add-tokens").addEventListener("click", openTokenDialog);
+$("#token-pick-close").addEventListener("click", () => $("#token-dialog").close());
+$("#tq-back").addEventListener("click", () => {
+  $("#token-step-pick").hidden = false;
+  $("#token-step-qty").hidden = true;
+});
+$("#token-qty-pad").addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const { d, k } = btn.dataset;
+  if (d != null) {
+    if (tokenQtyInput.length < 4) tokenQtyInput = (tokenQtyInput + d).replace(/^0+(?=\d)/, "");
+  } else if (k === "clear") {
+    tokenQtyInput = "";
+  } else if (k === "back") {
+    tokenQtyInput = tokenQtyInput.slice(0, -1);
+  }
+  renderTokenQty();
+});
+$("#tq-add").addEventListener("click", () => {
+  const n = parseInt(tokenQtyInput, 10);
+  if (!(n > 0)) { toast("Enter an amount first"); return; }
+  const name = G.cards[tokenPickKey].name;
+  createTokens(tokenPickKey, n);
+  $("#token-dialog").close();
+  renderGame();
+  toast("+" + n + " " + name);
 });
 
 // --- confirm dialog ---

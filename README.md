@@ -22,6 +22,10 @@ installs to a home screen and runs offline once a deck has been loaded.
   (see below).
 - **Tracks the board.** Token stacks collapse into one tile with a count, so 145
   Vampire tokens is one card, not 145. Tap a stack to kill one or all.
+- **Create tokens.** Cards like Hare Apparent, Hop to It, or Empty the Warrens make
+  more of a token type the library already defines. **+ Create tokens** on the
+  board lets you pick that type and add however many enter — a manual add that
+  doesn't touch the library, graveyard, or wave count.
 - **Damage → mill.** A numeric pad; the Horde has no life total. Legendaries milled
   by damage are called out so you can apply the ETB-and-phase-out rule.
 - **Attacks.** Everything is goaded and attacking; `Defender` creatures are held
