@@ -182,6 +182,65 @@
   .note.warn { border-left-color: #b08a2e; }
   .note.bad { border-left-color: var(--bad); }
 
+  .warn-text { color: #d8a93e; }
+
+  /* ---------- Live share ---------- */
+
+  /* The viewer's standing reminder that this board is someone else's: it sits
+     above the arena for the whole session, so nothing on the screen reads as
+     a control they merely failed to find. */
+  .viewerbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--token);
+    border-radius: 10px;
+    padding: 9px 12px;
+    margin-bottom: 14px;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+  }
+  .viewerbar b { color: var(--ink); }
+  .dotlive {
+    width: 9px; height: 9px; flex: 0 0 9px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+  .dotlive.on {
+    background: var(--good);
+    box-shadow: 0 0 0 3px rgba(77, 154, 114, .18);
+    animation: livepulse 2s ease-in-out infinite;
+  }
+  .dotlive.bad { background: var(--bad); }
+  @keyframes livepulse { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .dotlive.on { animation: none; } }
+
+  .sharerow { margin: -4px 0 14px; }
+  .sharerow .btn.on {
+    border-color: var(--good);
+    color: #9fe0c0;
+  }
+
+  .codebox {
+    background: var(--bg-deep);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .codebox .code {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: .22em;
+    /* The code gets read aloud across a table, so the glyphs have to be
+       unambiguous even before the alphabet drops the lookalikes. */
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--ink);
+    margin-top: 2px;
+  }
+
   /* ---------- Card faces ---------- */
 
   .cardface {
@@ -406,6 +465,9 @@
   }
   .actiontile:hover { background: var(--surface-3); border-color: var(--accent); }
   .actiontile:active { transform: translateY(1px); }
+  .actiontile:disabled { opacity: .55; }
+  .actiontile:disabled:hover { background: var(--surface-2); border-color: var(--line); }
+  .actiontile:disabled .at-hint { visibility: hidden; }
   .actiontile svg { width: 26px; height: 26px; flex: none; }
   .actiontile .at-label {
     font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
@@ -704,6 +766,7 @@
       <div class="row" style="margin-top:14px">
         <button class="btn primary" id="btn-import">Import a decklist</button>
         <button class="btn ghost" id="btn-bans">Ban list</button>
+        <button class="btn ghost" id="btn-watch">Watch a game</button>
         <button class="btn ghost" id="btn-resume" hidden>Resume game in progress</button>
       </div>
     </div>
@@ -901,6 +964,13 @@ Tokens: (200)
 
   <!-- ================= GAME ================= -->
   <section class="screen" id="screen-game">
+    <!-- Only up for a viewer, who is watching someone else's table and can change nothing. -->
+    <div class="viewerbar" id="viewer-bar" hidden>
+      <span class="dotlive" id="viewer-dot" aria-hidden="true"></span>
+      <span class="grow"><b>Watching</b> <span id="viewer-code"></span> &mdash; <span id="viewer-status">connecting&hellip;</span></span>
+      <button class="btn sm ghost" id="btn-viewer-leave">Leave</button>
+    </div>
+
     <!-- The arena: what the Horde is doing right now, and what you do about it. -->
     <div class="arena" id="arena" data-phase="survivors">
       <div class="arena-head">
@@ -953,6 +1023,11 @@ Tokens: (200)
 
     <p class="tiny muted rulesline" id="game-rules"></p>
 
+    <div class="row tight sharerow" id="share-row">
+      <button class="btn sm ghost" id="btn-share">Share this game</button>
+      <span class="tiny muted" id="share-status"></span>
+    </div>
+
     <div class="panel board-panel">
       <div class="row" style="margin-bottom:8px">
         <h2 style="margin:0">The Horde&rsquo;s board</h2>
@@ -961,7 +1036,8 @@ Tokens: (200)
       </div>
       <p class="tiny muted" style="margin:-2px 0 12px">
         Haste, goaded, attacking every turn. Only <span class="kw def">Defender</span> can block.
-        Tap a stack to kill one or all.
+        <span id="board-hint-host">Tap a stack to kill one or all.</span>
+        <span id="board-hint-viewer" hidden>Tap a stack to read it.</span>
       </p>
       <div class="row" style="margin-bottom:12px">
         <button class="btn sm ghost" id="btn-add-tokens">+ Create tokens</button>
@@ -1178,6 +1254,48 @@ Tokens: (200)
   <button class="btn ghost" id="yd-close" style="width:100%; margin-top:10px">Close</button>
 </dialog>
 
+<dialog id="share-dialog" class="sheet">
+  <h3 style="margin:0 0 4px">Share this game</h3>
+  <p class="sub">Viewers get the board, the wave and the counters, with no controls to press. Give the code out the way you'd give out a password.</p>
+
+  <div class="codebox" id="share-codebox">
+    <span class="tiny muted">Code</span>
+    <div class="code" id="share-code">------</div>
+  </div>
+
+  <div class="row" style="margin-top:14px">
+    <button class="btn primary grow" id="sh-toggle">Start sharing</button>
+    <button class="btn ghost" id="sh-copy">Copy link</button>
+  </div>
+  <p class="tiny muted" id="sh-note" style="margin:12px 0 0"></p>
+  <p class="tiny muted" style="margin:10px 0 0">
+    Sharing sends the board to <b>ntfy.sh</b>, a free public relay, so viewers on other
+    devices can read it. The code is the only thing protecting the game, and it works
+    both ways — anyone holding it can send to the game as well as watch it, so treat it
+    as something you hand to your table and not to a group chat. Nothing is sent until
+    you start, and the app can’t share while it’s offline.
+  </p>
+  <button class="btn ghost" id="sh-close" style="width:100%; margin-top:12px">Close</button>
+</dialog>
+
+<dialog id="join-dialog" class="sheet">
+  <h3 style="margin:0 0 4px">Watch a game</h3>
+  <p class="sub">Type the code from the screen running the game. You’ll see its board; you won’t be able to touch it.</p>
+  <label class="field">
+    <span>Game code</span>
+    <input id="join-code" type="text" inputmode="latin" autocomplete="off"
+           autocapitalize="characters" spellcheck="false" maxlength="7" placeholder="e.g. K7P2QM">
+  </label>
+  <p class="tiny warn-text" id="join-error" hidden></p>
+  <div class="row" style="margin-top:14px">
+    <button class="btn primary grow" id="join-go">Watch</button>
+    <button class="btn ghost" id="join-close">Cancel</button>
+  </div>
+  <p class="tiny muted" style="margin:12px 0 0">
+    Card art is fetched from Scryfall on this device, so a viewer needs a connection.
+  </p>
+</dialog>
+
 <dialog id="confirm-dialog">
   <h3 style="margin:0 0 6px" id="cd-title"></h3>
   <p class="muted small" id="cd-body" style="margin:0 0 16px"></p>
@@ -1260,10 +1378,13 @@ function loadGame() {
   catch { return null; }
 }
 function persistGame() {
+  if (viewerMode) return;  // a viewer is holding someone else's game
   try {
     if (G) localStorage.setItem(LS_GAME, JSON.stringify(G));
     else localStorage.removeItem(LS_GAME);
   } catch { /* a full quota shouldn't interrupt a game in progress */ }
+  if (G) shareBroadcast();
+  else if (shareOn) shareStop();
 }
 
 const IDB_NAME = "horde-cards";
@@ -2266,7 +2387,7 @@ function checkEnd() {
 
 function showScreen(id) {
   $$(".screen").forEach((s) => s.classList.toggle("active", s.id === id));
-  $("#btn-home").hidden = id === "screen-decks";
+  $("#btn-home").hidden = id === "screen-decks" || viewerMode;
   if (id === "screen-decks") applyDeckTheme(null);
   setWakeLock(id === "screen-game");
   window.scrollTo(0, 0);
@@ -2782,6 +2903,7 @@ async function resumeGame() {
   millInput = "";
   applyDeckTheme(allDecks().find((d) => d.id === G.deckId));
   await primeImages(Object.values(G.cards));
+  if (shareWasOn) { shareWasOn = false; shareStart(); }
   renderGame();
   showScreen("screen-game");
 }
@@ -2797,7 +2919,7 @@ function renderGame() {
   $("#c-library").textContent = G.library.length;
   $("#c-board").textContent = creatureCount();
   $("#c-power").textContent = attackingPower() + (powerIsPartial() ? "+?" : "");
-  $("#c-yard").textContent = G.graveyard.length;
+  $("#c-yard").textContent = yardTotal();
   $("#c-turn").textContent = G.turn;
   $("#game-rules").textContent = rulesetOfGame(G).name + " — waves end on " +
     waveEndText(G.waveEnd) + ", " + wavePatternText(G.wavePattern) + " per turn.";
@@ -2821,6 +2943,7 @@ function renderGame() {
   renderStage();
   renderBoard();
   renderLog();
+  renderShare();
 }
 
 function waveChip(size, castSoFar) {
@@ -2956,9 +3079,11 @@ function renderRevealStage(body) {
     t.appendChild(el("span", "small muted",
       spellIdxs.length > 1 ? G.cards[G.revealed[idx]].name : "Random target"));
     t.appendChild(el("span", "who", target.name));
-    const re = el("button", "btn sm ghost", "Re-roll");
-    re.addEventListener("click", () => { rerollTarget(idx); renderGame(); });
-    t.appendChild(re);
+    if (!viewerMode) {
+      const re = el("button", "btn sm ghost", "Re-roll");
+      re.addEventListener("click", () => { rerollTarget(idx); renderGame(); });
+      t.appendChild(re);
+    }
     meta.appendChild(t);
   }
 
@@ -3006,9 +3131,17 @@ function renderBoard() {
    with a count. Worth having on tap \u2014 plenty of horde cards care about it
    (Grave Betrayal, Footbottom Feast, Unbreathing Horde), and it's otherwise the
    one part of the game state with no way to look at it. */
+function yardTotal() {
+  return G.yardCount != null ? G.yardCount : G.graveyard.length;
+}
+
 function yardStacks() {
   const counts = new Map();
-  for (const key of G.graveyard) counts.set(key, (counts.get(key) || 0) + 1);
+  // Skip anything with no card behind it: a viewer whose snapshot had to drop
+  // the breakdown still has a count, and sorting on a missing name would throw.
+  for (const key of G.graveyard) {
+    if (G.cards[key]) counts.set(key, (counts.get(key) || 0) + 1);
+  }
   return Array.from(counts, ([cardKey, count]) => ({ cardKey, count }))
     .sort((a, b) => b.count - a.count ||
       G.cards[a.cardKey].name.localeCompare(G.cards[b.cardKey].name));
@@ -3018,11 +3151,15 @@ function renderYard() {
   const stacks = yardStacks();
   const grid = $("#yd-grid");
   grid.textContent = "";
-  $("#yd-empty").hidden = stacks.length > 0;
+  const total = yardTotal();
+  $("#yd-empty").hidden = stacks.length > 0 || total > 0;
   $("#yd-sub").textContent = stacks.length
-    ? G.graveyard.length + " card" + (G.graveyard.length === 1 ? "" : "s") + " \u00b7 " +
+    ? total + " card" + (total === 1 ? "" : "s") + " \u00b7 " +
       stacks.length + " distinct \u00b7 " + G.library.length + " left in the library"
-    : G.library.length + " cards left in the library.";
+    : total
+      // A viewer on a big board: the count came through, the cards didn't.
+      ? total + " cards, too many to send to a viewer \u2014 look at the game screen."
+      : G.library.length + " cards left in the library.";
   for (const stack of stacks) {
     grid.appendChild(cardSlot(G.cards[stack.cardKey],
       { count: stack.count, rule: G.waveEnd },
@@ -3053,7 +3190,7 @@ function renderEnd() {
   const rows = [
     [G.turn - 1, "Rounds"],
     [G.library.length, "Left in library"],
-    [G.graveyard.length, "Graveyard"],
+    [yardTotal(), "Graveyard"],
     [G.peakCreatures || 0, "Peak board"],
   ];
   for (const [n, k] of rows) {
@@ -3062,6 +3199,8 @@ function renderEnd() {
     box.appendChild(el("span", "k", k));
     stats.appendChild(box);
   }
+  $("#btn-again").hidden = viewerMode;
+  $("#btn-end-home").textContent = viewerMode ? "Stop watching" : "Back to decks";
   showScreen("screen-end");
 }
 
@@ -3105,17 +3244,20 @@ function openCardDialog(keyOrCard, opts = {}) {
    correction. Redrawn in place rather than only on open, so tapping +1 a few
    times reads back the count it's building. */
 function renderCardActions() {
-  const stack = findStack(cardDialogStackId);
+  /* What the tile is, and what may be done to it, are different questions for
+     a viewer: they can read a stack's counters, they just can't change them. */
+  const shown = findStack(cardDialogStackId);
+  const stack = viewerMode ? null : shown;
   $("#cv-actions").hidden = !stack;
   const line = $("#cv-counters");
-  line.hidden = !stack || !hasCounters(stack);
+  line.hidden = !shown || !hasCounters(shown);
+  if (hasCounters(shown)) {
+    const pt = effectivePT(shown);
+    line.textContent = countersLabel(shown) +
+      (pt ? " — " + (shown.count === 1 ? "a " : "each one a ") + pt.power + "/" + pt.toughness : "");
+  }
   if (!stack) return;
   const card = G.cards[stack.cardKey];
-  if (hasCounters(stack)) {
-    const pt = effectivePT(stack);
-    line.textContent = countersLabel(stack) +
-      (pt ? " — " + (stack.count === 1 ? "a " : "each one a ") + pt.power + "/" + pt.toughness : "");
-  }
   // Only tokens: a printed creature comes out of the library, so making a
   // second one by hand would be inventing a card the deck doesn't hold.
   $("#cv-qty").hidden = !card.isToken;
@@ -3439,6 +3581,531 @@ function confirmDialog(title, body, onYes) {
 }
 
 /* =========================================================================
+   Live share
+
+   Everyone is sitting at the same table, but only one screen is running the
+   game. This lets the others watch it from their own phones: the host pushes a
+   snapshot of the board after every action, viewers read it and render the
+   same game screen with nothing on it to press.
+
+   There is no server here — the app is a static page — so the snapshots go
+   through ntfy.sh, a free public pub/sub relay that speaks plain HTTP and
+   Server-Sent Events. That means no account, no key and no library, at the
+   price of a stranger's server seeing the board of a Magic game. The room code
+   is the only thing keeping it private, so it is drawn from a CSPRNG.
+
+   Two things shape the wire format. ntfy caps a message at 4 KB, and a
+   snapshot after every action shouldn't be a card database. So the wire
+   carries Scryfall ids and counts, and the viewer resolves them to real cards
+   through the same /cards/collection endpoint and image cache the import
+   already uses. What crosses the wire is the game, not the cards.
+   ========================================================================= */
+
+const NTFY = "https://ntfy.sh";
+const SHARE_V = 1;
+const SHARE_MAX = 3800;        // ntfy's own cap is 4096; leave room for framing
+const SHARE_DEBOUNCE = 900;    // a burst of taps is one publish
+const SHARE_HEARTBEAT = 20000; // so a viewer joining mid-game syncs promptly
+const SHARE_LOG = 10;          // log entries a viewer gets
+/* No 0/O/1/I/L: this gets read out loud across a table. */
+const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const CODE_LEN = 6;
+
+function makeCode() {
+  const bytes = new Uint8Array(CODE_LEN);
+  crypto.getRandomValues(bytes);
+  let out = "";
+  // Rejection-free because 256 % 31 != 0 only skews by ~1%, which costs
+  // nothing here — this is a room code, not a key.
+  for (const b of bytes) out += CODE_ALPHABET[b % CODE_ALPHABET.length];
+  return out;
+}
+
+function topicFor(code) { return "hordeplay-" + code.toLowerCase(); }
+
+const utf8 = new TextEncoder();
+const byteLen = (str) => utf8.encode(str).length;
+
+/* ---- The wire format ----
+   Keys are short because the 4 KB cap is real: a 40-stack board with a full
+   graveyard and a log tail is most of the budget on its own. */
+
+/* A card is identified by its Scryfall id where it has one. Everything else —
+   an offline import, a token typed in by hand — has no shared identity, so it
+   travels inline under a synthetic ref. */
+function shareRefs(G) {
+  const refOf = new Map();   // host card key -> wire ref
+  const inline = [];         // compact cards the viewer can't look up
+  let n = 0;
+  for (const [key, card] of Object.entries(G.cards)) {
+    if (card.scryfallId) { refOf.set(key, card.scryfallId); continue; }
+    const ref = "x" + (n++);
+    refOf.set(key, ref);
+    inline.push([ref, card.name, card.typeLine || "", card.oracleText || "",
+      card.power, card.toughness, card.isToken ? 1 : 0, card.isLegendary ? 1 : 0,
+      card.hasDefender ? 1 : 0, (card.colors || []).join(""), card.rarity || "",
+      card.catHint || "", card.resolved ? 1 : 0, card.handmade ? 1 : 0]);
+  }
+  return { refOf, inline };
+}
+
+function stacksOf(keys, refOf) {
+  const counts = new Map();
+  for (const key of keys) {
+    const ref = refOf.get(key);
+    if (ref) counts.set(ref, (counts.get(ref) || 0) + 1);
+  }
+  return Array.from(counts, ([ref, count]) => [ref, count]);
+}
+
+function encodeSnapshot(G) {
+  const { refOf, inline } = shareRefs(G);
+  const ref = (key) => refOf.get(key);
+  const inlineByRef = new Map(inline.map((c) => [c[0], c]));
+
+  const snap = {
+    v: SHARE_V,
+    dn: G.deckName || "",
+    t: G.turn, hz: G.hordeTurn, ph: G.phase, su: G.setupTurnsLeft,
+    li: G.life, po: G.poison, pl: G.poisonLimit,
+    we: G.waveEnd, wp: G.wavePattern, lr: G.legendaryRule, rs: G.ruleset,
+    pk: G.peakCreatures,
+    lb: G.library.length,
+    gn: G.graveyard.length,
+    pj: G.players.map((p) => [p.id, p.name]),
+    /* A third element only when there are counters: most tiles have none, and
+       every byte here is a byte the 4 KB budget doesn't have. */
+    bd: G.board.map((st) => {
+      const c = normCounters(st.counters);
+      const row = [ref(st.cardKey), st.count];
+      if (Object.keys(c).length) row.push(c);
+      return row;
+    }).filter((e) => e[0]),
+    // Not filtered: spellTargets indexes into this, so a gap would retarget
+    // every spell after it. Every revealed key is a key of G.cards.
+    rv: G.revealed.map(ref),
+    ml: G.milledLegends.map(ref).filter(Boolean),
+    sp: G.spellTargets,
+    ov: G.over || null,
+    gy: stacksOf(G.graveyard, refOf),
+    lg: G.log.slice(-SHARE_LOG).map((e) => [e.t, e.msg]),
+  };
+
+  /* A card with no Scryfall id can't be looked up, so it has to travel whole.
+     That makes the inline set a function of what the snapshot still carries —
+     recomputed after each cut, or an offline import with a big graveyard would
+     keep paying for cards the viewer is no longer being shown. */
+  const withInline = () => {
+    const used = new Set();
+    for (const [r] of snap.bd) used.add(r);
+    for (const r of snap.rv) used.add(r);
+    for (const r of snap.ml) used.add(r);
+    for (const [r] of snap.gy) used.add(r);
+    snap.ic = [...used].map((r) => inlineByRef.get(r)).filter(Boolean);
+    return byteLen(JSON.stringify(snap));
+  };
+
+  /* Over budget, shed the least load-bearing part first. The board, the wave
+     and the counters are the point; the log and the graveyard breakdown are
+     reference, and the graveyard's size survives either way as gn. A snapshot
+     still too big after that is one the viewer can't be given, and saying so
+     beats sending a truncated board. */
+  let size = withInline();
+  if (size > SHARE_MAX) { snap.lg = []; size = withInline(); }
+  if (size > SHARE_MAX) { snap.gy = []; size = withInline(); }
+  return size > SHARE_MAX ? null : snap;
+}
+
+/* The inverse: a game state that every render function already knows how to
+   draw. Cards arrive separately (Scryfall, or inline), so this takes the
+   dictionary it should use. */
+function decodeSnapshot(snap, cards) {
+  const expand = (stacks) => {
+    const out = [];
+    for (const [ref, count] of stacks || []) {
+      for (let i = 0; i < count; i++) out.push(ref);
+    }
+    return out;
+  };
+  return {
+    deckId: null,
+    deckName: snap.dn,
+    cards,
+    // Face-down cards with no identity: only the count is ever read.
+    library: new Array(snap.lb).fill(null),
+    graveyard: expand(snap.gy),
+    /* Sent separately because the breakdown is the first thing dropped when a
+       snapshot won't fit, and the tally should still read true when it is. */
+    yardCount: snap.gn,
+    board: (snap.bd || []).map(([ref, count, counters]) =>
+      counters ? { cardKey: ref, count, counters } : { cardKey: ref, count }),
+    revealed: snap.rv || [],
+    spellTargets: snap.sp || {},
+    milledLegends: snap.ml || [],
+    players: (snap.pj || []).map(([id, name]) => ({ id, name })),
+    life: snap.li, poison: snap.po, poisonLimit: snap.pl,
+    ruleset: snap.rs, waveEnd: snap.we, wavePattern: snap.wp,
+    legendaryRule: snap.lr,
+    peakCreatures: snap.pk, hordeTurn: snap.hz, turn: snap.t,
+    setupTurnsLeft: snap.su, phase: snap.ph,
+    log: (snap.lg || []).map(([t, msg]) => ({ t, msg })),
+    over: snap.ov || null,
+  };
+}
+
+function cardFromInline(c) {
+  const [, name, typeLine, oracleText, power, toughness, isToken, isLegendary,
+    hasDefender, colors, rarity, catHint, resolved, handmade] = c;
+  return {
+    key: c[0], name, scryfallId: null, isToken: !!isToken, rarity: rarity || null,
+    isLegendary: !!isLegendary, hasDefender: !!hasDefender, typeLine,
+    manaCost: "", oracleText, power, toughness,
+    colors: colors ? colors.split("") : [], imageUri: null,
+    // Without catHint a card with no type line stops counting as a creature.
+    catHint: catHint || null, resolved: !!resolved, handmade: !!handmade,
+  };
+}
+
+/* ---- Host side ---- */
+
+const LS_SHARE = "horde.share";
+
+/* A tablet that sleeps or a tab that reloads shouldn't strand everyone
+   watching, so the code and whether it was live outlive the page. */
+function loadShare() {
+  try { return JSON.parse(localStorage.getItem(LS_SHARE)) || null; }
+  catch { return null; }
+}
+function persistShare() {
+  try {
+    if (shareCode) localStorage.setItem(LS_SHARE, JSON.stringify({ code: shareCode, on: shareOn }));
+    else localStorage.removeItem(LS_SHARE);
+  } catch { /* the game matters more than remembering the code */ }
+}
+
+let shareCode = null;
+let shareOn = false;
+let shareWasOn = false;   // sharing was live when the page went away
+let shareTimer = null;
+let shareBeat = null;
+let sharePending = false;
+let shareError = "";
+
+function shareStart() {
+  if (!shareCode) shareCode = makeCode();
+  shareOn = true;
+  shareError = "";
+  persistShare();
+  shareBroadcast(true);
+  clearInterval(shareBeat);
+  /* Also what lets a viewer who joins mid-game see the board without waiting
+     for the host to do something. */
+  shareBeat = setInterval(() => shareBroadcast(true), SHARE_HEARTBEAT);
+  renderShare();
+}
+
+function shareStop(opts = {}) {
+  const was = shareOn;
+  shareOn = false;
+  clearTimeout(shareTimer);
+  clearInterval(shareBeat);
+  shareTimer = shareBeat = null;
+  persistShare();
+  // Tell the viewers, rather than leaving them on a board that has quietly
+  // stopped moving.
+  if (was && !opts.quiet) sharePost({ v: SHARE_V, end: 1 });
+  renderShare();
+}
+
+/* Called from persistGame(), so every action that changes the game publishes
+   without anything having to remember to. Debounced: a run of taps on the
+   damage pad is one snapshot, not six. */
+function shareBroadcast(now) {
+  if (!shareOn || !G || viewerMode) return;
+  if (now) { clearTimeout(shareTimer); shareTimer = null; sharePush(); return; }
+  if (shareTimer) { sharePending = true; return; }
+  sharePush();
+  shareTimer = setTimeout(() => {
+    shareTimer = null;
+    if (sharePending) { sharePending = false; shareBroadcast(); }
+  }, SHARE_DEBOUNCE);
+}
+
+async function sharePush() {
+  const snap = encodeSnapshot(G);
+  if (!snap) {
+    shareError = "This board is too big to share.";
+    renderShare();
+    return;
+  }
+  await sharePost(snap);
+}
+
+async function sharePost(payload) {
+  if (!shareCode) return;
+  try {
+    // Deliberately no Content-Type: that keeps this a CORS-simple request, so
+    // every snapshot is one round trip instead of a preflight and a POST.
+    const res = await fetch(NTFY + "/" + topicFor(shareCode), {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error("relay " + res.status);
+    if (shareError) { shareError = ""; renderShare(); }
+  } catch {
+    // A dropped snapshot isn't a dropped game: the next action, or the
+    // heartbeat, catches viewers back up.
+    shareError = navigator.onLine
+      ? "Can't reach the relay — retrying."
+      : "Offline — viewers are paused.";
+    renderShare();
+  }
+}
+
+function shareLink() {
+  return location.origin + location.pathname + "#watch=" + shareCode;
+}
+
+function renderShare() {
+  const row = $("#share-row");
+  if (row) row.hidden = viewerMode || !G;
+  const btn = $("#btn-share");
+  if (btn) {
+    btn.textContent = shareOn ? "Sharing · " + shareCode : "Share this game";
+    btn.classList.toggle("on", shareOn);
+  }
+  const status = $("#share-status");
+  if (status) status.textContent = shareOn ? (shareError || "Viewers can watch live.") : "";
+  const toggle = $("#sh-toggle");
+  if (toggle) toggle.textContent = shareOn ? "Stop sharing" : "Start sharing";
+  const code = $("#share-code");
+  if (code) code.textContent = shareCode || "------";
+  const note = $("#sh-note");
+  if (note) {
+    note.textContent = !shareOn ? ""
+      : shareError || "Live. Viewers see every action as you take it.";
+    note.classList.toggle("warn-text", !!shareError);
+  }
+}
+
+/* ---- Viewer side ---- */
+
+let viewerMode = false;
+let viewerSource = null;
+let viewerCode = "";
+let viewerCards = {};       // wire ref -> card object, kept across snapshots
+let viewerPending = null;   // the newest snapshot, while cards are resolving
+let viewerResolving = false;
+let viewerSeen = false;
+let viewerLastAt = 0;
+let viewerWatchdog = null;
+let viewerEnded = false;
+
+/* The host's heartbeat is the only proof this is still live. Without a
+   watchdog a closed tab across the table looks exactly like a quiet turn. */
+const VIEWER_STALE = SHARE_HEARTBEAT * 3 + 10000;
+
+function viewerTick() {
+  if (!viewerMode || viewerEnded) return;
+  if (viewerSeen && Date.now() - viewerLastAt > VIEWER_STALE) {
+    viewerStatus("no updates — the game may have stopped", "bad");
+  }
+}
+
+async function viewerJoin(code) {
+  viewerLeave({ keepScreen: true });
+  viewerMode = true;
+  viewerCode = code;
+  viewerCards = {};
+  viewerSeen = false;
+  viewerEnded = false;
+  viewerLastAt = Date.now();
+  G = null;
+  applyViewerMode();
+  $("#viewer-code").textContent = code;
+  viewerStatus("connecting…", "");
+  viewerWaiting();
+  showScreen("screen-game");
+  clearInterval(viewerWatchdog);
+  viewerWatchdog = setInterval(viewerTick, 15000);
+
+  /* ntfy keeps recent messages, so a viewer joining mid-game gets the last
+     snapshot immediately rather than waiting for the host's next action. Each
+     message is a whole state, so replaying a few in order is harmless. */
+  try {
+    viewerSource = new EventSource(
+      NTFY + "/" + topicFor(code) + "/sse?since=2m");
+  } catch {
+    viewerStatus("couldn't connect", "bad");
+    return;
+  }
+  viewerSource.addEventListener("message", (ev) => {
+    let snap;
+    try {
+      const env = JSON.parse(ev.data);
+      if (env.event !== "message" || !env.message) return;
+      snap = JSON.parse(env.message);
+    } catch { return; }
+    if (!snap || snap.v !== SHARE_V) {
+      viewerStatus("this game is running a different version of the app", "bad");
+      return;
+    }
+    viewerLastAt = Date.now();
+    viewerEnded = false;
+    if (snap.end) {
+      viewerEnded = true;
+      viewerStatus("the host stopped sharing", "bad");
+      return;
+    }
+    viewerApply(snap);
+  });
+  viewerSource.addEventListener("error", () => {
+    // EventSource reconnects on its own; say so rather than looking dead.
+    if (!viewerSeen) viewerStatus("waiting for the game…", "");
+    else viewerStatus("reconnecting…", "bad");
+  });
+}
+
+function viewerLeave(opts = {}) {
+  if (viewerSource) { viewerSource.close(); viewerSource = null; }
+  clearInterval(viewerWatchdog);
+  viewerWatchdog = null;
+  viewerEnded = false;
+  viewerMode = false;
+  viewerCode = "";
+  viewerPending = null;
+  viewerCards = {};
+  applyViewerMode();
+  if (!opts.keepScreen) {
+    G = null;
+    primeImages([]);   // drop the watched game's art rather than leak the URLs
+    renderDecks();
+    showScreen("screen-decks");
+  }
+}
+
+/* Between joining and the first snapshot there is no game to render, so the
+   game screen would otherwise still be showing whatever was on it last. */
+function viewerWaiting() {
+  setArenaPhase("setup", "Watching");
+  const body = $("#stage-body");
+  body.textContent = "";
+  body.appendChild(el("h2", "stage-title", "Waiting for the game"));
+  body.appendChild(el("p", "stage-oracle",
+    "Nothing has come through on " + viewerCode + " yet. The board shows up here " +
+    "as soon as the other screen sends it — check the code if this doesn't clear."));
+  $("#board").textContent = "";
+  $("#board-empty").hidden = false;
+  $("#board-summary").textContent = "";
+  $("#log").textContent = "";
+  $("#game-rules").textContent = "";
+  for (const id of ["#c-library", "#c-board", "#c-power", "#c-yard", "#c-turn"]) {
+    $(id).textContent = "–";
+  }
+  $("#tile-life-val").textContent = "–";
+}
+
+function viewerStatus(text, cls) {
+  const label = $("#viewer-status");
+  if (label) label.textContent = text;
+  const dot = $("#viewer-dot");
+  if (dot) {
+    dot.classList.toggle("on", cls === "");
+    dot.classList.toggle("bad", cls === "bad");
+  }
+}
+
+/* Snapshots can arrive faster than Scryfall answers, so a resolve in flight
+   parks the newest one rather than queueing every one of them. */
+function viewerApply(snap) {
+  viewerPending = snap;
+  if (viewerResolving) return;
+  viewerResolveLoop().catch(() => viewerStatus("couldn't read that update", "bad"));
+}
+
+async function viewerResolveLoop() {
+  viewerResolving = true;
+  try {
+    while (viewerPending) {
+      const snap = viewerPending;
+      viewerPending = null;
+      await viewerResolve(snap);
+      if (!viewerMode) return;
+      G = decodeSnapshot(snap, viewerCards);
+      viewerSeen = true;
+      viewerStatus("live", "");
+      renderGame();
+    }
+  } finally {
+    viewerResolving = false;
+  }
+}
+
+/* Fill viewerCards with everything this snapshot names. Inline cards come with
+   the snapshot; the rest are Scryfall ids resolved through the same endpoint
+   and image cache the import uses, so a viewer gets real art. */
+async function viewerResolve(snap) {
+  for (const c of snap.ic || []) {
+    if (!viewerCards[c[0]]) viewerCards[c[0]] = cardFromInline(c);
+  }
+
+  const want = new Set();
+  for (const [ref] of snap.bd || []) want.add(ref);
+  for (const ref of snap.rv || []) want.add(ref);
+  for (const ref of snap.ml || []) want.add(ref);
+  for (const [ref] of snap.gy || []) want.add(ref);
+  const missing = [...want].filter((r) => r && !viewerCards[r] && !r.startsWith("x"));
+
+  for (let i = 0; i < missing.length; i += COLLECTION_CHUNK) {
+    const slice = missing.slice(i, i + COLLECTION_CHUNK);
+    try {
+      const data = await sfJSON(SCRYFALL + "/cards/collection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifiers: slice.map((id) => ({ id })) }),
+      });
+      for (const sf of data.data || []) {
+        // Keyed by the wire ref, so the board's cardKeys resolve unchanged.
+        viewerCards[sf.id] = Object.assign(cardFromScryfall(sf, { name: sf.name }),
+          { key: sf.id });
+      }
+    } catch { /* an unresolved card still renders, just without art */ }
+    await sleep(THROTTLE_MS);
+  }
+
+  // Anything Scryfall wouldn't give up still needs to occupy its slot.
+  for (const ref of want) {
+    if (!viewerCards[ref]) {
+      viewerCards[ref] = Object.assign(
+        cardFromEntry({ name: "Unknown card", tokenHint: false }), { key: ref });
+    }
+  }
+
+  const fresh = [...want].map((r) => viewerCards[r]).filter((c) => c && c.imageUri);
+  for (let i = 0; i < fresh.length; i += 6) {
+    await Promise.all(fresh.slice(i, i + 6).map((c) => primeImage(c)));
+  }
+}
+
+/* Everything a viewer must not be able to press. The game screen is shared
+   with the host on purpose — one board renderer, one set of card faces — so
+   viewer mode is subtraction rather than a second screen to keep in step. */
+function applyViewerMode() {
+  const on = viewerMode;
+  $("#viewer-bar").hidden = !on;
+  $("#share-row").hidden = on || !G;
+  $("#screen-game .sticky-action").hidden = on;
+  $("#btn-add-tokens").hidden = on;
+  $("#tile-damage").disabled = on;
+  $("#tile-life").disabled = on;
+  // The board is still tappable for a viewer — that's how you read a card —
+  // but it no longer kills anything, so the hint shouldn't say it does.
+  $("#board-hint-host").hidden = on;
+  $("#board-hint-viewer").hidden = !on;
+  $("#btn-home").hidden = on;
+}
+
+/* =========================================================================
    Events
    ========================================================================= */
 
@@ -3449,6 +4116,54 @@ $("#btn-bans").addEventListener("click", () => {
   showScreen("screen-bans");
 });
 $("#ban-search").addEventListener("input", renderBans);
+
+// --- live share ---
+$("#btn-share").addEventListener("click", () => {
+  renderShare();
+  $("#share-dialog").showModal();
+});
+$("#sh-toggle").addEventListener("click", () => (shareOn ? shareStop() : shareStart()));
+$("#sh-close").addEventListener("click", () => $("#share-dialog").close());
+$("#sh-copy").addEventListener("click", async () => {
+  if (!shareCode) { shareCode = makeCode(); persistShare(); }
+  renderShare();
+  try {
+    await navigator.clipboard.writeText(shareLink());
+    toast("Link copied");
+  } catch {
+    // Clipboard access is refused often enough (no permission, insecure
+    // context) that the code itself has to remain readable on screen.
+    toast("Read them the code: " + shareCode);
+  }
+});
+
+$("#btn-watch").addEventListener("click", () => openJoin(""));
+$("#join-close").addEventListener("click", () => $("#join-dialog").close());
+$("#join-go").addEventListener("click", submitJoin);
+$("#join-code").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); submitJoin(); }
+});
+$("#btn-viewer-leave").addEventListener("click", () => viewerLeave());
+
+function openJoin(prefill) {
+  $("#join-code").value = prefill || "";
+  $("#join-error").hidden = true;
+  $("#join-dialog").showModal();
+}
+
+function submitJoin() {
+  const raw = ($("#join-code").value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const err = $("#join-error");
+  if (raw.length !== CODE_LEN || [...raw].some((c) => !CODE_ALPHABET.includes(c))) {
+    err.textContent = "That isn't a game code — they're " + CODE_LEN +
+      " letters and digits, no O, I or L.";
+    err.hidden = false;
+    return;
+  }
+  err.hidden = true;
+  $("#join-dialog").close();
+  viewerJoin(raw);
+}
 
 // --- import ---
 $("#btn-import").addEventListener("click", () => {
@@ -3755,6 +4470,7 @@ $("#btn-again").addEventListener("click", () => {
   else { renderDecks(); showScreen("screen-decks"); }
 });
 $("#btn-end-home").addEventListener("click", () => {
+  if (viewerMode) { viewerLeave(); return; }
   G = null;
   persistGame();
   renderDecks();
@@ -3776,6 +4492,7 @@ const SHORTCUTS = {
 document.addEventListener("keydown", (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (!$("#screen-game").classList.contains("active")) return;
+  if (viewerMode) return;
   if ($("dialog[open]")) return;
   const t = e.target instanceof Element ? e.target : null;
   if (t && t.closest("input, textarea, select, [contenteditable]")) return;
@@ -3794,8 +4511,22 @@ document.addEventListener("keydown", (e) => {
    ========================================================================= */
 
 syncLife();
+{
+  const saved = loadShare();
+  if (saved && saved.code) { shareCode = saved.code; shareWasOn = !!saved.on; }
+}
 renderDecks();
 showScreen("screen-decks");
+
+/* A shared link lands here: #watch=CODE opens the join box with the code
+   already in it, so the person who got the link only has to confirm. */
+{
+  const m = /[#&]watch=([A-Za-z0-9]+)/.exec(location.hash || "");
+  if (m) {
+    history.replaceState(null, "", location.pathname + location.search);
+    openJoin(m[1].toUpperCase());
+  }
+}
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
@@ -3810,9 +4541,11 @@ window.__horde = {
   set G(v) { G = v; },
   newGame, flipHordeTurn, resolveReveal, endHordeTurn, millCards, adjustLife, adjustPoison,
   killFromStack, createTokens, setTokenCount, duplicateStack, attackingPower, powerIsPartial,
-  creatureCount, yardStacks,
+  creatureCount, yardStacks, yardTotal,
   setStackCounters, stackId, findStack, countOnBoard, countersLabel, effectivePT, normCounters,
   cardMeta, padPress, primeImages, renderGame, showScreen,
+  encodeSnapshot, decodeSnapshot, cardFromInline, makeCode, topicFor,
+  CODE_ALPHABET, CODE_LEN, SHARE_MAX,
 };
 </script>
 </body>
