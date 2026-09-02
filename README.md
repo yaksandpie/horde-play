@@ -21,7 +21,9 @@ installs to a home screen and runs offline once a deck has been loaded.
   documents, so you pick a ruleset and the app prints every value it fixes
   (see below).
 - **Tracks the board.** Token stacks collapse into one tile with a count, so 145
-  Vampire tokens is one card, not 145. Tap a stack to kill one or all.
+  Vampire tokens is one card, not 145. Tap any card — on the board, in a wave, or
+  in the import review — to open it full size and actually read it; board cards
+  carry kill-one / kill-all from there.
 - **Create tokens.** Cards like Hare Apparent, Hop to It, or Empty the Warrens make
   more of a token type the library already defines. **+ Create tokens** on the
   board lets you pick that type and add however many enter — a manual add that
