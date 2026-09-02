@@ -21,12 +21,21 @@ installs to a home screen and runs offline once a deck has been loaded.
   documents, so you pick a ruleset and the app prints every value it fixes
   (see below).
 - **Tracks the board.** Token stacks collapse into one tile with a count, so 145
-  Vampire tokens is one card, not 145. Tap any card — on the board, in a wave, or
+  Vampire tokens is one card, not 145 — and the two of them carrying a +1/+1
+  counter are a tile of their own. Tap any card — on the board, in a wave, or
   in the import review — to open it full size and actually read it; board cards
   carry kill-one / kill-all from there. A token stack also carries **+1** and
   **Set how many…**, for a trigger that made one more or a count that drifted
   from what's on the table — a stack lowered that way loses the extras without a
   trip through the graveyard, because those tokens never died.
+- **Counters.** A trigger that puts +1/+1 counters on two of six Squirrels splits
+  those two onto their own tile: a stack is copies that are identical to each
+  other, and counters break that. The tile shows what it carries and the P/T it
+  adds up to, and the attacking total does the arithmetic — +1/+1 and −1/−1 move
+  the stats, and a creature shrunk past zero deals no damage rather than healing
+  anyone. Any other counter (stun, charge, whatever the card names) is tracked
+  and shown, and left to the players to apply. Counters die with the creature,
+  so nothing follows it to the graveyard.
 - **Create tokens.** **+ Create tokens** on the board takes any token, not just the
   deck's own. Hare Apparent and Empty the Warrens make more of a type the library
   already defines — those are one tap. Skeletal Swarming's Skeletons, Rite of

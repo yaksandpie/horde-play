@@ -119,6 +119,45 @@ test("a game in progress survives a reload", async ({ app }) => {
   await expect(app.locator("#c-library")).toHaveText(library);
 });
 
+test("counters split a board tile, and the tile says so", async ({ app }) => {
+  await startGame(app, "Zombies Horde");
+
+  // Six Zombie tokens out, without waiting for the shuffle to produce them.
+  await app.evaluate(() => {
+    const h = window.__horde;
+    const key = Object.keys(h.G.cards).find((k) => h.G.cards[k].name === "Zombie");
+    h.G.board = [{ cardKey: key, count: 6 }];
+    h.renderGame();
+  });
+  await expect(app.locator("#board .cardface")).toHaveCount(1);
+
+  await app.locator("#board .cardbtn").first().click();
+  await expect(app.locator("#card-dialog")).toBeVisible();
+  await app.locator("#cv-counters-btn").click();
+  await expect(app.locator("#counters-dialog")).toBeVisible();
+
+  // Two of the six get a +1/+1 counter; the other four stay as they are.
+  await app.locator("#ct-one").click();
+  await app.locator("#ct-more").click();
+  await expect(app.locator("#ct-n")).toHaveText("2");
+  await app.locator("#ct-rows .ctrrow").first()
+    .getByRole("button", { name: "One more +1/+1 counter" }).click();
+  await expect(app.locator("#ct-preview")).toContainText("The other 4");
+
+  await app.locator("#ct-apply").click();
+  await expect(app.locator("#counters-dialog")).toBeHidden();
+
+  await expect(app.locator("#board .cardface")).toHaveCount(2);
+  await expect(app.locator("#board .cf-counters")).toHaveCount(1);
+  await expect(app.locator("#board .cf-counters")).toContainText("+1/+1");
+  await expect(app.locator("#board-summary")).toContainText("2 with counters");
+  await expect(app.locator("#c-board")).toHaveText("6");
+
+  // Undo puts the six back together.
+  await app.locator("#btn-undo").click();
+  await expect(app.locator("#board .cardface")).toHaveCount(1);
+});
+
 test("the ban list answers offline", async ({ app }) => {
   await app.locator("#btn-bans").click();
   await expect(app.locator("#screen-bans")).toBeVisible();

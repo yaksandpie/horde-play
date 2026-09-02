@@ -154,6 +154,50 @@ test.describe("the wire format", () => {
     expect(viewer).toEqual(host);
   });
 
+  test("counters ride along, so the viewer's tiles and attacking total match", async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+    await playATurn(app);
+
+    const { host, viewer, rows } = await app.evaluate(() => {
+      const H = window.__horde;
+      const G = H.G;
+
+      /* Counters split one card into several tiles and move effective P/T, so
+         a wire that drops them merges the tiles and reports printed power. */
+      const first = G.board[0];
+      G.board.push({ cardKey: first.cardKey, count: 2, counters: { "+1/+1": 3 } });
+      G.board.push({ cardKey: first.cardKey, count: 1, counters: { "-1/-1": 1 } });
+
+      const snap = H.encodeSnapshot(G);
+      const cards = {};
+      for (const c of snap.ic) cards[c[0]] = H.cardFromInline(c);
+      const V = H.decodeSnapshot(snap, cards);
+
+      const shape = () => ({
+        tiles: H.G.board.map((s) => [H.G.cards[s.cardKey].name, s.count, H.countersLabel(s)]),
+        ids: H.G.board.map(H.stackId).length,
+        distinctIds: new Set(H.G.board.map(H.stackId)).size,
+        power: H.attackingPower(),
+        creatures: H.creatureCount(),
+      });
+      const host = shape();
+      H.G = V;
+      const viewer = shape();
+      H.G = G;
+      return { host, viewer, rows: snap.bd };
+    });
+
+    expect(viewer.tiles).toEqual(host.tiles);
+    expect(viewer.power).toBe(host.power);
+    expect(viewer.creatures).toBe(host.creatures);
+    // Two tiles of the same card stay two tiles, not one merged pile.
+    expect(viewer.distinctIds).toBe(viewer.ids);
+
+    // A tile with no counters costs no extra bytes on the wire.
+    expect(rows.some((r) => r.length === 2)).toBe(true);
+    expect(rows.some((r) => r.length === 3)).toBe(true);
+  });
+
   test("an oversized board sheds the log, then the graveyard breakdown, keeping the count",
     async ({ app }) => {
       await startGame(app, "Zombies Horde");

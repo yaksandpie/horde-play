@@ -185,3 +185,133 @@ test.describe("bundled decks", () => {
     }
   });
 });
+
+test.describe("counters", () => {
+  /* A game with one tile of six 1/1 Squirrels and nothing else going on, so
+     the counter arithmetic can be read without a wave in the way. */
+  const squirrels = (page, count = 6) => page.evaluate((n) => {
+    const h = window.__horde;
+    const deck = {
+      id: "test", name: "Test",
+      entries: [{ qty: 1, card: { key: "filler", name: "Filler", typeLine: "Creature — Zombie" } }],
+    };
+    h.G = h.newGame(deck, {
+      players: ["A"], life: 100, poisonLimit: 10, ruleset: "hordemagic",
+      waveEnd: "rarity", wavePattern: "fixed", legendaryRule: true, setupTurns: 0,
+    });
+    h.G.cards.squirrel = {
+      key: "squirrel", name: "Squirrel", isToken: true, resolved: true,
+      typeLine: "Token Creature — Squirrel", power: "1", toughness: "1",
+    };
+    h.G.board = [{ cardKey: "squirrel", count: n }];
+    return h.stackId(h.G.board[0]);
+  }, count);
+
+  const board = (page) => page.evaluate(() =>
+    window.__horde.G.board.map((s) => [s.cardKey, s.count, s.counters || null]));
+
+  test("putting counters on some of a stack splits the rest off", async ({ app }) => {
+    const id = await squirrels(app);
+    await app.evaluate((id) => window.__horde.setStackCounters(id, 2, { "+1/+1": 1 }), id);
+
+    expect(await board(app)).toEqual([
+      ["squirrel", 4, null],
+      ["squirrel", 2, { "+1/+1": 1 }],
+    ]);
+  });
+
+  test("the attacking total counts the +1/+1 counters", async ({ app }) => {
+    const id = await squirrels(app);
+    expect(await horde(app, () => window.__horde.attackingPower())).toBe(6);
+
+    await app.evaluate((id) => window.__horde.setStackCounters(id, 2, { "+1/+1": 1 }), id);
+    // Four 1/1s and two 2/2s.
+    expect(await horde(app, () => window.__horde.attackingPower())).toBe(8);
+  });
+
+  test("a creature shrunk past zero deals no damage rather than healing anyone", async ({ app }) => {
+    const id = await squirrels(app);
+    await app.evaluate((id) => window.__horde.setStackCounters(id, 2, { "-1/-1": 3 }), id);
+
+    expect(await horde(app, () => window.__horde.attackingPower())).toBe(4);
+  });
+
+  test("counters the app doesn't understand are tracked, not applied", async ({ app }) => {
+    const id = await squirrels(app);
+    await app.evaluate((id) => window.__horde.setStackCounters(id, 2, { stun: 1 }), id);
+
+    expect(await horde(app, () => window.__horde.attackingPower())).toBe(6);
+    expect(await board(app)).toEqual([
+      ["squirrel", 4, null],
+      ["squirrel", 2, { stun: 1 }],
+    ]);
+  });
+
+  test("the same counters merge back into one tile", async ({ app }) => {
+    const plain = await squirrels(app);
+    await app.evaluate((id) => window.__horde.setStackCounters(id, 2, { "+1/+1": 1 }), plain);
+    await app.evaluate((id) => window.__horde.setStackCounters(id, 2, { "+1/+1": 1 }), plain);
+
+    expect(await board(app)).toEqual([
+      ["squirrel", 2, null],
+      ["squirrel", 4, { "+1/+1": 1 }],
+    ]);
+  });
+
+  test("taking the last counter off puts them back with the others", async ({ app }) => {
+    const plain = await squirrels(app);
+    const countered = await app.evaluate((id) =>
+      window.__horde.stackId(window.__horde.setStackCounters(id, 2, { "+1/+1": 1 })), plain);
+    await app.evaluate((id) => window.__horde.setStackCounters(id, 2, {}), countered);
+
+    expect(await board(app)).toEqual([["squirrel", 6, null]]);
+  });
+
+  test("a creature's counters die with it", async ({ app }) => {
+    const plain = await squirrels(app);
+    const countered = await app.evaluate((id) =>
+      window.__horde.stackId(window.__horde.setStackCounters(id, 2, { "+1/+1": 1 })), plain);
+    await app.evaluate((id) => window.__horde.killFromStack(id, 2), countered);
+
+    expect(await board(app)).toEqual([["squirrel", 4, null]]);
+    // The graveyard holds Squirrels, not Squirrels-with-a-counter.
+    expect(await horde(app, () => window.__horde.yardStacks()))
+      .toEqual([{ cardKey: "squirrel", count: 2 }]);
+  });
+
+  test("a fresh token joins the tile with no counters on it", async ({ app }) => {
+    const plain = await squirrels(app);
+    await app.evaluate((id) => window.__horde.setStackCounters(id, 2, { "+1/+1": 1 }), plain);
+    await app.evaluate(() => window.__horde.createTokens(window.__horde.G.cards.squirrel, 3));
+
+    expect(await board(app)).toEqual([
+      ["squirrel", 7, null],
+      ["squirrel", 2, { "+1/+1": 1 }],
+    ]);
+    // ...while "+1" on a tile makes one more of exactly what that tile shows.
+    const countered = await app.evaluate(() =>
+      window.__horde.stackId(window.__horde.G.board[1]));
+    await app.evaluate((id) => window.__horde.duplicateStack(id), countered);
+    expect(await board(app)).toEqual([
+      ["squirrel", 7, null],
+      ["squirrel", 3, { "+1/+1": 1 }],
+    ]);
+  });
+
+  test("counters survive a save and reload", async ({ app }) => {
+    const id = await squirrels(app);
+    await app.evaluate((id) => {
+      window.__horde.setStackCounters(id, 2, { "+1/+1": 2, stun: 1 });
+    }, id);
+
+    await app.reload();
+    await app.locator("#btn-resume").click();
+    await expect(app.locator("#screen-game")).toBeVisible();
+
+    expect(await board(app)).toEqual([
+      ["squirrel", 4, null],
+      ["squirrel", 2, { "+1/+1": 2, stun: 1 }],
+    ]);
+    expect(await horde(app, () => window.__horde.attackingPower())).toBe(10);
+  });
+});
