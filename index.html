@@ -68,7 +68,7 @@
     outline-offset: 2px;
   }
 
-  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px 120px; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px 150px; }
   .screen { display: none; }
   .screen.active { display: block; }
   .hidden { display: none !important; }
@@ -213,6 +213,8 @@
   }
 
   .cardgrid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  .cardgrid.board { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+  .board-panel { margin-top: 14px; }
   .cardgrid .slot { container-type: inline-size; }
   .cardgrid.lg { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 
@@ -274,20 +276,71 @@
   }
   .step:hover { background: var(--surface); }
 
-  /* ---------- Numeric pad ---------- */
+  /* ---------- Compact control widgets ---------- */
 
-  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .pad button {
-    padding: 14px 0; border-radius: 11px; border: 1px solid var(--line);
-    background: var(--surface-2); font-size: 19px; font-weight: 700;
+  .widgets { display: grid; gap: 10px; grid-template-columns: 1fr; margin-bottom: 14px; }
+  @media (min-width: 700px) { .widgets { grid-template-columns: 1fr 1fr; } }
+
+  .widget {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    box-shadow: var(--shadow);
   }
-  .pad button:hover { background: var(--surface-3); }
-  .pad .wide { grid-column: span 3; }
-  .millout {
+  .w-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .w-title {
+    font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--muted); font-weight: 700;
+  }
+  .w-val {
+    margin-left: auto;
     font-family: "Cinzel", Georgia, serif; font-weight: 700;
-    font-size: 34px; text-align: center; padding: 6px 0 10px;
-    color: #ff9d6e; min-height: 52px;
+    font-size: 26px; line-height: 1;
   }
+  .widget.hot .w-val { color: #ff9d6e; }
+  .widget.low .w-val { color: #ff6b52; }
+
+  .keys { display: grid; gap: 4px; }
+  .keys button {
+    padding: 10px 2px; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--surface-2);
+    font-size: 15px; font-weight: 700; line-height: 1;
+  }
+  .keys button:hover { background: var(--surface-3); }
+  .keys button.go {
+    background: var(--accent); border-color: var(--accent-hot); color: var(--accent-ink);
+  }
+  .keys button.go:hover { background: var(--accent-hot); }
+
+  /* Narrow: two tidy rows of digits, then backspace + Mill. */
+  .keys.numpad { grid-template-columns: repeat(5, 1fr); }
+  .keys.numpad button[data-k="back"] { grid-column: span 2; }
+  .keys.numpad button.go { grid-column: span 3; }
+
+  .keys.lifekeys { grid-template-columns: repeat(4, 1fr); }
+  .keys.lifekeys button.go { grid-column: span 4; }
+
+  /* Wide enough for one row each. */
+  @media (min-width: 520px) {
+    .keys.numpad { grid-template-columns: repeat(14, 1fr); }
+    .keys.numpad button[data-k="back"] { grid-column: span 1; }
+    .keys.numpad button.go { grid-column: span 3; }
+    .keys.lifekeys { grid-template-columns: repeat(7, 1fr); }
+    .keys.lifekeys button.go { grid-column: span 3; }
+  }
+
+  .w-foot {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 8px; font-size: 13px; color: var(--muted);
+  }
+  .w-foot button {
+    width: 27px; height: 27px; flex: none; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--surface-2);
+    font-weight: 700; line-height: 1;
+  }
+  .w-foot button:hover { background: var(--surface-3); }
+  .w-foot b { color: var(--ink); min-width: 18px; text-align: center; font-size: 15px; }
 
   /* ---------- Import review ---------- */
 
@@ -353,8 +406,9 @@
 
   .sticky-action {
     position: sticky; bottom: 0; z-index: 20;
-    padding: 12px 0 max(12px, env(safe-area-inset-bottom));
-    background: linear-gradient(transparent, var(--bg) 34%);
+    margin-top: 14px;
+    padding: 14px 0 max(12px, env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, var(--bg) 30%, var(--bg));
   }
 
   dialog {
@@ -384,14 +438,6 @@
   .wave-chip .dots { display: inline-flex; gap: 4px; }
   .wave-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--surface-3); border: 1px solid var(--line); }
   .wave-chip .dot.on { background: var(--accent-hot); border-color: var(--accent-hot); }
-
-  .lifepool { text-align: center; padding: 4px 0 10px; }
-  .lifepool .n {
-    font-family: "Cinzel", Georgia, serif; font-weight: 700;
-    font-size: 54px; line-height: 1; display: block;
-  }
-  .lifepool .k { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
-  .lifepool.low .n { color: #ff8a6e; }
 
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip {
@@ -602,76 +648,81 @@ Tokens: (200)
       <div class="counter"><span class="n" id="c-turn">1</span><span class="k">Turn</span></div>
     </div>
 
+    <div class="widgets">
+      <div class="widget hot" id="w-damage">
+        <div class="w-head">
+          <span class="w-title">Damage &rarr; mill</span>
+          <span class="w-val" id="mill-out">0</span>
+        </div>
+        <div class="keys numpad" id="mill-pad">
+          <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
+          <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
+          <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
+          <button data-d="0">0</button>
+          <button data-k="back" aria-label="Backspace">&larr;</button>
+          <button class="go" data-k="mill">Mill</button>
+        </div>
+      </div>
+
+      <div class="widget" id="w-life">
+        <div class="w-head">
+          <span class="w-title">Shared life</span>
+          <span class="w-val" id="life-n">0</span>
+        </div>
+        <div class="keys lifekeys">
+          <button data-life="-10">&minus;10</button>
+          <button data-life="-5">&minus;5</button>
+          <button data-life="-1">&minus;1</button>
+          <button data-life="1">+1</button>
+          <button class="go" id="life-all">Take all</button>
+        </div>
+        <div class="w-foot">
+          <span>Poison</span>
+          <button data-poison="-1" aria-label="Remove a poison counter">&minus;</button>
+          <b id="poison-n">0</b>
+          <button data-poison="1" aria-label="Add a poison counter">+</button>
+          <span id="poison-limit"></span>
+        </div>
+      </div>
+    </div>
+
     <div class="cols two">
       <div>
         <div class="stage" id="stage">
           <div id="stage-body"></div>
         </div>
 
-        <div class="sticky-action">
-          <button class="btn primary big" id="btn-action">Take the Horde&rsquo;s turn</button>
-          <div class="row tight" style="margin-top:8px">
-            <button class="btn sm ghost" id="btn-undo">Undo</button>
-            <button class="btn sm ghost" id="btn-random">Random survivor</button>
-            <span class="grow"></span>
-            <button class="btn sm ghost danger" id="btn-quit">End game</button>
-          </div>
-        </div>
-
-        <div class="panel" style="margin-top:4px">
-          <h2>The Horde&rsquo;s board</h2>
-          <p class="tiny muted" style="margin:-4px 0 10px">
-            Haste, goaded, attacking every turn. Only <span class="kw def">Defender</span> can block.
-            Tap a stack to kill one or all.
-          </p>
-          <div class="cardgrid" id="board"></div>
-          <p class="muted small" id="board-empty">Nothing on the battlefield.</p>
-        </div>
       </div>
 
       <div>
         <div class="panel">
-          <h2>Damage to the Horde</h2>
-          <div class="millout" id="mill-out">0</div>
-          <div class="pad" id="mill-pad">
-            <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
-            <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
-            <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
-            <button data-k="clear">C</button><button data-d="0">0</button><button data-k="back">&larr;</button>
-            <button class="wide btn primary" data-k="mill" style="border-radius:11px">Mill that many</button>
-          </div>
-          <p class="tiny muted" style="margin:10px 0 0">
-            No life total &mdash; damage and life loss become mill. Lifegain does nothing.
-          </p>
-        </div>
-
-        <div class="panel">
-          <h2>Survivors</h2>
-          <div class="lifepool" id="lifepool">
-            <span class="n" id="life-n">0</span>
-            <span class="k">Shared life</span>
-          </div>
-          <div class="row" style="justify-content:center; margin-bottom:10px">
-            <button class="step" id="life-minus" aria-label="Lose 1 life">&minus;</button>
-            <button class="btn sm ghost" data-life="-5">&minus;5</button>
-            <button class="btn sm ghost" data-life="-10">&minus;10</button>
-            <button class="btn sm ghost" id="life-all">Take all</button>
-            <button class="step" id="life-plus" aria-label="Gain 1 life">+</button>
-          </div>
-          <div class="row" style="justify-content:center; align-items:center; gap:8px">
-            <span class="small muted">Poison</span>
-            <button class="btn sm ghost" data-poison="-1">&minus;</button>
-            <strong id="poison-n">0</strong>
-            <button class="btn sm ghost" data-poison="1">+</button>
-            <span class="tiny muted" id="poison-limit"></span>
-          </div>
-          <div id="player-chips" class="chips" style="margin-top:12px; justify-content:center"></div>
-        </div>
-
-        <div class="panel">
           <h2>Log</h2>
           <ul class="log" id="log"></ul>
         </div>
+      </div>
+    </div>
+
+    <div class="panel board-panel">
+      <div class="row" style="margin-bottom:8px">
+        <h2 style="margin:0">The Horde&rsquo;s board</h2>
+        <span class="grow"></span>
+        <span class="tiny muted" id="board-summary"></span>
+      </div>
+      <p class="tiny muted" style="margin:-2px 0 12px">
+        Haste, goaded, attacking every turn. Only <span class="kw def">Defender</span> can block.
+        Tap a stack to kill one or all.
+      </p>
+      <div class="cardgrid board" id="board"></div>
+      <p class="muted small" id="board-empty">Nothing on the battlefield.</p>
+    </div>
+
+    <div class="sticky-action">
+      <button class="btn primary big" id="btn-action">Take the Horde&rsquo;s turn</button>
+      <div class="row tight" style="margin-top:8px">
+        <button class="btn sm ghost" id="btn-undo">Undo</button>
+        <button class="btn sm ghost" id="btn-random">Random survivor</button>
+        <span class="grow"></span>
+        <button class="btn sm ghost danger" id="btn-quit">End game</button>
       </div>
     </div>
   </section>
@@ -1812,14 +1863,10 @@ function renderGame() {
   $("#c-turn").textContent = G.turn;
 
   $("#life-n").textContent = G.life;
-  $("#lifepool").classList.toggle("low", G.life <= 20);
+  $("#w-life").classList.toggle("low", G.life <= 20);
   $("#poison-n").textContent = G.poison;
-  $("#poison-limit").textContent = "/ " + G.poisonLimit;
+  $("#poison-limit").textContent = "of " + G.poisonLimit;
   $("#mill-out").textContent = millInput || "0";
-
-  const chips = $("#player-chips");
-  chips.textContent = "";
-  for (const p of G.players) chips.appendChild(el("span", "chip", p.name));
 
   renderStage();
   renderBoard();
@@ -1972,6 +2019,12 @@ function renderBoard() {
   const box = $("#board");
   box.textContent = "";
   $("#board-empty").hidden = G.board.length > 0;
+
+  const atk = attackers().reduce((n, s) => n + s.count, 0);
+  const def = creatureCount() - atk;
+  $("#board-summary").textContent = G.board.length
+    ? creatureCount() + " creatures · " + atk + " attacking" + (def ? " · " + def + " holding back" : "")
+    : "";
 
   for (const stack of G.board) {
     const card = G.cards[stack.cardKey];
@@ -2134,8 +2187,6 @@ $("#mill-pad").addEventListener("click", (e) => {
 });
 
 // --- life / poison ---
-$("#life-minus").addEventListener("click", () => { adjustLife(-1); renderGame(); });
-$("#life-plus").addEventListener("click", () => { adjustLife(1); renderGame(); });
 $("#life-all").addEventListener("click", () => { adjustLife(-attackingPower()); renderGame(); });
 $$("[data-life]").forEach((b) =>
   b.addEventListener("click", () => { adjustLife(parseInt(b.dataset.life, 10)); renderGame(); }));
