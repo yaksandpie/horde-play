@@ -276,71 +276,75 @@
   }
   .step:hover { background: var(--surface); }
 
-  /* ---------- Compact control widgets ---------- */
+  /* ---------- Action tiles ---------- */
 
-  .widgets { display: grid; gap: 10px; grid-template-columns: 1fr; margin-bottom: 14px; }
-  @media (min-width: 700px) { .widgets { grid-template-columns: 1fr 1fr; } }
+  .actions { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; margin-bottom: 14px; }
 
-  .widget {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 10px 12px;
+  .actiontile {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 12px 16px;
+    text-align: left; width: 100%;
     box-shadow: var(--shadow);
+    transition: border-color .12s ease, background .12s ease;
   }
-  .w-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
-  .w-title {
+  .actiontile:hover { background: var(--surface-2); border-color: var(--accent); }
+  .actiontile:active { transform: translateY(1px); }
+  .actiontile svg { width: 26px; height: 26px; flex: none; }
+  .actiontile .at-label {
     font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
-    color: var(--muted); font-weight: 700;
+    color: var(--muted); font-weight: 700; display: block;
   }
-  .w-val {
-    margin-left: auto;
+  .actiontile .at-val {
     font-family: "Cinzel", Georgia, serif; font-weight: 700;
-    font-size: 26px; line-height: 1;
+    font-size: 24px; line-height: 1.15; display: block;
   }
-  .widget.hot .w-val { color: #ff9d6e; }
-  .widget.low .w-val { color: #ff6b52; }
+  .actiontile .at-hint { margin-left: auto; color: var(--muted); font-size: 20px; line-height: 1; }
+  #tile-damage svg { color: var(--accent-hot); }
+  #tile-life svg { color: #e0566b; }
+  #tile-life.low { border-color: var(--bad); }
+  #tile-life.low .at-val { color: #ff6b52; }
 
-  .keys { display: grid; gap: 4px; }
-  .keys button {
-    padding: 10px 2px; border-radius: 9px;
+  /* ---------- Modal internals ---------- */
+
+  dialog.sheet { max-width: 380px; }
+  .sheet h3 { margin: 0 0 2px; font-size: 20px; }
+  .sheet .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; }
+  .bignum {
+    font-family: "Cinzel", Georgia, serif; font-weight: 700;
+    font-size: 48px; line-height: 1; text-align: center;
+    padding: 10px 0 16px; color: var(--accent-hot);
+  }
+  .bignum.life { color: var(--ink); }
+
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .pad button {
+    padding: 16px 0; border-radius: 12px;
     border: 1px solid var(--line); background: var(--surface-2);
-    font-size: 15px; font-weight: 700; line-height: 1;
+    font-size: 20px; font-weight: 700; line-height: 1;
   }
-  .keys button:hover { background: var(--surface-3); }
-  .keys button.go {
-    background: var(--accent); border-color: var(--accent-hot); color: var(--accent-ink);
-  }
-  .keys button.go:hover { background: var(--accent-hot); }
+  .pad button:hover { background: var(--surface-3); }
 
-  /* Narrow: two tidy rows of digits, then backspace + Mill. */
-  .keys.numpad { grid-template-columns: repeat(5, 1fr); }
-  .keys.numpad button[data-k="back"] { grid-column: span 2; }
-  .keys.numpad button.go { grid-column: span 3; }
-
-  .keys.lifekeys { grid-template-columns: repeat(4, 1fr); }
-  .keys.lifekeys button.go { grid-column: span 4; }
-
-  /* Wide enough for one row each. */
-  @media (min-width: 520px) {
-    .keys.numpad { grid-template-columns: repeat(14, 1fr); }
-    .keys.numpad button[data-k="back"] { grid-column: span 1; }
-    .keys.numpad button.go { grid-column: span 3; }
-    .keys.lifekeys { grid-template-columns: repeat(7, 1fr); }
-    .keys.lifekeys button.go { grid-column: span 3; }
-  }
-
-  .w-foot {
-    display: flex; align-items: center; gap: 6px;
-    margin-top: 8px; font-size: 13px; color: var(--muted);
-  }
-  .w-foot button {
-    width: 27px; height: 27px; flex: none; border-radius: 7px;
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .steps button {
+    padding: 14px 0; border-radius: 12px;
     border: 1px solid var(--line); background: var(--surface-2);
-    font-weight: 700; line-height: 1;
+    font-size: 17px; font-weight: 700; line-height: 1;
   }
-  .w-foot button:hover { background: var(--surface-3); }
-  .w-foot b { color: var(--ink); min-width: 18px; text-align: center; font-size: 15px; }
+  .steps button:hover { background: var(--surface-3); }
+
+  .poisonrow {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 14px;
+  }
+  .poisonrow button {
+    width: 34px; height: 34px; flex: none; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--surface-2);
+    font-weight: 700; font-size: 17px; line-height: 1;
+  }
+  .poisonrow button:hover { background: var(--surface-3); }
+  .poisonrow b { color: var(--ink); font-size: 18px; min-width: 22px; text-align: center; }
 
   /* ---------- Import review ---------- */
 
@@ -648,42 +652,32 @@ Tokens: (200)
       <div class="counter"><span class="n" id="c-turn">1</span><span class="k">Turn</span></div>
     </div>
 
-    <div class="widgets">
-      <div class="widget hot" id="w-damage">
-        <div class="w-head">
-          <span class="w-title">Damage &rarr; mill</span>
-          <span class="w-val" id="mill-out">0</span>
-        </div>
-        <div class="keys numpad" id="mill-pad">
-          <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
-          <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
-          <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
-          <button data-d="0">0</button>
-          <button data-k="back" aria-label="Backspace">&larr;</button>
-          <button class="go" data-k="mill">Mill</button>
-        </div>
-      </div>
+    <div class="actions">
+      <button class="actiontile" id="tile-damage">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/>
+          <line x1="13" y1="19" x2="19" y2="13"/>
+          <line x1="16" y1="16" x2="20" y2="20"/>
+          <line x1="19" y1="21" x2="21" y2="19"/>
+        </svg>
+        <span>
+          <span class="at-label">Damage the Horde</span>
+          <span class="at-val" id="tile-damage-val">Mill</span>
+        </span>
+        <span class="at-hint" aria-hidden="true">&rsaquo;</span>
+      </button>
 
-      <div class="widget" id="w-life">
-        <div class="w-head">
-          <span class="w-title">Shared life</span>
-          <span class="w-val" id="life-n">0</span>
-        </div>
-        <div class="keys lifekeys">
-          <button data-life="-10">&minus;10</button>
-          <button data-life="-5">&minus;5</button>
-          <button data-life="-1">&minus;1</button>
-          <button data-life="1">+1</button>
-          <button class="go" id="life-all">Take all</button>
-        </div>
-        <div class="w-foot">
-          <span>Poison</span>
-          <button data-poison="-1" aria-label="Remove a poison counter">&minus;</button>
-          <b id="poison-n">0</b>
-          <button data-poison="1" aria-label="Add a poison counter">+</button>
-          <span id="poison-limit"></span>
-        </div>
-      </div>
+      <button class="actiontile" id="tile-life">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 20.5s-7.5-4.6-7.5-9.6A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 3.3c0 5-7.5 9.6-7.5 9.6z"/>
+        </svg>
+        <span>
+          <span class="at-label">Survivors</span>
+          <span class="at-val" id="tile-life-val">0</span>
+        </span>
+        <span class="at-hint" aria-hidden="true">&rsaquo;</span>
+      </button>
     </div>
 
     <div class="cols two">
@@ -740,6 +734,55 @@ Tokens: (200)
   </section>
 
 </div>
+
+<dialog id="damage-dialog" class="sheet">
+  <h3>Damage the Horde</h3>
+  <p class="sub" id="dd-sub"></p>
+  <div class="bignum" id="mill-out">0</div>
+  <div class="pad" id="mill-pad">
+    <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
+    <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
+    <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
+    <button data-k="clear">C</button><button data-d="0">0</button>
+    <button data-k="back" aria-label="Backspace">&larr;</button>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn primary grow" data-k="mill" id="dd-mill">Mill</button>
+    <button class="btn ghost" id="dd-close">Close</button>
+  </div>
+  <p class="tiny muted" style="margin:12px 0 0">
+    The Horde has no life total &mdash; damage and life loss mill it instead. Lifegain does nothing.
+  </p>
+</dialog>
+
+<dialog id="life-dialog" class="sheet">
+  <h3>Survivors</h3>
+  <p class="sub">One shared life total. Both of you take from this pool.</p>
+  <div class="bignum life" id="life-n">0</div>
+  <div class="steps" style="margin-bottom:8px">
+    <button data-life="-1">&minus;1</button>
+    <button data-life="-5">&minus;5</button>
+    <button data-life="-10">&minus;10</button>
+  </div>
+  <div class="steps">
+    <button data-life="1">+1</button>
+    <button data-life="5">+5</button>
+    <button data-life="10">+10</button>
+  </div>
+  <button class="btn primary" id="life-all" style="width:100%; margin-top:10px">Take all</button>
+  <p class="tiny muted" id="life-partial" style="margin:8px 0 0" hidden>
+    Some of the Horde's creatures have unknown power, so this total is only what's known.
+    Check the cards on the board.
+  </p>
+  <div class="poisonrow">
+    <span>Poison</span>
+    <button data-poison="-1" aria-label="Remove a poison counter">&minus;</button>
+    <b id="poison-n">0</b>
+    <button data-poison="1" aria-label="Add a poison counter">+</button>
+    <span id="poison-limit"></span>
+  </div>
+  <button class="btn ghost" id="ld-close" style="width:100%; margin-top:14px">Done</button>
+</dialog>
 
 <dialog id="stack-dialog">
   <h3 style="margin:0 0 4px" id="sd-name"></h3>
@@ -1854,7 +1897,11 @@ async function resumeGame() {
 
 function renderGame() {
   if (!G) return;
-  if (G.over) { renderEnd(); return; }
+  if (G.over) {
+    $$("dialog[open]").forEach((d) => d.close());
+    renderEnd();
+    return;
+  }
 
   $("#c-library").textContent = G.library.length;
   $("#c-board").textContent = creatureCount();
@@ -1862,11 +1909,20 @@ function renderGame() {
   $("#c-yard").textContent = G.graveyard.length;
   $("#c-turn").textContent = G.turn;
 
+  $("#tile-life-val").textContent = G.life;
+  $("#tile-life").classList.toggle("low", G.life <= 20);
+  $("#tile-damage-val").textContent = millInput ? "Mill " + millInput : "Mill";
   $("#life-n").textContent = G.life;
-  $("#w-life").classList.toggle("low", G.life <= 20);
   $("#poison-n").textContent = G.poison;
   $("#poison-limit").textContent = "of " + G.poisonLimit;
   $("#mill-out").textContent = millInput || "0";
+  $("#dd-sub").textContent = G.library.length + " cards left in the library.";
+  $("#dd-mill").textContent = millInput ? "Mill " + millInput : "Mill";
+  const pw = attackingPower();
+  const takeAll = $("#life-all");
+  takeAll.textContent = pw > 0 ? "Take all " + pw : "Nothing is attacking";
+  takeAll.disabled = pw <= 0;
+  $("#life-partial").hidden = !powerIsPartial();
 
   renderStage();
   renderBoard();
@@ -2149,6 +2205,19 @@ $("#btn-action").addEventListener("click", () => {
 
 $("#btn-undo").addEventListener("click", undo);
 
+$("#tile-damage").addEventListener("click", () => {
+  millInput = "";
+  renderGame();
+  $("#damage-dialog").showModal();
+});
+$("#dd-close").addEventListener("click", () => $("#damage-dialog").close());
+
+$("#tile-life").addEventListener("click", () => {
+  renderGame();
+  $("#life-dialog").showModal();
+});
+$("#ld-close").addEventListener("click", () => $("#life-dialog").close());
+
 $("#btn-random").addEventListener("click", () => {
   const p = pick(G.players);
   if (p) toast("Random survivor: " + p.name);
@@ -2164,7 +2233,7 @@ $("#btn-quit").addEventListener("click", () => {
   });
 });
 
-// --- mill pad ---
+// --- mill pad (inside the damage dialog) ---
 $("#mill-pad").addEventListener("click", (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
@@ -2175,15 +2244,18 @@ $("#mill-pad").addEventListener("click", (e) => {
     millInput = "";
   } else if (k === "back") {
     millInput = millInput.slice(0, -1);
-  } else if (k === "mill") {
-    const n = parseInt(millInput, 10);
-    if (!(n > 0)) { toast("Enter an amount first"); return; }
-    millCards(n);
-    millInput = "";
-    renderGame();
-    return;
   }
-  $("#mill-out").textContent = millInput || "0";
+  renderGame();
+});
+
+$("#dd-mill").addEventListener("click", () => {
+  const n = parseInt(millInput, 10);
+  if (!(n > 0)) { toast("Enter an amount first"); return; }
+  millCards(n);
+  millInput = "";
+  $("#damage-dialog").close();
+  renderGame();
+  toast("Milled " + n);
 });
 
 // --- life / poison ---
