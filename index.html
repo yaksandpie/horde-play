@@ -606,7 +606,7 @@ Tokens: (200)
       </label>
 
       <label class="field">
-        <span>Waves per turn</span>
+        <span>Waves the Horde plays each turn</span>
         <div class="chips" id="opt-wavepattern">
           <button class="chip" data-v="snake">Snake &mdash; 1, 2, 3, 2, 1&hellip;</button>
           <button class="chip" data-v="fixed">Always 1</button>
@@ -649,7 +649,7 @@ Tokens: (200)
       <div class="counter"><span class="n" id="c-board">0</span><span class="k">Creatures</span></div>
       <div class="counter"><span class="n" id="c-power">0</span><span class="k">Attacking</span></div>
       <div class="counter"><span class="n" id="c-yard">0</span><span class="k">Graveyard</span></div>
-      <div class="counter"><span class="n" id="c-turn">1</span><span class="k">Turn</span></div>
+      <div class="counter"><span class="n" id="c-turn">1</span><span class="k">Round</span></div>
     </div>
 
     <div class="actions">
@@ -2100,7 +2100,7 @@ function renderLog() {
   box.textContent = "";
   for (const entry of G.log) {
     const li = el("li");
-    li.appendChild(el("span", "t", "T" + entry.t));
+    li.appendChild(el("span", "t", "R" + entry.t));
     li.appendChild(document.createTextNode(entry.msg));
     box.appendChild(li);
   }
@@ -2110,8 +2110,8 @@ function renderEnd() {
   const won = G.over === "survivors";
   $("#end-title").textContent = won ? "The Horde falls." : "The Horde wins.";
   $("#end-sub").textContent = won
-    ? "Library empty, board clear — you made it out after " + (G.turn - 1) + " turns."
-    : "The survivors are down after " + (G.turn - 1) + " turns.";
+    ? "Library empty, board clear — you made it out after " + (G.turn - 1) + " rounds."
+    : "The survivors are down after " + (G.turn - 1) + " rounds.";
   showScreen("screen-end");
 }
 
