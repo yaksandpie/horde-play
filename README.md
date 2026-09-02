@@ -20,7 +20,9 @@ installs to a home screen and runs offline once a deck has been loaded.
   on a **non-token card** (the Zombies horde) or on an **uncommon/rare/mythic**
   (Eldrazi, D&D, Angels & Demons). Set per game.
 - **Tracks the board.** Token stacks collapse into one tile with a count, so 145
-  Vampire tokens is one card, not 145. Tap a stack to kill one or all.
+  Vampire tokens is one card, not 145. Tap any card — on the board, in a wave, or
+  in the import review — to open it full size and actually read it; board cards
+  carry kill-one / kill-all from there.
 - **Damage → mill.** A numeric pad; the Horde has no life total. Legendaries milled
   by damage are called out so you can apply the ETB-and-phase-out rule.
 - **Attacks.** Everything is goaded and attacking; `Defender` creatures are held
