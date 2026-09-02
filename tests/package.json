@@ -1,0 +1,15 @@
+{
+  "name": "horde-play-tests",
+  "private": true,
+  "type": "module",
+  "description": "Test tooling for Horde Play. Kept out of the repo root so the app itself stays a dependency-free static site.",
+  "scripts": {
+    "check": "node check-static.mjs",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "serve": "node serve.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}

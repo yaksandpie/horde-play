@@ -1,0 +1,61 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; let an in-flight one finish rather than shipping
+# a half-uploaded site.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build the site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # Same gate as CI: never publish a page whose script doesn't parse.
+      - name: Check the static site
+        run: node tests/check-static.mjs
+
+      # The app is the repo root minus its tooling. Copying rather than
+      # uploading the checkout keeps CI files out of the published site.
+      # Dotfiles aren't globbed, so .git and .github drop out on their own.
+      - name: Assemble _site
+        run: |
+          mkdir -p _site
+          for f in *; do
+            case "$f" in _site|tests) continue ;; esac
+            cp -r "$f" _site/
+          done
+          ls -la _site
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

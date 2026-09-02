@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # No dependencies: parses the inline script and the JSON, and proves
+      # every file the app and the service worker reference exists.
+      - name: Check the static site
+        run: node tests/check-static.mjs
+
+  cache-version:
+    name: Service worker cache version
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The service worker precaches the app shell, so shipping a new
+      # index.html under the old CACHE_VERSION leaves installed copies stale.
+      - name: Require a CACHE_VERSION bump when the app shell changes
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=$(git diff --name-only "$BASE" "$HEAD")
+          shell_changed=$(echo "$changed" | grep -E '^(index\.html|manifest\.json|icon-.*\.png)$' || true)
+
+          if [ -z "$shell_changed" ]; then
+            echo "No app shell files changed — nothing to bump."
+            exit 0
+          fi
+
+          echo "App shell changed:"
+          echo "$shell_changed"
+
+          before=$(git show "$BASE:sw.js" | grep -oP 'CACHE_VERSION = "\K[^"]+')
+          after=$(grep -oP 'CACHE_VERSION = "\K[^"]+' sw.js)
+
+          if [ "$before" = "$after" ]; then
+            echo "::error file=sw.js::The app shell changed but CACHE_VERSION is still $after. Bump it so installed copies pick up the new files."
+            exit 1
+          fi
+          echo "CACHE_VERSION bumped: $before -> $after"
+
+  test:
+    name: Browser tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Install test tooling
+        working-directory: tests
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+
+      # Scryfall is stubbed out in the tests, so this runs without touching
+      # the network — and without hammering a free public API on every push.
+      - name: Run the tests
+        working-directory: tests
+        run: npx playwright test
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: tests/playwright-report/
+          retention-days: 7
