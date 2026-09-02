@@ -1010,6 +1010,10 @@ Tokens: (200)
   <div class="stack" id="cv-actions">
     <button class="btn" id="cv-kill1" style="width:100%">Kill one &rarr; graveyard</button>
     <button class="btn" id="cv-killall" style="width:100%">Kill the whole stack</button>
+    <div class="row tight" id="cv-qty">
+      <button class="btn" id="cv-dup" style="flex:0 0 92px">+1</button>
+      <button class="btn grow" id="cv-setqty">Set how many&hellip;</button>
+    </div>
   </div>
   <button class="btn ghost" id="cv-close" style="width:100%; margin-top:10px">Close</button>
 </dialog>
@@ -1832,14 +1836,17 @@ function addToBoard(cardKey, n = 1) {
   if (hit) hit.count += n;
   else G.board.push({ cardKey, count: n });
 }
-function removeFromBoard(cardKey, n) {
+/* Creatures that die land in the graveyard. Tokens taken back off by a
+   quantity correction never really entered, so they leave without one —
+   otherwise fixing a miscount would quietly pad Grave Betrayal's food. */
+function removeFromBoard(cardKey, n, toYard = true) {
   const i = G.board.findIndex((s) => s.cardKey === cardKey);
   if (i < 0) return 0;
   const stack = G.board[i];
   const killed = Math.min(n, stack.count);
   stack.count -= killed;
   if (stack.count <= 0) G.board.splice(i, 1);
-  for (let k = 0; k < killed; k++) G.graveyard.push(cardKey);
+  if (toYard) for (let k = 0; k < killed; k++) G.graveyard.push(cardKey);
   return killed;
 }
 
@@ -1995,6 +2002,28 @@ function createTokens(card, n) {
   addToBoard(card.key, n);
   logit("+" + n + " " + card.name + (n === 1 ? " token" : " tokens") + ".");
   notePeak();
+  persistGame();
+}
+
+/* Fixing a stack that's already out: you made six Zombies and meant eight, or
+   the paper count drifted. Up is the same manual add as + Create tokens; down
+   takes the extras off without a trip through the graveyard. */
+function setTokenCount(cardKey, n) {
+  const card = G.cards[cardKey];
+  const stack = G.board.find((s) => s.cardKey === cardKey);
+  const have = stack ? stack.count : 0;
+  if (!card || !(n >= 0) || n === have) return;
+  snapshot();
+  if (n > have) {
+    addToBoard(cardKey, n - have);
+    logit("+" + (n - have) + " " + card.name + " \u2014 " + n + " on the battlefield.");
+    notePeak();
+  } else {
+    removeFromBoard(cardKey, have - n, false);
+    logit((have - n) + "\u00d7 " + card.name + " taken off \u2014 " +
+      (n ? n + " on the battlefield." : "none left on the battlefield."));
+  }
+  checkEnd();
   persistGame();
 }
 
@@ -2832,6 +2861,7 @@ function renderEnd() {
    ========================================================================= */
 
 let cardDialogKey = null;
+let cardDialogStack = false;   // opened from a board stack, so it carries actions
 
 /* Accepts a board/library card key, or a bare card object for the import
    review where there is no game in progress. */
@@ -2854,19 +2884,34 @@ function openCardDialog(keyOrCard, opts = {}) {
      card.resolved ? "" : "Not found on Scryfall — play it from the paper card or memory."));
   oracle.hidden = !oracle.textContent;
 
-  const stack = cardDialogKey && G ? G.board.find((s) => s.cardKey === cardDialogKey) : null;
-  const showKill = !!opts.stack && !!stack;
-  $("#cv-actions").hidden = !showKill;
-  if (showKill) {
-    $("#cv-kill1").textContent = "Kill one → graveyard";
-    $("#cv-killall").textContent = "Kill all " + stack.count + " → graveyard";
-  }
+  cardDialogStack = !!opts.stack;
+  renderCardActions();
   $("#card-dialog").showModal();
+}
+
+/* The actions under a board card. A token stack can also grow: +1 for the
+   common case — a trigger made one more — and the pad for a real
+   correction. Redrawn in place rather than only on open, so tapping +1 a few
+   times reads back the count it's building. */
+function renderCardActions() {
+  const stack = cardDialogStack && G ?
+    G.board.find((s) => s.cardKey === cardDialogKey) : null;
+  $("#cv-actions").hidden = !stack;
+  if (!stack) return;
+  const card = G.cards[cardDialogKey];
+  // Only tokens: a printed creature comes out of the library, so making a
+  // second one by hand would be inventing a card the deck doesn't hold.
+  $("#cv-qty").hidden = !card.isToken;
+  $("#cv-dup").setAttribute("aria-label", "Add one more " + card.name);
+  $("#cv-kill1").textContent = "Kill one → graveyard";
+  $("#cv-killall").textContent = "Kill all " + stack.count + " → graveyard";
 }
 
 let tokenPickCard = null;
 let tokenQtyInput = "";
 let tokenQtyBack = "pick";  // the step the quantity pad was reached from
+let tokenQtyMode = "add";   // "add" puts new tokens out; "set" fixes a stack's count
+let tokenSetKey = null;     // the board stack "set" is editing
 let tokenSearchSeq = 0;     // so a slow search can't overwrite a newer one
 
 function tokenTypes() {
@@ -3012,12 +3057,36 @@ function buildPlainToken() {
 function openTokenQtyStep(card, from) {
   tokenPickCard = existingTokenLike(card) || card;
   tokenQtyBack = from;
+  tokenQtyMode = "add";
   tokenQtyInput = "1";
   $("#tq-name").textContent = tokenPickCard.name;
   const pt = ptString(tokenPickCard);
   $("#tq-sub").textContent = (pt ? pt + " \u2014 h" : "H") + "ow many enter the battlefield?";
+  $("#tq-add").textContent = "Add";
   tokenStep("qty");
   renderTokenQty();
+}
+
+/* The same pad, reached from a token already on the board: it opens on the
+   count that's out and sets the stack to whatever you leave it at — 0 clears
+   the type off the board. */
+function openTokenSetStep(cardKey) {
+  const card = G.cards[cardKey];
+  const stack = G.board.find((s) => s.cardKey === cardKey);
+  if (!card || !stack) return;
+  tokenPickCard = card;
+  tokenSetKey = cardKey;
+  tokenQtyBack = "card";
+  tokenQtyMode = "set";
+  tokenQtyInput = String(stack.count);
+  $("#tq-name").textContent = card.name;
+  const pt = ptString(card);
+  $("#tq-sub").textContent = (pt ? pt + " \u00b7 " : "") + stack.count +
+    " on the battlefield \u2014 how many should there be?";
+  $("#tq-add").textContent = "Set";
+  tokenStep("qty");
+  renderTokenQty();
+  $("#token-dialog").showModal();
 }
 
 function renderTokenQty() {
@@ -3186,6 +3255,19 @@ $$("[data-poison]").forEach((b) =>
 
 // --- stack dialog ---
 $("#cv-close").addEventListener("click", () => $("#card-dialog").close());
+$("#cv-dup").addEventListener("click", () => {
+  const card = G.cards[cardDialogKey];
+  if (!card) return;
+  createTokens(card, 1);
+  // Left open on purpose: three triggers is three taps, not three reopens.
+  renderCardActions();
+  renderGame();
+});
+$("#cv-setqty").addEventListener("click", () => {
+  const key = cardDialogKey;
+  $("#card-dialog").close();
+  openTokenSetStep(key);
+});
 $("#cv-kill1").addEventListener("click", () => {
   killFromStack(cardDialogKey, 1);
   $("#card-dialog").close();
@@ -3201,7 +3283,15 @@ $("#cv-killall").addEventListener("click", () => {
 // --- token dialog ---
 $("#btn-add-tokens").addEventListener("click", openTokenDialog);
 $("#token-pick-close").addEventListener("click", () => $("#token-dialog").close());
-$("#tq-back").addEventListener("click", () => tokenStep(tokenQtyBack));
+$("#tq-back").addEventListener("click", () => {
+  // "set" was reached from the card, not from a step inside this dialog.
+  if (tokenQtyBack === "card") {
+    $("#token-dialog").close();
+    openCardDialog(tokenSetKey, { stack: true });
+    return;
+  }
+  tokenStep(tokenQtyBack);
+});
 $("#token-search-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const term = $("#token-search").value.trim();
@@ -3238,6 +3328,16 @@ $("#token-qty-pad").addEventListener("click", (e) => {
 });
 $("#tq-add").addEventListener("click", () => {
   const n = parseInt(tokenQtyInput, 10);
+  if (tokenQtyMode === "set") {
+    const card = G.cards[tokenSetKey];
+    if (!card) { $("#token-dialog").close(); return; }
+    if (!(n >= 0)) { toast("Enter an amount first"); return; }
+    setTokenCount(tokenSetKey, n);
+    $("#token-dialog").close();
+    renderGame();
+    toast(n ? n + " " + card.name + " on the battlefield" : card.name + " cleared off");
+    return;
+  }
   if (!(n > 0)) { toast("Enter an amount first"); return; }
   const name = tokenPickCard.name;
   createTokens(tokenPickCard, n);
@@ -3331,7 +3431,7 @@ window.__horde = {
   get G() { return G; },
   set G(v) { G = v; },
   newGame, flipHordeTurn, resolveReveal, endHordeTurn, millCards, adjustLife, adjustPoison,
-  killFromStack, createTokens, attackingPower, powerIsPartial, creatureCount, yardStacks,
+  killFromStack, createTokens, setTokenCount, attackingPower, powerIsPartial, creatureCount, yardStacks,
   cardMeta, padPress, primeImages, renderGame, showScreen,
 };
 </script>

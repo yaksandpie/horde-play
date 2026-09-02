@@ -23,7 +23,10 @@ installs to a home screen and runs offline once a deck has been loaded.
 - **Tracks the board.** Token stacks collapse into one tile with a count, so 145
   Vampire tokens is one card, not 145. Tap any card — on the board, in a wave, or
   in the import review — to open it full size and actually read it; board cards
-  carry kill-one / kill-all from there.
+  carry kill-one / kill-all from there. A token stack also carries **+1** and
+  **Set how many…**, for a trigger that made one more or a count that drifted
+  from what's on the table — a stack lowered that way loses the extras without a
+  trip through the graveyard, because those tokens never died.
 - **Create tokens.** **+ Create tokens** on the board takes any token, not just the
   deck's own. Hare Apparent and Empty the Warrens make more of a type the library
   already defines — those are one tap. Skeletal Swarming's Skeletons, Rite of
