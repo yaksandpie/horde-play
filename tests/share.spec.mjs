@@ -359,6 +359,12 @@ test.describe("viewer mode", () => {
     await expect(app.locator("#screen-game .sticky-action")).toBeHidden();
     await expect(app.locator("#btn-add-tokens")).toBeHidden();
     await expect(app.locator("#btn-share")).toBeHidden();
+    // The header's game actions belong to whoever is running it.
+    await expect(app.locator("#btn-undo")).toBeHidden();
+    await expect(app.locator("#btn-random")).toBeHidden();
+    await expect(app.locator("#btn-quit")).toBeHidden();
+    // No snapshot has arrived, so there is no log to open onto yet.
+    await expect(app.locator("#btn-log")).toBeHidden();
     await expect(app.locator("#tile-damage")).toBeDisabled();
     await expect(app.locator("#tile-life")).toBeDisabled();
     await expect(app.locator("#btn-home")).toBeHidden();
@@ -438,13 +444,6 @@ test.describe("sharing a game", () => {
     await app.locator("#btn-resume").click();
     await expect(app.locator("#screen-game")).toBeVisible();
     await expect(app.locator("#btn-share")).toBeVisible();
-  });
-
-  test("the log is open on arrival", async ({ app }) => {
-    await startGame(app, "Zombies Horde");
-    // Reference you read mid-turn, so it shouldn't need finding first.
-    await expect(app.locator(".logbox")).toHaveAttribute("open", "");
-    await expect(app.locator("#log")).toBeVisible();
   });
 
   test("a live share shows its code in the header", async ({ app }) => {
