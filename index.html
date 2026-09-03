@@ -475,9 +475,10 @@
 
   /* ---------- Action tiles ---------- */
 
+  /* The row above the turn button in the sticky bar. */
   .actions {
     display: grid; gap: 8px; grid-template-columns: 1fr 1fr;
-    padding: 10px; border-top: 1px solid var(--line);
+    margin-bottom: 8px;
   }
 
   .actiontile {
@@ -664,11 +665,14 @@
   @media (min-width: 900px) { .cols.two { grid-template-columns: 1.55fr 1fr; align-items: start; } }
   .stack > * + * { margin-top: 10px; }
 
+  /* The bar carries the two action tiles as well as the turn button. It's about
+     twice as tall as it was, so the fade is given real room above the tiles —
+     board cards have to pass under it softly rather than meeting a hard edge. */
   .sticky-action {
     position: sticky; bottom: 0; z-index: 20;
     margin-top: 14px;
-    padding: 14px 0 max(12px, env(safe-area-inset-bottom));
-    background: linear-gradient(transparent, var(--bg) 30%, var(--bg));
+    padding: 28px 0 max(12px, env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, var(--bg) 22%, var(--bg));
   }
 
   dialog {
@@ -1062,34 +1066,6 @@ Tokens: (200)
       <div class="stage" id="stage">
         <div id="stage-body"></div>
       </div>
-
-      <div class="actions">
-        <button class="actiontile" id="tile-damage">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/>
-            <line x1="13" y1="19" x2="19" y2="13"/>
-            <line x1="16" y1="16" x2="20" y2="20"/>
-            <line x1="19" y1="21" x2="21" y2="19"/>
-          </svg>
-          <span>
-            <span class="at-label">Damage<span class="narrow-hide"> the Horde</span></span>
-            <span class="at-val" id="tile-damage-val">Mill</span>
-          </span>
-          <span class="at-hint" aria-hidden="true">&rsaquo;</span>
-        </button>
-
-        <button class="actiontile" id="tile-life">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 20.5s-7.5-4.6-7.5-9.6A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 3.3c0 5-7.5 9.6-7.5 9.6z"/>
-          </svg>
-          <span>
-            <span class="at-label">Survivors</span>
-            <span class="at-val" id="tile-life-val">0</span>
-          </span>
-          <span class="at-hint" aria-hidden="true">&rsaquo;</span>
-        </button>
-      </div>
     </div>
 
     <!-- The ledger: reference numbers, deliberately quiet next to the arena. -->
@@ -1123,7 +1099,38 @@ Tokens: (200)
       <p class="muted small" id="board-empty">Nothing on the battlefield.</p>
     </div>
 
+    <!-- The controls: everything the host does, in one place that follows the
+         scroll. Damage and life are needed as often while reading the board as
+         while reading the reveal, so they travel with the turn button rather
+         than living at the top of the page. -->
     <div class="sticky-action">
+      <div class="actions">
+        <button class="actiontile" id="tile-damage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/>
+            <line x1="13" y1="19" x2="19" y2="13"/>
+            <line x1="16" y1="16" x2="20" y2="20"/>
+            <line x1="19" y1="21" x2="21" y2="19"/>
+          </svg>
+          <span>
+            <span class="at-label">Damage<span class="narrow-hide"> the Horde</span></span>
+            <span class="at-val" id="tile-damage-val">Mill</span>
+          </span>
+          <span class="at-hint" aria-hidden="true">&rsaquo;</span>
+        </button>
+
+        <button class="actiontile" id="tile-life">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 20.5s-7.5-4.6-7.5-9.6A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 3.3c0 5-7.5 9.6-7.5 9.6z"/>
+          </svg>
+          <span>
+            <span class="at-label">Survivors</span>
+            <span class="at-val" id="tile-life-val">0</span>
+          </span>
+          <span class="at-hint" aria-hidden="true">&rsaquo;</span>
+        </button>
+      </div>
       <button class="btn primary big" id="btn-action">Take the Horde&rsquo;s turn</button>
     </div>
   </section>
@@ -4210,7 +4217,10 @@ function applyViewerMode() {
   $("#viewer-bar").hidden = !on;
   renderGameActions();
   renderShare();
-  $("#screen-game .sticky-action").hidden = on;
+  // The sticky bar itself stays up for a viewer: the two tiles live in it now,
+  // and one of them is the survivors' life total, which a viewer is meant to
+  // read. Only the turn button is the host's alone.
+  $("#btn-action").hidden = on;
   $("#btn-add-tokens").hidden = on;
   $("#tile-damage").disabled = on;
   $("#tile-life").disabled = on;

@@ -356,7 +356,9 @@ test.describe("viewer mode", () => {
     await expect(app.locator("#viewer-code")).toHaveText("K7P2QM");
 
     // Nothing here can change a game that belongs to another screen.
-    await expect(app.locator("#screen-game .sticky-action")).toBeHidden();
+    // The sticky bar stays (it carries the life total a viewer is meant to
+    // read); the button that advances someone else's game does not.
+    await expect(app.locator("#btn-action")).toBeHidden();
     await expect(app.locator("#btn-add-tokens")).toBeHidden();
     await expect(app.locator("#btn-share")).toBeHidden();
     // The header's game actions belong to whoever is running it.
