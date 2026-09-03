@@ -137,7 +137,9 @@
     display: inline-flex; align-items: center; justify-content: center;
     padding: 6px; width: 32px; height: 32px;
   }
-  .btn.icon svg { width: 18px; height: 18px; display: block; }
+  /* flex: none so the glyph keeps its aspect — a content box a shade
+     narrower than 18px would otherwise squash it into an ellipse. */
+  .btn.icon svg { width: 18px; height: 18px; display: block; flex: none; }
   .btn.big {
     width: 100%;
     padding: 18px;
@@ -164,13 +166,16 @@
   /* The game's icon actions sit tighter than the header's own gap, so they
      read as one group rather than four unrelated buttons. */
   .bar-actions { display: flex; align-items: center; gap: 6px; }
-  /* Four icons, Share and Decks all have to fit beside the logo, so the
-     wordmark and some of the padding go first on a narrow screen. */
+  /* Five icons and Decks all have to fit beside the logo, so the wordmark
+     and some of the padding go first on a narrow screen. */
   @media (max-width: 560px) {
     .bar { gap: 8px; }
     .bar-actions { gap: 4px; }
-    .btn.icon { width: 30px; height: 30px; }
     .btn.sm { padding: 6px 9px; }
+    /* After .btn.sm, which is equally specific and would otherwise keep its
+       wider side padding here: 30 - 2px border - 10px padding leaves the
+       glyph its full 18px. */
+    .btn.icon { width: 30px; height: 30px; padding: 5px; }
   }
 
   /* ---------- Cards / panels ---------- */
@@ -805,7 +810,29 @@
           </svg>
         </button>
       </div>
-      <button class="btn sm ghost sharebtn" id="btn-share" hidden>Share</button>
+      <button class="btn sm ghost icon sharebtn" id="btn-share" hidden
+              title="Let others watch this game" aria-label="Share this game">
+        <!-- Two interlocking links: the lower one passes behind the upper,
+             so the mask punches a gap in it where the upper one crosses. -->
+        <svg id="share-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" aria-hidden="true">
+          <defs>
+            <mask id="share-link-cut" maskUnits="userSpaceOnUse"
+                  x="-6" y="-6" width="36" height="36">
+              <rect x="-6" y="-6" width="36" height="36" fill="#fff"/>
+              <rect x="10.5" y="8.5" width="11.5" height="7" rx="3.5"
+                    fill="none" stroke="#000" stroke-width="4"/>
+            </mask>
+          </defs>
+          <g transform="rotate(-45 12.25 12)">
+            <rect x="2.5" y="8.5" width="11.5" height="7" rx="3.5"
+                  mask="url(#share-link-cut)"/>
+            <rect x="10.5" y="8.5" width="11.5" height="7" rx="3.5"/>
+          </g>
+        </svg>
+        <span class="dotlive" id="share-dot" hidden></span>
+        <span id="share-btn-code" hidden></span>
+      </button>
       <button class="btn sm ghost" id="btn-home" hidden>Decks</button>
     </div>
   </header>
@@ -3943,15 +3970,23 @@ function renderShare() {
   if (btn) {
     btn.hidden = viewerMode || !G ||
       !$("#screen-game").classList.contains("active");
-    btn.textContent = "";
-    if (shareOn) {
-      btn.appendChild(el("span", "dotlive" + (shareError ? " bad" : " on")));
-      btn.appendChild(document.createTextNode(shareCode));
-      btn.title = shareError || "Sharing live — tap for the code";
-    } else {
-      btn.textContent = "Share";
-      btn.title = "Let others watch this game";
-    }
+    /* Off, this is one of the header's icon actions and the link glyph carries
+       it. Live, the code is the thing worth reading, so the icon steps aside
+       and the fixed icon box comes off to make room for it. */
+    btn.classList.toggle("icon", !shareOn);
+    $("#share-ico").hidden = shareOn;
+    const dot = $("#share-dot");
+    dot.hidden = !shareOn;
+    dot.className = "dotlive" + (shareError ? " bad" : " on");
+    const btnCode = $("#share-btn-code");
+    btnCode.hidden = !shareOn;  /* an empty span still claims the flex gap */
+    btnCode.textContent = shareOn ? shareCode : "";
+    btn.title = shareOn
+      ? (shareError || "Sharing live — tap for the code")
+      : "Let others watch this game";
+    btn.setAttribute("aria-label", shareOn
+      ? "Sharing live as " + shareCode
+      : "Share this game");
     btn.classList.toggle("on", shareOn && !shareError);
     btn.classList.toggle("warn", shareOn && !!shareError);
   }
