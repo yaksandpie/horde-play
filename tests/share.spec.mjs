@@ -403,7 +403,10 @@ test.describe("sharing a game", () => {
     await startGame(app, "Zombies Horde");
 
     await expect(app.locator("#btn-share")).toBeVisible();
-    await expect(app.locator("#btn-share")).toHaveText("Share");
+    // Off, the button is the bare link icon with no code beside it.
+    await expect(app.locator("#btn-share")).toHaveAttribute("aria-label", "Share this game");
+    await expect(app.locator("#share-ico")).toBeVisible();
+    await expect(app.locator("#btn-share .dotlive")).toBeHidden();
     // No code exists yet, so nothing could have been published.
     expect(await app.evaluate(() => localStorage.getItem("horde.share"))).toBeNull();
   });
@@ -455,6 +458,8 @@ test.describe("sharing a game", () => {
     const code = await app.locator("#share-code").textContent();
     await expect(app.locator("#btn-share")).toHaveText(code);
     await expect(app.locator("#btn-share .dotlive")).toBeVisible();
+    // The code is what matters while live, so the icon steps aside for it.
+    await expect(app.locator("#share-ico")).toBeHidden();
   });
 
   test("stopping puts the host back to private", async ({ app }) => {
@@ -464,7 +469,9 @@ test.describe("sharing a game", () => {
     await app.locator("#sh-toggle").click();
 
     await expect(app.locator("#sh-toggle")).toHaveText("Start sharing");
-    await expect(app.locator("#btn-share")).toHaveText("Share");
+    await expect(app.locator("#btn-share")).toHaveText("");
+    await expect(app.locator("#share-ico")).toBeVisible();
+    await expect(app.locator("#btn-share .dotlive")).toBeHidden();
     expect(await app.evaluate(() =>
       JSON.parse(localStorage.getItem("horde.share")).on)).toBe(false);
   });
