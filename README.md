@@ -311,3 +311,4 @@ yours to read and apply, which is why the current card is always shown large. Th
 app is scorekeeper and dealer, not a rules engine.
 
 Horde Magic is unofficial fan content. Not approved or endorsed by Wizards of the Coast.
+<!-- ruleset verification, will be deleted -->
