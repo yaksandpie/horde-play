@@ -137,7 +137,9 @@
     display: inline-flex; align-items: center; justify-content: center;
     padding: 6px; width: 32px; height: 32px;
   }
-  .btn.icon svg { width: 18px; height: 18px; display: block; }
+  /* flex: none so the glyph keeps its aspect — a content box a shade
+     narrower than 18px would otherwise squash it into an ellipse. */
+  .btn.icon svg { width: 18px; height: 18px; display: block; flex: none; }
   .btn.big {
     width: 100%;
     padding: 18px;
@@ -169,8 +171,11 @@
   @media (max-width: 560px) {
     .bar { gap: 8px; }
     .bar-actions { gap: 4px; }
-    .btn.icon { width: 30px; height: 30px; }
     .btn.sm { padding: 6px 9px; }
+    /* After .btn.sm, which is equally specific and would otherwise keep its
+       wider side padding here: 30 - 2px border - 10px padding leaves the
+       glyph its full 18px. */
+    .btn.icon { width: 30px; height: 30px; padding: 5px; }
   }
 
   /* ---------- Cards / panels ---------- */
