@@ -53,7 +53,9 @@ required check passes.
 - A red or still-running job still isn't a merge — auto-merge just keeps
   waiting. If a check fails, fix it and push (or say what's blocking); the
   next green run is what auto-merge fires on, no need to re-enable it.
-- If auto-merge can't be enabled for some reason, fall back to watching the
-  run yourself and merging by hand once everything's green.
+- `enable_pr_auto_merge` also needs the repo-level "Allow auto-merge" setting
+  on (Settings → General → Pull Requests) — the ruleset alone isn't enough.
+  If that's off, or auto-merge can't be enabled for any other reason, fall
+  back to watching the run yourself and merging by hand once green.
 - A merge is a release: pushing to `main` publishes to Pages. Nothing else
   guards that.
