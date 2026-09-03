@@ -3251,8 +3251,15 @@ function renderLog() {
     li.appendChild(document.createTextNode(entry.msg));
     box.appendChild(li);
   }
-  // A viewer can join a game whose shared snapshot carried no entries.
-  $("#log-empty").hidden = G.log.length > 0;
+  /* A viewer can join a game whose shared snapshot carried no entries — the
+     log is the first thing dropped when a snapshot won't fit. On a board that
+     plainly has a history, that empty state is a trim, not a quiet game, and
+     saying "nothing has happened" would be a lie. */
+  const empty = $("#log-empty");
+  empty.hidden = G.log.length > 0;
+  empty.textContent = viewerMode && (G.board.length || yardTotal())
+    ? "The log was too long to send to a viewer \u2014 look at the game screen."
+    : "Nothing has happened yet.";
 }
 
 /* Undo, the random survivor, the log and End game live in the header now, so
