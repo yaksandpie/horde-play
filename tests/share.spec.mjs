@@ -4,7 +4,7 @@
  * request that leaves the origin — so these cover the two halves that don't
  * need a network: the snapshot a host would send, and the game screen a viewer
  * is left holding. */
-import { test, expect, startGame } from "./fixtures.mjs";
+import { test, expect, startGame, backToDecks } from "./fixtures.mjs";
 
 /* Play far enough to have a board, a graveyard and a log to encode. */
 async function playATurn(app) {
@@ -345,7 +345,7 @@ test.describe("viewer mode", () => {
     // Have a game of your own in progress first: watching must not disturb it.
     await startGame(app, "Zombies Horde");
     const mine = await app.evaluate(() => localStorage.getItem("horde.game"));
-    await app.locator("#btn-home").click();
+    await backToDecks(app);
 
     await app.locator("#btn-watch").click();
     await app.locator("#join-code").fill("k7p2qm");   // lower case is fine
@@ -367,7 +367,6 @@ test.describe("viewer mode", () => {
     await expect(app.locator("#btn-log")).toBeHidden();
     await expect(app.locator("#tile-damage")).toBeDisabled();
     await expect(app.locator("#tile-life")).toBeDisabled();
-    await expect(app.locator("#btn-home")).toBeHidden();
 
     // The relay is unreachable in these tests, so it says so rather than
     // sitting on an empty board pretending to be live.
@@ -393,7 +392,7 @@ test.describe("viewer mode", () => {
         window.__trimmed = decodeSnapshot(snap, cards);
       });
 
-      await app.locator("#btn-home").click();
+      await backToDecks(app);
       await app.locator("#btn-watch").click();
       await app.locator("#join-code").fill("K7P2QM");
       await app.locator("#join-go").click();
@@ -475,7 +474,7 @@ test.describe("sharing a game", () => {
     await startGame(app, "Zombies Horde");
     await expect(app.locator("#btn-share")).toBeVisible();
 
-    await app.locator("#btn-home").click();
+    await backToDecks(app);
     await expect(app.locator("#screen-decks")).toBeVisible();
     await expect(app.locator("#btn-share")).toBeHidden();
 

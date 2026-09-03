@@ -164,8 +164,8 @@
   /* The game's icon actions sit tighter than the header's own gap, so they
      read as one group rather than four unrelated buttons. */
   .bar-actions { display: flex; align-items: center; gap: 6px; }
-  /* Four icons, Share and Decks all have to fit beside the logo, so the
-     wordmark and some of the padding go first on a narrow screen. */
+  /* Four icons and Share all have to fit beside the logo, so the wordmark
+     and some of the padding go first on a narrow screen. */
   @media (max-width: 560px) {
     .bar { gap: 8px; }
     .bar-actions { gap: 4px; }
@@ -806,7 +806,6 @@
         </button>
       </div>
       <button class="btn sm ghost sharebtn" id="btn-share" hidden>Share</button>
-      <button class="btn sm ghost" id="btn-home" hidden>Decks</button>
     </div>
   </header>
 
@@ -918,6 +917,9 @@ Tokens: (200)
   <!-- ================= BAN LIST ================= -->
   <section class="screen" id="screen-bans">
     <div class="panel">
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn sm ghost" id="btn-bans-back">&larr; Back to decks</button>
+      </div>
       <h2>Ban list</h2>
       <p class="small muted" style="margin:0 0 4px">
         These are barred from the <em>survivors'</em> EDH decks, not from the Horde's library, so the
@@ -2432,7 +2434,6 @@ function checkEnd() {
 
 function showScreen(id) {
   $$(".screen").forEach((s) => s.classList.toggle("active", s.id === id));
-  $("#btn-home").hidden = id === "screen-decks" || viewerMode;
   renderGameActions();
   renderShare();
   if (id === "screen-decks") applyDeckTheme(null);
@@ -4182,20 +4183,19 @@ function applyViewerMode() {
   // but it no longer kills anything, so the hint shouldn't say it does.
   $("#board-hint-host").hidden = on;
   $("#board-hint-viewer").hidden = !on;
-  $("#btn-home").hidden = on;
 }
 
 /* =========================================================================
    Events
    ========================================================================= */
 
-$("#btn-home").addEventListener("click", () => { renderDecks(); showScreen("screen-decks"); });
 $("#btn-bans").addEventListener("click", () => {
   $("#ban-search").value = "";
   renderBans();
   showScreen("screen-bans");
 });
 $("#ban-search").addEventListener("input", renderBans);
+$("#btn-bans-back").addEventListener("click", () => { renderDecks(); showScreen("screen-decks"); });
 
 // --- game log ---
 $("#btn-log").addEventListener("click", () => {
@@ -4637,7 +4637,7 @@ window.__horde = {
   killFromStack, createTokens, setTokenCount, duplicateStack, attackingPower, powerIsPartial,
   creatureCount, yardStacks, yardTotal,
   setStackCounters, stackId, findStack, countOnBoard, countersLabel, effectivePT, normCounters,
-  cardMeta, padPress, primeImages, renderGame, showScreen,
+  cardMeta, padPress, primeImages, renderGame, renderDecks, showScreen,
   encodeSnapshot, decodeSnapshot, cardFromInline, makeCode, topicFor,
   CODE_ALPHABET, CODE_LEN, SHARE_MAX,
 };

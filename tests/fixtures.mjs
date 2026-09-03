@@ -26,6 +26,17 @@ export const test = base.extend({
 
 export { expect };
 
+/* Leave whatever screen is up for the decks screen, without ending the game.
+   There's no button for this any more — a game in progress is left by ending
+   it — so the tests drive the screen change directly. */
+export async function backToDecks(page) {
+  await page.evaluate(() => {
+    window.__horde.renderDecks();
+    window.__horde.showScreen("screen-decks");
+  });
+  await expect(page.locator("#screen-decks")).toBeVisible();
+}
+
 /* Start a game on a built-in deck and play past the survivors' setup turns,
    leaving the Horde about to take its first turn. */
 export async function startGame(page, deckName) {

@@ -1,6 +1,6 @@
 /* A game played through the real UI, offline. If these pass, the app opens on a
    tablet with no signal and gets through a turn. */
-import { test, expect, startGame } from "./fixtures.mjs";
+import { test, expect, startGame, backToDecks } from "./fixtures.mjs";
 
 test("the decks screen lists the built-in hordes", async ({ app }) => {
   await expect(app.locator("#screen-decks")).toBeVisible();
@@ -169,7 +169,9 @@ test("the header carries the game's actions, and drops them with the game",
       await expect(app.locator(id)).toBeVisible();
     }
 
-    await app.locator("#btn-home").click();
+    // The header dresses itself for the game screen, not for a saved game:
+    // leave the screen and the actions go, even with the game still in hand.
+    await backToDecks(app);
     await expect(app.locator("#screen-decks")).toBeVisible();
     for (const id of ["#btn-undo", "#btn-random", "#btn-log", "#btn-quit"]) {
       await expect(app.locator(id)).toBeHidden();
