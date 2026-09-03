@@ -15,6 +15,15 @@ checks and a full Playwright suite. When making changes:
 - If a CI job fails, pull the failure from the job logs (`get_job_logs` /
   `gh run view --log-failed`) rather than guessing, then fix and push again.
 
+## Bump the service worker cache version with the app shell
+
+The `Service worker cache version` CI check fails any PR that touches
+`index.html`, `manifest.json`, or an `icon-*.png` without also bumping
+`CACHE_VERSION` in `sw.js`. This is easy to forget when the change is a
+small one (copy tweaks, a style fix) — bump it as part of the same commit
+whenever you touch one of those files, rather than waiting for CI to catch
+it and pushing a follow-up.
+
 ## Merging against a moving `main`
 
 Other branches land on `main` while a PR sits open. Before assuming a CI
