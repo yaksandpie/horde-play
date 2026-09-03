@@ -158,6 +158,48 @@ test("counters split a board tile, and the tile says so", async ({ app }) => {
   await expect(app.locator("#board .cardface")).toHaveCount(1);
 });
 
+test("the header carries the game's actions, and drops them with the game",
+  async ({ app }) => {
+    for (const id of ["#btn-undo", "#btn-random", "#btn-log", "#btn-quit"]) {
+      await expect(app.locator(id)).toBeHidden();
+    }
+
+    await startGame(app, "Zombies Horde");
+    for (const id of ["#btn-undo", "#btn-random", "#btn-log", "#btn-quit"]) {
+      await expect(app.locator(id)).toBeVisible();
+    }
+
+    await app.locator("#btn-home").click();
+    await expect(app.locator("#screen-decks")).toBeVisible();
+    for (const id of ["#btn-undo", "#btn-random", "#btn-log", "#btn-quit"]) {
+      await expect(app.locator(id)).toBeHidden();
+    }
+  });
+
+test("the log opens in a modal, newest line first", async ({ app }) => {
+  await startGame(app, "Zombies Horde");
+  await expect(app.locator("#log-dialog")).toBeHidden();
+
+  await app.locator("#btn-log").click();
+  await expect(app.locator("#log-dialog")).toBeVisible();
+  await expect(app.locator("#log li").first()).toContainText("the Horde wakes up");
+  await expect(app.locator("#log li").last()).toContainText("Shuffled 300 cards");
+
+  /* Close is the only focusable thing under the list, so a sheet left to
+     itself opens scrolled past every entry the log was opened for. */
+  await app.evaluate(() => {
+    const { G, renderGame } = window.__horde;
+    for (let i = 0; i < 60; i++) G.log.unshift({ t: 4, msg: "filler " + i });
+    renderGame();
+  });
+  await app.locator("#log-close").click();
+  await app.locator("#btn-log").click();
+  expect(await app.locator("#log-dialog").evaluate((d) => d.scrollTop)).toBe(0);
+
+  await app.locator("#log-close").click();
+  await expect(app.locator("#log-dialog")).toBeHidden();
+});
+
 test("the ban list answers offline", async ({ app }) => {
   await app.locator("#btn-bans").click();
   await expect(app.locator("#screen-bans")).toBeVisible();

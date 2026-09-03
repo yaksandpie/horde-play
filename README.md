@@ -59,6 +59,8 @@ installs to a home screen and runs offline once a deck has been loaded.
 - **Random targeting** for the Horde's instants and sorceries, with a re-roll. A
   wave can carry several spells, and each one shows its own victim.
 - **Undo** on every action, and the game survives a reload or a screen lock.
+- **A running log** behind the header's log button — every wave, mill and life
+  change, newest first, stamped with the round it happened in.
 - **The screen stays awake** while a game is up, so a tablet propped on the table
   doesn't dim between waves.
 - **Keyboard shortcuts** for a laptop driving the game: `space` takes the turn,
