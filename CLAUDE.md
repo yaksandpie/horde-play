@@ -41,17 +41,19 @@ replies in the terminal stay plain.
 ## Merge your own PRs once CI is green
 
 Don't stop to ask before merging a PR you opened for work that was requested.
-Open it, wait for the run, merge it.
+Open it, enable auto-merge (squash), and let GitHub finish the job once every
+required check passes.
 
-- Green means every check on the head commit. The browser suite is the slow
-  one and it's the one that matters — a passing `Static checks` on its own is
-  not a result.
-- Squash, matching how the history reads.
-- A red or still-running job is not a merge. Fix it, or say what's blocking.
+- `main` carries a ruleset requiring `Static checks`, `Service worker cache
+  version`, and `Browser tests` on the head commit before a merge is allowed —
+  a fresh PR now shows `mergeable_state: blocked` instead of `clean`, so
+  `enable_pr_auto_merge` has something real to wait on. The browser suite is
+  the slow check and the one that matters; a passing `Static checks` alone
+  was never a result.
+- A red or still-running job still isn't a merge — auto-merge just keeps
+  waiting. If a check fails, fix it and push (or say what's blocking); the
+  next green run is what auto-merge fires on, no need to re-enable it.
+- If auto-merge can't be enabled for some reason, fall back to watching the
+  run yourself and merging by hand once everything's green.
 - A merge is a release: pushing to `main` publishes to Pages. Nothing else
   guards that.
-
-GitHub's own auto-merge can't stand in for this. It only fires when a required
-check is holding the PR back, and `main` has no branch protection, so there is
-nothing to hold anything back — `enable_pr_auto_merge` just fails with a
-clean-status error. Waiting for the run yourself is the gate.
