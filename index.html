@@ -2305,6 +2305,7 @@ function resolveReveal() {
     } else {
       addToBoard(key, 1);
       logit(card.name + " enters the battlefield.");
+      fireEtbTriggers(card, 1);
     }
   }
   G.revealed = [];
@@ -2429,6 +2430,7 @@ function duplicateStack(id) {
   snapshot();
   addToBoard(stack.cardKey, 1, stack.counters);
   logit("+1 " + stackLabel(stack) + " token.");
+  fireEtbTriggers(G.cards[stack.cardKey], 1);
   notePeak();
   persistGame();
 }
@@ -2443,6 +2445,7 @@ function createTokens(card, n) {
   if (!G.cards[card.key]) G.cards[card.key] = card;
   addToBoard(card.key, n);
   logit("+" + n + " " + card.name + (n === 1 ? " token" : " tokens") + ".");
+  fireEtbTriggers(card, n);
   notePeak();
   persistGame();
 }
@@ -2459,6 +2462,7 @@ function setTokenCount(id, n) {
   if (n > have) {
     addToBoard(stack.cardKey, n - have, stack.counters);
     logit("+" + (n - have) + " " + label + " \u2014 " + n + " on the battlefield.");
+    fireEtbTriggers(G.cards[stack.cardKey], n - have);
     notePeak();
   } else {
     removeFromStack(stack, have - n, false);
@@ -2467,6 +2471,54 @@ function setTokenCount(id, n) {
   }
   checkEnd();
   persistGame();
+}
+
+/* ---- Auto-applied ETB triggers ----
+
+   A handful of triggered abilities are simple enough — no target, no
+   choice, just "put a counter on me" — that making the player click
+   through them adds nothing. Registered by card name, since cardKey is a
+   random id assigned at import (see cardFromScryfall/cardFromEntry) and
+   isn't stable to hang a registry off. Anything not listed here is still
+   the players' to read and apply, per the app's usual stance on triggers.
+
+   "Another" is handled without per-permanent identity: a stack is already
+   a homogeneous group of otherwise-identical copies, so excluding "itself"
+   just means excluding however many of *this* entry just joined that same
+   stack — the rest were already on the board before this trigger fired. */
+const ETB_TRIGGERS = {
+  "Valley Mightcaller": {
+    watchTypes: ["Frog", "Rabbit", "Raccoon", "Squirrel"],
+    grant: PLUS_COUNTER,
+  },
+};
+
+// "Creature — Frog Warrior" -> ["Frog", "Warrior"]. Only tribal ETB
+// triggers need this, so it's parsed on demand rather than stored.
+function subtypesOf(card) {
+  const dash = (card.typeLine || "").indexOf("—");
+  return dash < 0 ? [] : card.typeLine.slice(dash + 1).trim().split(/\s+/);
+}
+
+/* Call once per permanent (or same-named group of `justEnteredN`) joining
+   the board, after addToBoard. Grants apply immediately; there's nothing
+   left for the player to decide. */
+function fireEtbTriggers(enteredCard, justEnteredN = 1) {
+  if (!(justEnteredN > 0)) return;
+  const enteredTypes = subtypesOf(enteredCard);
+  if (!enteredTypes.length) return;
+  for (const stack of G.board.slice()) {
+    const watcher = G.cards[stack.cardKey];
+    const trig = watcher && ETB_TRIGGERS[watcher.name];
+    if (!trig || !trig.watchTypes.some((t) => enteredTypes.includes(t))) continue;
+    const already = stack.count - (stack.cardKey === enteredCard.key ? justEnteredN : 0);
+    if (already <= 0) continue;
+    const next = normCounters(stack.counters);
+    next[trig.grant] = (next[trig.grant] || 0) + 1;
+    setStackCounters(stackId(stack), already, next);
+    logit(watcher.name + ": " + enteredCard.name + " entered — " + trig.grant +
+      (already > 1 ? " (×" + already + ")" : "") + ".");
+  }
 }
 
 function rerollTarget(index) {
