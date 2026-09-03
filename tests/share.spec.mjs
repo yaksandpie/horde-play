@@ -377,6 +377,45 @@ test.describe("viewer mode", () => {
     expect(await app.evaluate(() => localStorage.getItem("horde.game"))).toBe(mine);
   });
 
+  test("a viewer whose snapshot shed the log is told so, not told nothing happened",
+    async ({ app }) => {
+      await startGame(app, "Zombies Horde");
+      await playATurn(app);
+
+      /* The state a viewer is left holding when an oversized snapshot dropped
+         its log: a real board, and no lines to show for it. */
+      await app.evaluate(() => {
+        const { encodeSnapshot, decodeSnapshot, cardFromInline, G } = window.__horde;
+        const snap = encodeSnapshot(G);
+        snap.lg = [];
+        const cards = {};
+        for (const c of snap.ic || []) cards[c[0]] = cardFromInline(c);
+        window.__trimmed = decodeSnapshot(snap, cards);
+      });
+
+      await app.locator("#btn-home").click();
+      await app.locator("#btn-watch").click();
+      await app.locator("#join-code").fill("K7P2QM");
+      await app.locator("#join-go").click();
+      await expect(app.locator("#viewer-bar")).toBeVisible();
+
+      await app.evaluate(() => {
+        window.__horde.G = window.__trimmed;
+        window.__horde.renderGame();
+      });
+
+      await app.locator("#btn-log").click();
+      // "Nothing has happened yet" would be a lie on a board with a history.
+      await expect(app.locator("#log-empty")).toContainText("too long to send");
+    });
+
+  test("a game that genuinely has no log still says nothing has happened", async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+
+    await app.locator("#btn-log").click();
+    await expect(app.locator("#log-empty")).toContainText("Nothing has happened yet");
+  });
+
   test("leaving puts the controls back and drops the watched game", async ({ app }) => {
     await app.locator("#btn-watch").click();
     await app.locator("#join-code").fill("K7P2QM");
