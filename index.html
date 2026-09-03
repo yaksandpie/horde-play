@@ -740,6 +740,23 @@
   }
   .banlist li mark { background: var(--accent); color: var(--accent-ink); border-radius: 3px; }
 
+  /* A term mentioned in prose that opens a quick definition via the native
+     Popover API. Reset first so the .kw badge rules below still win when a
+     button carries both classes (kw.def can also be a term-btn). */
+  button.term-btn {
+    background: none; border: 0; padding: 0; margin: 0; font: inherit;
+    color: inherit; text-decoration: underline dotted; text-underline-offset: 2px;
+    cursor: help;
+  }
+  .term-btn:hover, .term-btn:focus-visible { color: var(--accent-hot); }
+
+  [popover].term-pop {
+    background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 14px; max-width: 280px; font-size: 13px; line-height: 1.4;
+    box-shadow: var(--shadow); margin: auto;
+  }
+
   .kw {
     display: inline-block; font-size: 10px; font-weight: 700;
     letter-spacing: .07em; text-transform: uppercase;
@@ -748,6 +765,7 @@
   }
   .kw.def { background: #24405a; border-color: #3d6d96; color: #cfe6ff; }
   .kw.leg { background: #4a3c18; border-color: #8a6f28; color: #ffe3a3; }
+  .kw.def.term-btn { text-decoration: none; cursor: help; }
 
   .cf-badge.rare { background: rgba(160,120,30,.92); border-color: #d3a63e; color: #fff6e0; }
   .cf-badge.defender { left: auto; right: 6px; background: rgba(36,64,90,.92); border-color: #3d6d96; color: #cfe6ff; }
@@ -860,7 +878,9 @@
           <strong>ruleset</strong> you pick when the game starts.
         </p>
         <p style="margin:0">
-          Its creatures have haste and are goaded; only creatures with <strong>Defender</strong> can block.
+          Its creatures have haste and are
+          <button class="term-btn" type="button" popovertarget="def-goaded">goaded</button>;
+          only creatures with <strong><button class="term-btn" type="button" popovertarget="def-defender">Defender</button></strong> can block.
           Damage to the Horde <strong>mills that many cards</strong> and lifegain does nothing.
           Survivors share one life total &mdash; 100, minus 15 for each player past the first.
         </p>
@@ -1112,7 +1132,8 @@ Tokens: (200)
         <span class="tiny muted" id="board-summary"></span>
       </div>
       <p class="tiny muted" style="margin:-2px 0 12px">
-        Haste, goaded, attacking every turn. Only <span class="kw def">Defender</span> can block.
+        Haste, <button class="term-btn" type="button" popovertarget="def-goaded">goaded</button>, attacking every turn.
+        Only <button class="kw def term-btn" type="button" popovertarget="def-defender">Defender</button> can block.
         <span id="board-hint-host">Tap a stack to kill one or all.</span>
         <span id="board-hint-viewer" hidden>Tap a stack to read it.</span>
       </p>
@@ -1378,6 +1399,17 @@ Tokens: (200)
     <button class="btn danger" id="cd-yes">Confirm</button>
   </div>
 </dialog>
+
+<!-- MTG term glossary: one popover per term, opened from any button
+     anywhere in the page via popovertarget="def-<term>". -->
+<div id="def-goaded" class="term-pop" popover>
+  A goaded creature must attack this combat if able, and must attack a
+  player other than whoever goaded it, if able.
+</div>
+<div id="def-defender" class="term-pop" popover>
+  A creature with Defender can&rsquo;t attack, but it can still block.
+</div>
+
 <script>
 "use strict";
 
@@ -1401,6 +1433,15 @@ const el = (tag, cls, text) => {
 };
 const uid = () => Math.random().toString(36).slice(2, 10);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* A term mentioned in prose that opens its definition from the glossary
+   popovers declared once near the end of <body> (id="def-<term>"). */
+const termBtn = (term, key, cls) => {
+  const b = el("button", "term-btn" + (cls ? " " + cls : ""), term);
+  b.type = "button";
+  b.setAttribute("popovertarget", "def-" + key);
+  return b;
+};
 
 /* The mill pad and the token quantity pad are the same widget: a digit, a
    clear, or a backspace over a string of at most four digits. */
@@ -3101,10 +3142,13 @@ function renderStage() {
       : creatures + " attacking" +
         (powerIsPartial() ? " — some stats are unknown, check the cards." : ".")));
   }
-  body.appendChild(el("p", "stage-oracle",
-    "Everything is goaded and attacking." +
-    (defenders ? " " + defenders + " with Defender stayed back to block." : "") +
-    " Block what you can, then take the rest off the shared life total."));
+  const oracle = el("p", "stage-oracle");
+  oracle.append("Everything is ", termBtn("goaded", "goaded"), " and attacking.");
+  if (defenders) {
+    oracle.append(" " + defenders + " with ", termBtn("Defender", "defender"), " stayed back to block.");
+  }
+  oracle.append(" Block what you can, then take the rest off the shared life total.");
+  body.appendChild(oracle);
   if (count) {
     const grid = el("div", "cardgrid lg");
     for (const stack of attackers()) {
@@ -3141,7 +3185,7 @@ function renderRevealStage(body) {
   meta.appendChild(el("h2", "stage-title", hero.name));
   const kw = el("p", "stage-type");
   if (hero.isLegendary) kw.appendChild(el("span", "kw leg", "Legendary"));
-  if (hero.hasDefender) kw.appendChild(el("span", "kw def", "Defender"));
+  if (hero.hasDefender) kw.appendChild(termBtn("Defender", "defender", "kw def"));
   kw.appendChild(document.createTextNode(cardMeta(hero)));
   meta.appendChild(kw);
 
