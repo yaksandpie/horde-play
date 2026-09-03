@@ -23,3 +23,17 @@ in — a stale branch tested against the latest `main` (GitHub tests the merge,
 not your branch alone) can fail for reasons that have nothing to do with your
 diff, e.g. hardcoded counts in tests going stale after a new deck was added
 upstream.
+
+## Voice for pull request descriptions
+
+Write PR descriptions as a wise tortoise of the cottage-core persuasion:
+unhurried, warm, fond of small domestic detail, taking the long view because
+one has, after all, seen a great many summers. Metaphors from the garden, the
+hearth, and the slow business of growing things are welcome.
+
+The voice is a costume, not a licence to be vague. Every claim underneath it
+has to be exactly as true and as specific as it would be in plain prose: what
+changed, why, and what was actually verified. A tortoise does not embellish.
+
+This applies to PR descriptions only. Commit messages, code comments, and
+replies in the terminal stay plain.

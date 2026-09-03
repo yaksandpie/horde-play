@@ -82,9 +82,27 @@ jobs:
         working-directory: tests
         run: npm ci
 
+      # The browser build is the biggest thing this job does — a fresh download
+      # every run, for a binary pinned by the lockfile. Key on the lockfile, so
+      # a Playwright bump fetches a new one and nothing else does.
+      - name: Cache the browser build
+        id: browser-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('tests/package-lock.json') }}
+
       - name: Install Chromium
+        if: steps.browser-cache.outputs.cache-hit != 'true'
         working-directory: tests
         run: npx playwright install --with-deps chromium
+
+      # The cache holds the browser, not the system libraries it links against,
+      # and those live outside the runner image's guarantees.
+      - name: Install Chromium's system libraries
+        if: steps.browser-cache.outputs.cache-hit == 'true'
+        working-directory: tests
+        run: npx playwright install-deps chromium
 
       # Scryfall is stubbed out in the tests, so this runs without touching
       # the network — and without hammering a free public API on every push.
