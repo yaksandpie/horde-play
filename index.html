@@ -40,8 +40,14 @@
   }
 
   /* Bloomburrow forest theme: applied to <body> while a Bloomburrow deck is
-     selected for setup or in play. See applyDeckTheme() in the script. */
-  body.theme-bloomburrow {
+     selected for setup or in play. See applyDeckTheme() in the script.
+
+     The <html> selector matters as much as the <body> one: the canvas behind
+     the page is painted from <html>'s own background, so with the variables
+     redefined on <body> alone a short page went green only as far as the
+     body box reached and showed the default brown below it. */
+  body.theme-bloomburrow,
+  html:has(body.theme-bloomburrow) {
     --bg: #0f1a12;
     --bg-deep: #0a120c;
     --surface: #16261b;
