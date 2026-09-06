@@ -52,6 +52,10 @@ installs to a home screen and runs offline once a deck has been loaded.
   the way the board is. Plenty of horde cards care what's in there — Grave
   Betrayal, Footbottom Feast, Unbreathing Horde — and it's the only part of the
   game state you otherwise can't look at.
+- **The board announces itself.** It sits below the arena, where it's easy to
+  forget: it carries an accent edge while the Horde has anything standing, and
+  both the panel and the Creatures counter flare when a wave adds to it. The
+  Creatures counter scrolls you down there on tap.
 - **Attacks.** Everything is goaded and attacking; `Defender` creatures are held
   back as blockers and excluded from the attacking total.
 - **Shared life**, per the site's rules: 100 for one survivor, 15 less for each one
@@ -64,7 +68,7 @@ installs to a home screen and runs offline once a deck has been loaded.
 - **The screen stays awake** while a game is up, so a tablet propped on the table
   doesn't dim between waves.
 - **Keyboard shortcuts** for a laptop driving the game: `space` takes the turn,
-  `u` undoes, `d` opens damage, `l` life, `g` the graveyard.
+  `u` undoes, `d` opens damage, `l` life, `g` the graveyard, `b` jumps to the board.
 - **An end screen that says how it went** — rounds survived, cards left in the
   library, graveyard size, and the biggest the Horde's board ever got.
 - **Watching from another seat.** One screen runs the game; anyone else can open
