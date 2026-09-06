@@ -1,0 +1,47 @@
+name: Cache version autofix
+
+# The collision is created the moment a CACHE_VERSION bump lands on main, so
+# that is when to go and fix every open PR that now clashes with it — rather
+# than waiting for each one to discover the conflict on its own.
+on:
+  push:
+    branches: [main]
+    paths: [sw.js]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Only fix this PR number (blank = every open PR)"
+        required: false
+      dry_run:
+        description: "Report what would change without pushing"
+        type: boolean
+        default: false
+
+concurrency:
+  group: cache-version-autofix
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  autofix:
+    name: Resolve CACHE_VERSION collisions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Take the higher CACHE_VERSION on every clashing PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ inputs.pr }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: node .github/scripts/cache-version-autofix.mjs

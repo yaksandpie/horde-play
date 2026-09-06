@@ -30,10 +30,19 @@ jobs:
       - name: Check the static site
         run: node tests/check-static.mjs
 
+      # The autofix pushes commits to PR branches unattended, so its parsing of
+      # git's conflict markers is worth pinning down. Dependency-free too.
+      - name: Check the cache version autofix
+        run: node --test .github/scripts/cache-version-autofix.test.mjs
+
   cache-version:
     name: Service worker cache version
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    # Also runs on workflow_dispatch, because the cache version autofix pushes
+    # with GITHUB_TOKEN — which starts no run of its own — and asks for CI back
+    # by dispatch. Skipping this job there would leave the required check
+    # unreported on the very commit the autofix just wrote.
+    if: github.event_name != 'push'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -43,9 +52,22 @@ jobs:
       # index.html under the old CACHE_VERSION leaves installed copies stale.
       - name: Require a CACHE_VERSION bump when the app shell changes
         env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
+          if [ -n "$PR_BASE" ]; then
+            HEAD="$PR_HEAD"
+            # base.sha follows the tip of main, so once main moves ahead of the
+            # branch, diffing against it attributes main's own commits to this
+            # PR. The fork point is what the PR actually changed.
+            BASE=$(git merge-base "$PR_BASE" "$PR_HEAD")
+          else
+            # Dispatched against a branch: compare it with where it left main.
+            git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+            HEAD=$(git rev-parse HEAD)
+            BASE=$(git merge-base origin/main HEAD)
+          fi
+
           changed=$(git diff --name-only "$BASE" "$HEAD")
           shell_changed=$(echo "$changed" | grep -E '^(index\.html|manifest\.json|icon-.*\.png)$' || true)
 
@@ -58,7 +80,7 @@ jobs:
           echo "$shell_changed"
 
           before=$(git show "$BASE:sw.js" | grep -oP 'CACHE_VERSION = "\K[^"]+')
-          after=$(grep -oP 'CACHE_VERSION = "\K[^"]+' sw.js)
+          after=$(git show "$HEAD:sw.js" | grep -oP 'CACHE_VERSION = "\K[^"]+')
 
           if [ "$before" = "$after" ]; then
             echo "::error file=sw.js::The app shell changed but CACHE_VERSION is still $after. Bump it so installed copies pick up the new files."
