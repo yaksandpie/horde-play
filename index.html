@@ -646,13 +646,24 @@
 
   /* ---------- Deck list ---------- */
 
-  .decklist { display: grid; gap: 10px; }
+  /* Tiles rather than full-width rows: a dozen-odd decks fit in a couple of
+     screenfuls instead of a long single column. auto-fill packs as many
+     240px columns as the 1100px wrap allows (four on a desktop, one on a
+     phone) with no breakpoints to keep in sync. */
+  .decklist {
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
   .deckrow {
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    display: flex; flex-direction: column; gap: 10px;
     background: var(--surface-2); border: 1px solid var(--line);
     border-radius: 12px; padding: 12px 14px;
   }
   .deckrow .dname { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 17px; }
+  /* margin-top:auto pins the buttons to the bottom of the tile, so they line
+     up across a row whose names wrap to different heights. */
+  .deckrow .deck-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+  .deckrow .deck-actions .btn { flex: 1 1 auto; }
 
   /* ---------- Log ---------- */
 
@@ -2647,7 +2658,7 @@ function renderDecks() {
     const tokens = deck.entries.reduce((n, e) => n + (e.card.isToken ? e.qty : 0), 0);
     const row = el("div", "deckrow");
 
-    const name = el("div", "grow");
+    const name = el("div");
     const title = el("div", "dname", deck.name);
     name.appendChild(title);
     name.appendChild(el("div", "small muted",
@@ -2656,9 +2667,10 @@ function renderDecks() {
       (deck.builtin ? " · built in" : "")));
     row.appendChild(name);
 
+    const actions = el("div", "deck-actions");
     const play = el("button", "btn primary sm", "New game");
     play.addEventListener("click", () => openSetup(deck));
-    row.appendChild(play);
+    actions.appendChild(play);
 
     if (!deck.builtin) {
       const del = el("button", "btn ghost sm danger", "Delete");
@@ -2669,8 +2681,9 @@ function renderDecks() {
           toast("Deck deleted");
         });
       });
-      row.appendChild(del);
+      actions.appendChild(del);
     }
+    row.appendChild(actions);
     list.appendChild(row);
   }
 
