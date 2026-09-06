@@ -56,13 +56,16 @@ jobs:
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           if [ -n "$PR_BASE" ]; then
-            BASE="$PR_BASE"
             HEAD="$PR_HEAD"
+            # base.sha follows the tip of main, so once main moves ahead of the
+            # branch, diffing against it attributes main's own commits to this
+            # PR. The fork point is what the PR actually changed.
+            BASE=$(git merge-base "$PR_BASE" "$PR_HEAD")
           else
             # Dispatched against a branch: compare it with where it left main.
             git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
-            BASE=$(git merge-base origin/main HEAD)
             HEAD=$(git rev-parse HEAD)
+            BASE=$(git merge-base origin/main HEAD)
           fi
 
           changed=$(git diff --name-only "$BASE" "$HEAD")
@@ -77,7 +80,7 @@ jobs:
           echo "$shell_changed"
 
           before=$(git show "$BASE:sw.js" | grep -oP 'CACHE_VERSION = "\K[^"]+')
-          after=$(grep -oP 'CACHE_VERSION = "\K[^"]+' sw.js)
+          after=$(git show "$HEAD:sw.js" | grep -oP 'CACHE_VERSION = "\K[^"]+')
 
           if [ "$before" = "$after" ]; then
             echo "::error file=sw.js::The app shell changed but CACHE_VERSION is still $after. Bump it so installed copies pick up the new files."
