@@ -238,3 +238,79 @@ test("the app registers a service worker so it installs offline", async ({ app }
     { timeout: 15_000 }
   ).toBeGreaterThan(0);
 });
+
+test("the Bloomburrow skin paints the whole page, not just the body box", async ({ app }) => {
+  /* The canvas behind the page comes from <html>, so a theme defined on
+     <body> alone left the empty space below a short setup screen brown. */
+  await app.setViewportSize({ width: 1280, height: 1024 });
+
+  const bg = () => app.evaluate(() => ({
+    html: getComputedStyle(document.documentElement).backgroundColor,
+    body: getComputedStyle(document.body).backgroundColor,
+    shorterThanViewport: document.body.getBoundingClientRect().height < innerHeight,
+  }));
+
+  const plain = await bg();
+  expect(plain.html).toBe("rgb(44, 42, 37)");
+
+  await app.locator(".deckrow", { hasText: "Bloomburrow — Druid Circle" }).first()
+    .getByRole("button", { name: "New game" }).click();
+  await expect(app.locator("#screen-setup")).toBeVisible();
+
+  const themed = await bg();
+  expect(themed.body).toBe("rgb(15, 26, 18)");
+  expect(themed.html).toBe(themed.body);
+  // The bug is only visible when the page doesn't fill the window.
+  expect(themed.shorterThanViewport).toBe(true);
+
+  // And it comes back off when the deck is put down.
+  await backToDecks(app);
+  expect((await bg()).html).toBe("rgb(44, 42, 37)");
+});
+
+test("a glossary definition opens against the word, not in the middle of the screen",
+  async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+
+    const word = app.locator("#board-panel").getByRole("button", { name: "goaded" });
+    await word.click();
+    const pop = app.locator("#def-goaded");
+    await expect(pop).toBeVisible();
+
+    const w = await word.boundingBox();
+    const p = await pop.boundingBox();
+
+    // Tucked just under the word it explains...
+    expect(p.y).toBeGreaterThanOrEqual(w.y + w.height);
+    expect(p.y).toBeLessThan(w.y + w.height + 20);
+    // ...and wide enough of it that the word sits under the popover, which is
+    // where the caret points. The popover may be nudged sideways to stay on
+    // screen, so this is the claim that survives that nudge.
+    const mid = w.x + w.width / 2;
+    expect(mid).toBeGreaterThan(p.x);
+    expect(mid).toBeLessThan(p.x + p.width);
+    await expect(pop).toHaveClass(/below/);
+  });
+
+test("a definition with no room beneath it opens above the word instead",
+  async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+
+    const word = app.locator("#board-panel").getByRole("button", { name: "goaded" });
+    // Crop the viewport just under the word, leaving nowhere below for the
+    // popover to go. Only the height changes, so nothing above it reflows.
+    const seat = await word.boundingBox();
+    await app.setViewportSize({ width: 1280, height: Math.round(seat.y + seat.height) + 24 });
+    // Click in place: locator.click() would scroll the word back to the middle
+    // of the viewport first, handing the popover the room we just took away.
+    await word.evaluate((n) => n.click());
+    const pop = app.locator("#def-goaded");
+    await expect(pop).toBeVisible();
+
+    const w = await word.boundingBox();
+    const p = await pop.boundingBox();
+
+    await expect(pop).toHaveClass(/above/);
+    expect(p.y + p.height).toBeLessThanOrEqual(w.y);
+    expect(p.y).toBeGreaterThanOrEqual(0);
+  });
