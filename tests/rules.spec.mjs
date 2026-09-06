@@ -165,6 +165,8 @@ test.describe("bundled decks", () => {
       "Bloomburrow — Squirrel Hoard": 300,
       "Bloomburrow — Raccoon Ruckus": 300,
       "Bloomburrow — Druid Circle": 300,
+      "Bloomburrow — Mouse Brigade": 300,
+      "Bloomburrow — Frog Pond": 300,
     });
   });
 
