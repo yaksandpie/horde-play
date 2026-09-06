@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v22";
+const CACHE_VERSION = "v23";
 const CACHE_NAME = `horde-play-${CACHE_VERSION}`;
 const APP_SHELL = [
   "./",
