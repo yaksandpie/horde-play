@@ -811,12 +811,36 @@
   }
   .term-btn:hover, .term-btn:focus-visible { color: var(--accent-hot); }
 
+  /* A popover lives in the top layer, where the browser's default placement
+     is the dead centre of the viewport -- a long way from the word that was
+     tapped. placeTermPop() pins it to its own trigger instead; everything
+     scoped to .js-pop only applies once that script is running, so if the
+     script ever fails the definitions still open, just centred. */
   [popover].term-pop {
     background: var(--surface-2); color: var(--ink);
     border: 1px solid var(--line); border-radius: 10px;
-    padding: 10px 14px; max-width: 280px; font-size: 13px; line-height: 1.4;
+    padding: 10px 14px; font-size: 13px; line-height: 1.4;
+    max-width: min(280px, calc(100vw - 20px));
     box-shadow: var(--shadow); margin: auto;
   }
+  /* Open but not yet measured and placed: hold it back for that one frame
+     rather than let it flash in the middle of the screen first. */
+  .js-pop [popover].term-pop.anchoring:not(.placed) { visibility: hidden; }
+  /* overflow is `auto` on [popover] in the UA stylesheet, which clips the
+     caret below back to the box; the text in here never needs to scroll. */
+  .js-pop [popover].term-pop.placed { margin: 0; inset: auto; overflow: visible; }
+
+  /* A caret pointing back at the word. --caret-x is set alongside the
+     coordinates so it still lands on the trigger when the popover has been
+     nudged sideways to stay on screen. */
+  .js-pop .term-pop.placed::after {
+    content: ""; position: absolute; left: var(--caret-x, 50%);
+    width: 10px; height: 10px; margin-left: -5px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    transform: rotate(45deg);
+  }
+  .js-pop .term-pop.below::after { top: -6px; border-width: 1px 0 0 1px; }
+  .js-pop .term-pop.above::after { bottom: -6px; border-width: 0 1px 1px 0; }
 
   .kw {
     display: inline-block; font-size: 10px; font-weight: 700;
@@ -1506,6 +1530,81 @@ const termBtn = (term, key, cls) => {
   b.setAttribute("popovertarget", "def-" + key);
   return b;
 };
+
+/* Glossary popovers are top-layer elements, so the browser parks them in the
+   middle of the viewport by default -- fine for a dialog, wrong for a word.
+   These pin each one to the button that opened it: below the word when
+   there's room, above it when there isn't, and pulled back inside the
+   viewport either way. */
+const POP_GAP = 8;   // breathing room between the trigger and the popover
+const POP_EDGE = 10; // smallest gap we'll leave against a viewport edge
+const POP_CARET = 16; // how close to a corner the caret may sit
+
+let popAnchor = null; // trigger of the click currently opening a popover
+let popOpen = null;   // {pop, btn} while an anchored popover is showing
+
+function placeTermPop(pop, btn) {
+  const a = btn.getBoundingClientRect();
+  const p = pop.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth;
+  const vh = document.documentElement.clientHeight;
+
+  const below = a.bottom + POP_GAP;
+  const above = a.top - POP_GAP - p.height;
+  const goAbove = below + p.height > vh - POP_EDGE && above >= POP_EDGE;
+  const top = Math.min(Math.max(goAbove ? above : below, POP_EDGE), Math.max(POP_EDGE, vh - p.height - POP_EDGE));
+
+  const mid = a.left + a.width / 2;
+  const left = Math.min(Math.max(mid - p.width / 2, POP_EDGE), Math.max(POP_EDGE, vw - p.width - POP_EDGE));
+
+  pop.style.top = top + "px";
+  pop.style.left = left + "px";
+  pop.style.setProperty("--caret-x", Math.min(Math.max(mid - left, POP_CARET), Math.max(POP_CARET, p.width - POP_CARET)) + "px");
+  pop.classList.toggle("above", goAbove);
+  pop.classList.toggle("below", !goAbove);
+  pop.classList.add("placed");
+}
+
+function initTermPops() {
+  document.documentElement.classList.add("js-pop");
+
+  /* The popover opens as this click's default action, so a capture-phase
+     listener sees the trigger before the toggle event fires. Keyboard
+     activation of a <button> dispatches a click too, so this covers both. */
+  document.addEventListener("click", (e) => {
+    const t = e.target instanceof Element ? e.target.closest("[popovertarget]") : null;
+    popAnchor = t;
+    const pop = t && document.getElementById(t.getAttribute("popovertarget"));
+    if (pop && pop.classList.contains("term-pop")) pop.classList.add("anchoring");
+  }, true);
+
+  for (const pop of $$("[popover].term-pop")) {
+    pop.addEventListener("toggle", (e) => {
+      if (e.newState === "open") {
+        const btn = pop.classList.contains("anchoring") ? popAnchor : null;
+        if (!btn) return; // opened without a trigger we know: leave it centred
+        popOpen = { pop, btn };
+        placeTermPop(pop, btn);
+      } else {
+        if (popOpen && popOpen.pop === pop) popOpen = null;
+        pop.classList.remove("anchoring", "placed", "above", "below");
+        pop.style.removeProperty("top");
+        pop.style.removeProperty("left");
+      }
+    });
+  }
+
+  /* Scrolling or resizing moves the word out from under its definition.
+     Follow it, and give up once the word has left the viewport entirely. */
+  const follow = () => {
+    if (!popOpen) return;
+    const a = popOpen.btn.getBoundingClientRect();
+    if (a.bottom < 0 || a.top > document.documentElement.clientHeight) popOpen.pop.hidePopover();
+    else placeTermPop(popOpen.pop, popOpen.btn);
+  };
+  addEventListener("scroll", follow, { passive: true, capture: true });
+  addEventListener("resize", follow);
+}
 
 /* The mill pad and the token quantity pad are the same widget: a digit, a
    clear, or a backspace over a string of at most four digits. */
@@ -4870,6 +4969,7 @@ document.addEventListener("keydown", (e) => {
    ========================================================================= */
 
 syncLife();
+initTermPops();
 {
   const saved = loadShare();
   if (saved && saved.code) { shareCode = saved.code; shareWasOn = !!saved.on; }
