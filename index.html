@@ -448,6 +448,20 @@
   @keyframes flipin { from { opacity: 0; transform: translateY(10px) scale(.94); } to { opacity: 1; transform: none; } }
   .flipin { animation: flipin .22s ease both; }
 
+  /* ---------- Confetti (the survivors' win, falling from the top) ---------- */
+
+  .confetti { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+  .confetti i {
+    position: absolute; top: -12px; left: 0;
+    border-radius: 1px;
+    animation: confetti-fall linear infinite;
+  }
+  @keyframes confetti-fall {
+    from { transform: translate3d(0, -10vh, 0) rotate(0deg); }
+    to { transform: translate3d(var(--drift, 0px), 110vh, 0) rotate(720deg); }
+  }
+  @media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
+
   /* ---------- Tally (the standing numbers) ---------- */
 
   .tally {
@@ -1105,7 +1119,7 @@ Tokens: (200)
     <!-- The arena: what the Horde is doing right now, and what you do about it. -->
     <div class="arena" id="arena" data-phase="survivors">
       <div class="arena-head">
-        <span class="arena-phase"><i class="pulse" aria-hidden="true"></i><span id="arena-phase-label">Survivors&rsquo; turn</span></span>
+        <span class="arena-phase"><i class="pulse" aria-hidden="true"></i><span id="arena-phase-label">Your turn</span></span>
         <span class="arena-round">Round <b id="c-turn">1</b></span>
       </div>
 
@@ -1183,6 +1197,7 @@ Tokens: (200)
 
   <!-- ================= END ================= -->
   <section class="screen" id="screen-end">
+    <div class="confetti" id="confetti" aria-hidden="true"></div>
     <div class="panel" style="text-align:center; padding:34px 20px">
       <h2 id="end-title" style="font-size:30px; text-transform:none; letter-spacing:0; color:var(--ink)"></h2>
       <p class="muted" id="end-sub" style="margin-bottom:18px"></p>
@@ -3178,12 +3193,12 @@ function renderStage() {
     body.appendChild(el("p", "stage-oracle",
       G.setupTurnsLeft + " setup turn" + (G.setupTurnsLeft === 1 ? "" : "s") +
       " left before the Horde's first turn. Play lands, get something on the board."));
-    btn.textContent = "End survivor turn";
+    btn.textContent = "End your turn";
     return;
   }
 
   if (G.phase === PHASE.SURVIVORS) {
-    setArenaPhase("survivors", "Survivors' turn");
+    setArenaPhase("survivors", "Your turn");
     body.appendChild(waveChip(currentWaveSize(), 0));
     body.appendChild(el("h2", "stage-title", "The Horde is holding"));
     body.appendChild(el("p", "stage-oracle",
@@ -3443,12 +3458,34 @@ function renderGameActions() {
   }
 }
 
+const CONFETTI_COLORS = ["#ea580c", "#f2ece4", "#4d9a72", "#6d5bd0", "#facc15", "#e8586a"];
+
+/* Only on a win, and skipped entirely under prefers-reduced-motion rather
+   than spawned and then hidden by CSS. */
+function renderConfetti(won) {
+  const box = $("#confetti");
+  box.textContent = "";
+  if (!won || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  for (let i = 0; i < 90; i++) {
+    const piece = el("i");
+    piece.style.left = (Math.random() * 100) + "%";
+    piece.style.width = (6 + Math.random() * 5) + "px";
+    piece.style.height = (10 + Math.random() * 8) + "px";
+    piece.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+    piece.style.setProperty("--drift", Math.round((Math.random() - .5) * 160) + "px");
+    piece.style.animationDuration = (2.6 + Math.random() * 1.8) + "s";
+    piece.style.animationDelay = (Math.random() * -4) + "s";
+    box.appendChild(piece);
+  }
+}
+
 function renderEnd() {
   const won = G.over === "survivors";
   $("#end-title").textContent = won ? "The Horde falls." : "The Horde wins.";
   $("#end-sub").textContent = won
     ? "Library empty, board clear — you made it out after " + (G.turn - 1) + " rounds."
     : "The survivors are down after " + (G.turn - 1) + " rounds.";
+  renderConfetti(won);
 
   const stats = $("#end-stats");
   stats.textContent = "";
