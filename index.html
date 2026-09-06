@@ -1075,7 +1075,7 @@ Tokens: (200)
     <!-- The arena: what the Horde is doing right now, and what you do about it. -->
     <div class="arena" id="arena" data-phase="survivors">
       <div class="arena-head">
-        <span class="arena-phase"><i class="pulse" aria-hidden="true"></i><span id="arena-phase-label">Survivors&rsquo; turn</span></span>
+        <span class="arena-phase"><i class="pulse" aria-hidden="true"></i><span id="arena-phase-label">Your turn</span></span>
         <span class="arena-round">Round <b id="c-turn">1</b></span>
       </div>
 
@@ -3092,12 +3092,12 @@ function renderStage() {
     body.appendChild(el("p", "stage-oracle",
       G.setupTurnsLeft + " setup turn" + (G.setupTurnsLeft === 1 ? "" : "s") +
       " left before the Horde's first turn. Play lands, get something on the board."));
-    btn.textContent = "End survivor turn";
+    btn.textContent = "End your turn";
     return;
   }
 
   if (G.phase === PHASE.SURVIVORS) {
-    setArenaPhase("survivors", "Survivors' turn");
+    setArenaPhase("survivors", "Your turn");
     body.appendChild(waveChip(currentWaveSize(), 0));
     body.appendChild(el("h2", "stage-title", "The Horde is holding"));
     body.appendChild(el("p", "stage-oracle",
