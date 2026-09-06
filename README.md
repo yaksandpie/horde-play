@@ -80,7 +80,7 @@ installs to a home screen and runs offline once a deck has been loaded.
 
 ## Decks
 
-Nine horde libraries transcribed from hordemagic.com are built in, plus five
+Nine horde libraries transcribed from hordemagic.com are built in, plus seven
 Bloomburrow tribal hordes built for this app:
 
 | Deck | Cards | Tokens | Opens on |
@@ -99,8 +99,10 @@ Bloomburrow tribal hordes built for this app:
 | Bloomburrow — Squirrel Hoard | 300 | 172 | Horde Magic |
 | Bloomburrow — Raccoon Ruckus | 300 | 178 | Horde Magic |
 | Bloomburrow — Druid Circle | 300 | 174 | Horde Magic |
+| Bloomburrow — Mouse Brigade | 300 | 178 | Horde Magic |
+| Bloomburrow — Frog Pond | 300 | 173 | Horde Magic |
 
-Counts match each decklist's own stated totals. The five Bloomburrow hordes aren't
+Counts match each decklist's own stated totals. The seven Bloomburrow hordes aren't
 published lists — they're built here out of real cards, each 300 with a spine of
 tribal creatures, a handful of anthems and wraths, and a boss or two:
 
@@ -113,11 +115,20 @@ tribal creatures, a handful of anthems and wraths, and a boss or two:
 - **Druid Circle** — Druid kindred from across Magic, swarming with Elf Druid
   tokens; the only horde here that reaches for infect (Triumph of the Hordes),
   so watch the poison counter.
+- **Mouse Brigade** — Boros Mice, the shortest game of the seven. Small bodies
+  and a lot of them, but Shared Animosity and six Trumpet Blasts mean the
+  attacking total climbs much faster than the creature count does.
+- **Frog Pond** — Simic Frogs that grow instead of just multiplying. Cathars'
+  Crusade, Hardened Scales and Branching Evolution pile +1/+1 counters onto the
+  board every wave, so the tiles split by what they carry and the attacking
+  total does the arithmetic.
 
-Only Rabbit Warren and Bat Coven are all-Bloomburrow. The other three pull cards
-from wherever the tribe exists — Odyssey Squirrels, Modern Horizons, Commander
-sets — because Bloomburrow alone doesn't have enough Squirrels, Raccoons, or
-Druids to fill 300 cards.
+Only Rabbit Warren and Bat Coven take their tribe entirely from Bloomburrow.
+Mouse Brigade comes close — the Bloomburrow Mice plus Cheeky House-Mouse, the one
+Mouse that predates the set, with Hellrider and Iroas the only non-Mice in the
+list. The rest pull cards from wherever the tribe exists — Odyssey Squirrels,
+Modern Horizons, Commander sets — because Bloomburrow alone doesn't have enough
+Squirrels, Raccoons, Druids or Frogs to fill 300 cards.
 
 ## Ban list
 
