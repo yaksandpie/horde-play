@@ -345,7 +345,28 @@
 
   .cardgrid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
   .cardgrid.board { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
-  .board-panel { margin-top: 14px; }
+
+  /* The board is live game state sitting in a row of otherwise static
+     reference panels, so it carries an accent edge they don't — lit only while
+     the Horde actually has something standing, dark when the board is clear.
+     scroll-margin keeps the heading clear of the sticky header when the
+     Creatures tally jumps down here. */
+  .board-panel {
+    margin-top: 14px;
+    border-left: 3px solid var(--line);
+    scroll-margin-top: 76px;
+    transition: border-left-color .2s ease;
+  }
+  .board-panel:focus { outline: none; }
+  .board-panel.live { border-left-color: var(--accent); }
+  .board-panel.live h2 { color: var(--ink); }
+  /* A creature landing here is silent to anyone watching the arena up top, so
+     the panel and its tally cell flare together when the board grows. */
+  .board-panel.bump { animation: boardbump 1.1s ease-out; }
+  @keyframes boardbump {
+    0% { box-shadow: var(--shadow), 0 0 0 0 var(--accent-glow); }
+    70%, 100% { box-shadow: var(--shadow), 0 0 0 16px transparent; }
+  }
   .cardgrid .slot { container-type: inline-size; }
   .cardgrid .tokname { font-weight: 700; margin-bottom: -6px; }
   /* A long token list scrolls inside the sheet, so Back stays where you left it. */
@@ -444,8 +465,17 @@
     color: var(--muted); white-space: nowrap;
   }
   .tally .t.hot .n { color: #ff9d6e; }
-  /* One tally cell opens the graveyard, so it reads as tappable without
-     breaking the quiet ledger the rest of the row is. */
+  /* Creatures is the board panel in miniature: the same accent edge, so the
+     number up here and the panel down there read as one thing. An underline
+     rather than a coloured numeral keeps Library's orange the only hot digit. */
+  .tally .t.live { box-shadow: inset 0 -2px 0 var(--accent); }
+  .tally .t.bump { animation: tallybump 1.1s ease-out; }
+  @keyframes tallybump {
+    0% { background: var(--accent-wash); }
+    100% { background: var(--surface); }
+  }
+  /* Two tally cells are tappable — one opens the graveyard, one jumps to the
+     board — without breaking the quiet ledger the rest of the row is. */
   button.t { width: 100%; border: 0; transition: background .12s ease; }
   button.t:hover { background: var(--surface-2); }
   button.t:active { background: var(--surface-3); }
@@ -1115,7 +1145,9 @@ Tokens: (200)
     <!-- The ledger: reference numbers, deliberately quiet next to the arena. -->
     <div class="tally">
       <div class="t hot"><span class="n" id="c-library">0</span><span class="k">Library</span></div>
-      <div class="t"><span class="n" id="c-board">0</span><span class="k">Creatures</span></div>
+      <button class="t" id="tile-board" aria-label="Jump to the Horde's board">
+        <span class="n" id="c-board">0</span><span class="k">Creatures</span>
+      </button>
       <div class="t"><span class="n" id="c-power">0</span><span class="k">Attacking</span></div>
       <button class="t" id="tile-yard" aria-label="Open the graveyard">
         <span class="n" id="c-yard">0</span><span class="k">Graveyard</span>
@@ -1125,7 +1157,7 @@ Tokens: (200)
     <p class="tiny muted rulesline" id="game-rules"></p>
 
 
-    <div class="panel board-panel">
+    <div class="panel board-panel" id="board-panel" tabindex="-1">
       <div class="row" style="margin-bottom:8px">
         <h2 style="margin:0">The Horde&rsquo;s board</h2>
         <span class="grow"></span>
@@ -3054,6 +3086,7 @@ async function startGame() {
   G = newGame(deck, { players: setupNames, ...rules });
   undoStack = [];
   millInput = "";
+  lastCreatureCount = null;
   await primeImages(Object.values(G.cards));
   logit("Shuffled " + G.library.length + " cards. " + rulesetById(rules.ruleset).name +
     ": waves end on " + waveEndText(rules.waveEnd) +
@@ -3069,6 +3102,7 @@ async function resumeGame() {
   G = saved;
   undoStack = [];
   millInput = "";
+  lastCreatureCount = null;
   applyDeckTheme(allDecks().find((d) => d.id === G.deckId));
   await primeImages(Object.values(G.cards));
   if (shareWasOn) { shareWasOn = false; shareStart(); }
@@ -3283,20 +3317,58 @@ function renderBoard() {
   box.textContent = "";
   $("#board-empty").hidden = G.board.length > 0;
 
+  const total = creatureCount();
   const atk = attackers().reduce((n, s) => n + s.count, 0);
-  const def = creatureCount() - atk;
+  const def = total - atk;
   const withCounters = G.board.reduce((n, s) => n + (hasCounters(s) ? s.count : 0), 0);
   $("#board-summary").textContent = G.board.length
-    ? creatureCount() + " creatures · " + atk + " attacking" +
+    ? total + " creatures · " + atk + " attacking" +
       (def ? " · " + def + " holding back" : "") +
       (withCounters ? " · " + withCounters + " with counters" : "")
     : "";
+
+  $("#board-panel").classList.toggle("live", G.board.length > 0);
+  const tile = $("#tile-board");
+  tile.classList.toggle("live", G.board.length > 0);
+  // The label carries the count, which an aria-label would otherwise hide.
+  tile.setAttribute("aria-label",
+    total + (total === 1 ? " creature" : " creatures") + " on the Horde's board — jump to it");
+
+  // Only a board that grew is worth interrupting for. A shrinking one is
+  // something the survivors just did on purpose, and the first render of a
+  // game — new or resumed — has nothing to announce.
+  if (lastCreatureCount != null && total > lastCreatureCount) flashBoardChange();
+  lastCreatureCount = total;
 
   for (const stack of G.board) {
     const card = G.cards[stack.cardKey];
     box.appendChild(cardSlot(card, { count: stack.count, rule: G.waveEnd, stack },
       () => openStackDialog(stack)));
   }
+}
+
+/* The arena at the top of the page is where the eye is during a turn, so the
+   board announcing itself only down in its own panel would go unseen. The
+   tally cell above the fold flares with it, and leads back down. */
+let lastCreatureCount = null;
+
+function flashBoardChange() {
+  for (const node of [$("#board-panel"), $("#tile-board")]) {
+    node.classList.remove("bump");
+    void node.offsetWidth;  // restart the animation if it's still running
+    node.classList.add("bump");
+  }
+}
+
+function jumpToBoard() {
+  const panel = $("#board-panel");
+  panel.scrollIntoView({
+    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    block: "start",
+  });
+  // Focus follows the scroll, so a keyboard or screen-reader user lands on the
+  // board rather than being left back up in the tally.
+  panel.focus({ preventScroll: true });
 }
 
 /* What's in the graveyard, collapsed the way the board is: one tile per card
@@ -4208,6 +4280,9 @@ function viewerWaiting() {
   $("#board").textContent = "";
   $("#board-empty").hidden = false;
   $("#board-summary").textContent = "";
+  $("#board-panel").classList.remove("live", "bump");
+  $("#tile-board").classList.remove("live", "bump");
+  lastCreatureCount = null;
   $("#log").textContent = "";
   $("#game-rules").textContent = "";
   for (const id of ["#c-library", "#c-board", "#c-power", "#c-yard", "#c-turn"]) {
@@ -4480,6 +4555,8 @@ $("#tile-life").addEventListener("click", () => {
 });
 $("#ld-close").addEventListener("click", () => $("#life-dialog").close());
 
+$("#tile-board").addEventListener("click", jumpToBoard);
+
 $("#tile-yard").addEventListener("click", () => {
   renderYard();
   $("#yard-dialog").showModal();
@@ -4712,6 +4789,7 @@ const SHORTCUTS = {
   d: () => $("#tile-damage").click(),
   l: () => $("#tile-life").click(),
   g: () => $("#tile-yard").click(),
+  b: () => $("#tile-board").click(),
 };
 
 document.addEventListener("keydown", (e) => {
