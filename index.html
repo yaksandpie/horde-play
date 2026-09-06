@@ -12,26 +12,26 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Horde">
-<meta name="theme-color" content="#12100f">
+<meta name="theme-color" content="#2c2a25">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Karla:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #12100f;
-    --bg-deep: #0b0a09;
-    --surface: #1c1917;
-    --surface-2: #262220;
-    --surface-3: #332d29;
-    --ink: #f2ece4;
-    --ink-soft: #cfc5b8;
-    --muted: #918477;
-    --line: #3a332e;
-    --accent: #c2410c;
-    --accent-hot: #ea580c;
-    --accent-ink: #fff4ec;
-    --accent-wash: rgba(194, 65, 12, .16);
-    --accent-glow: rgba(234, 88, 12, .55);
+    --bg: #2c2a25;
+    --bg-deep: #1f1e1a;
+    --surface: #35322b;
+    --surface-2: #413c33;
+    --surface-3: #5a5246;
+    --ink: #efe5cf;
+    --ink-soft: #d3c6ac;
+    --muted: #a2937b;
+    --line: #4e4739;
+    --accent: #c2b08a;
+    --accent-hot: #dcc99e;
+    --accent-ink: #2c2a25;
+    --accent-wash: rgba(194, 176, 138, .16);
+    --accent-glow: rgba(220, 201, 158, .5);
     --good: #4d9a72;
     --bad: #b4453a;
     --token: #6d5bd0;
@@ -316,7 +316,7 @@
     position: absolute; top: 6px; left: 6px; z-index: 2;
     font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
     padding: 3px 7px; border-radius: 6px;
-    background: rgba(10,9,8,.82); border: 1px solid var(--line); color: var(--ink-soft);
+    background: rgba(31,30,26,.82); border: 1px solid var(--line); color: var(--ink-soft);
     backdrop-filter: blur(3px);
   }
   .cf-badge.token { background: rgba(109,91,208,.9); border-color: #8f7ff0; color: #fff; }
@@ -325,7 +325,7 @@
     font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 17px;
     min-width: 34px; text-align: center;
     padding: 3px 8px; border-radius: 8px;
-    background: rgba(10,9,8,.88); border: 1px solid var(--line);
+    background: rgba(31,30,26,.88); border: 1px solid var(--line);
     backdrop-filter: blur(3px);
   }
   /* Counters ride on the tile, next to the P/T they add up to: mid-combat
@@ -337,7 +337,7 @@
   }
   .cf-counters span {
     padding: 2px 5px; border-radius: 5px;
-    background: rgba(10,9,8,.88); border: 1px solid var(--line); color: var(--ink-soft);
+    background: rgba(31,30,26,.88); border: 1px solid var(--line); color: var(--ink-soft);
     backdrop-filter: blur(3px);
   }
   .cf-counters .cc-pt { background: rgba(31,74,45,.94); border-color: #4f8a5f; color: #dff5e4; }
@@ -422,7 +422,7 @@
     background: var(--accent-wash); border: 1px solid var(--accent);
     border-radius: 12px; padding: 10px 14px; margin-bottom: 10px;
   }
-  .target .who { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 19px; color: #ffb08a; }
+  .target .who { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 19px; color: var(--accent-hot); }
 
   @keyframes flipin { from { opacity: 0; transform: translateY(10px) scale(.94); } to { opacity: 1; transform: none; } }
   .flipin { animation: flipin .22s ease both; }
@@ -457,7 +457,7 @@
     font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
     color: var(--muted); white-space: nowrap;
   }
-  .tally .t.hot .n { color: #ff9d6e; }
+  .tally .t.hot .n { color: var(--accent-hot); }
   /* One tally cell opens the graveyard, so it reads as tappable without
      breaking the quiet ledger the rest of the row is. */
   button.t { width: 100%; border: 0; transition: background .12s ease; }
@@ -794,11 +794,11 @@
     <div class="bar">
       <h1 class="brand">
         <svg viewBox="0 0 32 32" aria-hidden="true">
-          <path fill="#c2410c" d="M16 2 3 8v9c0 7.4 5.3 12.3 13 15 7.7-2.7 13-7.6 13-15V8z"/>
-          <path fill="#12100f" d="M16 5.2 6 9.7v7.3c0 5.7 4 9.7 10 12 6-2.3 10-6.3 10-12V9.7z"/>
-          <circle fill="#ea580c" cx="12" cy="14" r="2.1"/>
-          <circle fill="#ea580c" cx="20" cy="14" r="2.1"/>
-          <path stroke="#ea580c" stroke-width="1.7" stroke-linecap="round" fill="none" d="M11 21h10M13 19v4M16 19v4M19 19v4"/>
+          <path fill="#c2b08a" d="M16 2 3 8v9c0 7.4 5.3 12.3 13 15 7.7-2.7 13-7.6 13-15V8z"/>
+          <path fill="#2c2a25" d="M16 5.2 6 9.7v7.3c0 5.7 4 9.7 10 12 6-2.3 10-6.3 10-12V9.7z"/>
+          <circle fill="#dcc99e" cx="12" cy="14" r="2.1"/>
+          <circle fill="#dcc99e" cx="20" cy="14" r="2.1"/>
+          <path stroke="#dcc99e" stroke-width="1.7" stroke-linecap="round" fill="none" d="M11 21h10M13 19v4M16 19v4M19 19v4"/>
         </svg>
         <span class="narrow-hide">Horde Play</span>
       </h1>
@@ -2625,7 +2625,7 @@ function allDecks() {
 /* ---- Set theme ----
    Bloomburrow decks get a forest-green skin (body.theme-bloomburrow) for as
    long as they're selected — through setup, into the game, and on resume. */
-const DEFAULT_THEME_COLOR = "#12100f";
+const DEFAULT_THEME_COLOR = "#2c2a25";
 const BLOOMBURROW_THEME_COLOR = "#0f1a12";
 
 function isBloomburrowDeck(deck) {
@@ -3386,7 +3386,7 @@ function renderGameActions() {
   }
 }
 
-const CONFETTI_COLORS = ["#ea580c", "#f2ece4", "#4d9a72", "#6d5bd0", "#facc15", "#e8586a"];
+const CONFETTI_COLORS = ["#c2b08a", "#efe5cf", "#4d9a72", "#6d5bd0", "#8b7b63", "#e8586a"];
 
 /* Only on a win, and skipped entirely under prefers-reduced-motion rather
    than spawned and then hidden by CSS. */
