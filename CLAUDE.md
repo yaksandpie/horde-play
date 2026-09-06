@@ -24,6 +24,30 @@ small one (copy tweaks, a style fix) — bump it as part of the same commit
 whenever you touch one of those files, rather than waiting for CI to catch
 it and pushing a follow-up.
 
+## Cache version collisions fix themselves
+
+Two open PRs that both bump `CACHE_VERSION` clash once the first one lands —
+either as a conflict on line 1 of `sw.js` (different bumps) or, worse, as a
+clean merge that quietly ships two app shells under one version (identical
+bumps). `.github/workflows/cache-version-autofix.yml` runs whenever `sw.js`
+changes on `main` and repairs every open PR: it sets the branch to
+`max(branch, main + 1)`, which is "take the higher number" except when the
+branch is not actually higher, and then pushes.
+
+- It only touches a conflict whose entire disagreement is the `CACHE_VERSION`
+  line. Anything else is left alone for a human.
+- A push made with `GITHUB_TOKEN` starts no workflow run, so the autofix
+  dispatches `ci.yml` against the branch afterwards. That is why the
+  `cache-version` job runs on `workflow_dispatch` and not just `pull_request`.
+- Run it by hand from the Actions tab; `dry_run` reports without pushing, and
+  `pr` narrows it to one pull request.
+- The version arithmetic is unit-tested in
+  `.github/scripts/cache-version-autofix.test.mjs`, run by the static job.
+
+You still bump `CACHE_VERSION` yourself in the same commit as an app shell
+change. The autofix settles collisions between branches; it is not a substitute
+for the bump.
+
 ## Merging against a moving `main`
 
 Other branches land on `main` while a PR sits open. Before assuming a CI
