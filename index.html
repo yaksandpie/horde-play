@@ -67,6 +67,15 @@
 
   * { box-sizing: border-box; }
 
+  /* Double-tapping a counter used to zoom the page instead of pressing the
+     button twice, which is never what was meant at the table. `manipulation`
+     drops the double-tap gesture and leaves panning and pinch-zoom alone, so
+     card art can still be magnified by hand. The rule on the interactive
+     elements is belt and braces for older WebKit, which has been unreliable
+     about honouring touch-action set on the root alone. */
+  html { touch-action: manipulation; }
+  button, a, input, label, summary, [tabindex] { touch-action: manipulation; }
+
   html, body {
     margin: 0;
     padding: 0;
@@ -579,13 +588,11 @@
   }
   .pad button:hover { background: var(--surface-3); }
 
-  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .steps button {
-    padding: 14px 0; border-radius: 12px;
-    border: 1px solid var(--line); background: var(--surface-2);
-    font-size: 17px; font-weight: 700; line-height: 1;
-  }
-  .steps button:hover { background: var(--surface-3); }
+  /* The survivors' life total is the state its pad edits, so it sits where the
+     damage sheet puts the library count -- just bigger, because a survivor
+     opens this to read it as often as to change it. */
+  .sheet .sub.lifetotal { text-align: center; margin-bottom: 2px; }
+  .lifetotal b { color: var(--ink); font-family: "Cinzel", Georgia, serif; font-size: 22px; }
 
   .poisonrow {
     display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -1274,19 +1281,20 @@ Tokens:
 
 <dialog id="life-dialog" class="sheet">
   <h3>Survivors</h3>
-  <p class="sub">One shared life total. Both of you take from this pool.</p>
-  <div class="bignum life" id="life-n">0</div>
-  <div class="steps" style="margin-bottom:8px">
-    <button data-life="-1">&minus;1</button>
-    <button data-life="-5">&minus;5</button>
-    <button data-life="-10">&minus;10</button>
+  <p class="sub lifetotal"><b id="life-n">0</b> life left &mdash; one shared pool.</p>
+  <div class="bignum life" id="life-out">0</div>
+  <div class="pad" id="life-pad">
+    <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
+    <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
+    <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
+    <button data-k="clear">C</button><button data-d="0">0</button>
+    <button data-k="back" aria-label="Backspace">&larr;</button>
   </div>
-  <div class="steps">
-    <button data-life="1">+1</button>
-    <button data-life="5">+5</button>
-    <button data-life="10">+10</button>
+  <div class="row" style="margin-top:14px">
+    <button class="btn primary grow" id="ld-lose">Lose</button>
+    <button class="btn grow" id="ld-gain">Gain</button>
   </div>
-  <button class="btn primary" id="life-all" style="width:100%; margin-top:10px">Take all</button>
+  <button class="btn" id="life-all" style="width:100%; margin-top:8px">Take all</button>
   <p class="tiny muted" id="life-partial" style="margin:8px 0 0" hidden>
     Some of the Horde's creatures have unknown power, so this total is only what's known.
     Check the cards on the board.
@@ -2145,6 +2153,7 @@ function cardFace(card, opts = {}) {
 let G = null;
 let undoStack = [];
 let millInput = "";
+let lifeInput = "";
 
 const PHASE = { SETUP: "setup", SURVIVORS: "survivors", REVEAL: "reveal", COMBAT: "combat" };
 const SNAKE = [1, 2, 3, 2]; // 1,2,3,2,1,2,3,2,1...
@@ -2287,6 +2296,7 @@ function undo() {
   if (!prev) { toast("Nothing to undo"); return; }
   G = JSON.parse(prev);
   millInput = "";
+  lifeInput = "";
   persistGame();
   renderGame();
   toast("Undone");
@@ -3219,6 +3229,7 @@ async function startGame() {
   G = newGame(deck, { players: setupNames, ...rules });
   undoStack = [];
   millInput = "";
+  lifeInput = "";
   lastCreatureCount = null;
   await primeImages(Object.values(G.cards));
   logit("Shuffled " + G.library.length + " cards. " + rulesetById(rules.ruleset).name +
@@ -3235,6 +3246,7 @@ async function resumeGame() {
   G = saved;
   undoStack = [];
   millInput = "";
+  lifeInput = "";
   lastCreatureCount = null;
   applyDeckTheme(allDecks().find((d) => d.id === G.deckId));
   await primeImages(Object.values(G.cards));
@@ -3263,6 +3275,9 @@ function renderGame() {
   $("#tile-life").classList.toggle("low", G.life <= 20);
   $("#tile-damage-val").textContent = millInput ? "Mill " + millInput : "Mill";
   $("#life-n").textContent = G.life;
+  $("#life-out").textContent = lifeInput || "0";
+  $("#ld-lose").textContent = lifeInput ? "Lose " + lifeInput : "Lose";
+  $("#ld-gain").textContent = lifeInput ? "Gain " + lifeInput : "Gain";
   $("#poison-n").textContent = G.poison;
   $("#poison-limit").textContent = "of " + G.poisonLimit;
   $("#mill-out").textContent = millInput || "0";
@@ -4705,6 +4720,7 @@ $("#tile-damage").addEventListener("click", () => {
 $("#dd-close").addEventListener("click", () => $("#damage-dialog").close());
 
 $("#tile-life").addEventListener("click", () => {
+  lifeInput = "";
   renderGame();
   $("#life-dialog").showModal();
 });
@@ -4755,10 +4771,29 @@ $("#dd-mill").addEventListener("click", () => {
   toast("Milled " + n);
 });
 
+// --- life pad (inside the survivors dialog) ---
+$("#life-pad").addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  lifeInput = padPress(lifeInput, btn);
+  renderGame();
+});
+
+/* Unlike the mill pad, this one leaves its sheet open: a hit, a lifelink gain
+   and a poison counter are one visit to the life total, not three. */
+function applyLifeEntry(sign) {
+  const n = parseInt(lifeInput, 10);
+  if (!(n > 0)) { toast("Enter an amount first"); return; }
+  adjustLife(sign * n);
+  lifeInput = "";
+  renderGame();
+  toast(sign < 0 ? "Lost " + n : "Gained " + n);
+}
+$("#ld-lose").addEventListener("click", () => applyLifeEntry(-1));
+$("#ld-gain").addEventListener("click", () => applyLifeEntry(1));
+
 // --- life / poison ---
 $("#life-all").addEventListener("click", () => { adjustLife(-attackingPower()); renderGame(); });
-$$("[data-life]").forEach((b) =>
-  b.addEventListener("click", () => { adjustLife(parseInt(b.dataset.life, 10)); renderGame(); }));
 $$("[data-poison]").forEach((b) =>
   b.addEventListener("click", () => { adjustPoison(parseInt(b.dataset.poison, 10)); renderGame(); }));
 
