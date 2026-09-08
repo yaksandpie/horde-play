@@ -38,7 +38,12 @@ this is. Per CLAUDE.md, the Playwright suite is CI's job, not something to
 reproduce locally; say so rather than implying you ran it.
 -->
 
-- [ ] `node tests/check-static.mjs` passes locally
-- [ ] `CACHE_VERSION` in `sw.js` bumped — required if this touches `index.html`, `manifest.json`, or any `icon-*.png`, and it belongs in the same commit
+- [ ] `node build.mjs && node tests/check-static.mjs` passes locally
+- [ ] edits are in `src/`, not in `_site/` — the build rewrites that every time
 - [ ] `main` merged in if it has moved since this branch started
 - [ ] README updated, if the change is one a player would notice
+
+<!--
+No CACHE_VERSION line here any more. The build hashes the app shell's own
+bytes into it, so there is nothing left to remember to bump.
+-->
