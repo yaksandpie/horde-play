@@ -2,6 +2,8 @@
 
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .row.tight { gap: 6px; }
+/* The row of buttons that closes a panel or a sheet, set off from it. */
+.row.foot { margin-top: 14px; }
 .grow { flex: 1; }
 .cols { display: grid; gap: 14px; grid-template-columns: 1fr; }
 @media (min-width: 900px) { .cols.two { grid-template-columns: 1.55fr 1fr; align-items: start; } }
