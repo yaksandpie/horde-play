@@ -335,6 +335,9 @@
     backdrop-filter: blur(3px);
   }
   .cf-badge.token { background: rgba(109,91,208,.9); border-color: #8f7ff0; color: #fff; }
+  /* A token copy of another creature reads as neither quite: same art as
+     what it copied, so the badge carries the stats that tell them apart. */
+  .cf-badge.copy { background: rgba(122,68,140,.92); border-color: #b98ccc; color: #fff; }
   .cf-count {
     position: absolute; right: 6px; bottom: 6px; z-index: 2;
     font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 17px;
@@ -1316,6 +1319,7 @@ Tokens:
   <p class="sub cv-ctr" id="cv-counters" hidden></p>
   <p class="cv-oracle" id="cv-oracle"></p>
   <div class="stack" id="cv-actions">
+    <button class="btn" id="cv-copy" style="width:100%">Copy it&hellip;</button>
     <button class="btn" id="cv-counters-btn" style="width:100%">Counters&hellip;</button>
     <button class="btn" id="cv-kill1" style="width:100%">Kill one &rarr; graveyard</button>
     <button class="btn" id="cv-killall" style="width:100%">Kill the whole stack</button>
@@ -1344,7 +1348,48 @@ Tokens:
     <p class="muted small" id="token-pick-empty" hidden>
       This deck defines no token types &mdash; search above for the one you need.
     </p>
+    <button class="btn ghost" id="token-copy-open" style="width:100%; margin-top:8px">
+      Copy a creature&hellip;
+    </button>
     <button class="btn ghost" id="token-pick-close" style="width:100%; margin-top:8px">Close</button>
+  </div>
+  <div id="token-step-copysrc" hidden>
+    <h3 style="margin:0 0 4px">Copy a creature</h3>
+    <p class="muted small" style="margin:0 0 12px">
+      For &ldquo;create a token that&rsquo;s a copy of target creature&rdquo;. Tap one the Horde
+      already has out, or search by name for a survivor&rsquo;s creature &mdash; the copy is a
+      token whatever it copied.
+    </p>
+    <form class="row tight" id="copy-search-form" style="margin-bottom:14px">
+      <input class="txt grow" id="copy-search" type="search" autocomplete="off"
+             placeholder="Any card &mdash; a survivor&rsquo;s creature&hellip;">
+      <button class="btn sm" type="submit">Find</button>
+    </form>
+    <p class="tiny muted" id="copy-src-label" style="margin:0 0 8px">On the Horde&rsquo;s battlefield</p>
+    <div class="cardgrid tokengrid" id="copy-src-grid" style="margin-bottom:6px"></div>
+    <p class="muted small" id="copy-src-empty" hidden>
+      The Horde has nothing out to copy &mdash; search above for the creature you need.
+    </p>
+    <button class="btn ghost" id="copy-src-back" style="width:100%; margin-top:8px">Back</button>
+  </div>
+  <div id="token-step-copy" hidden>
+    <h3 style="margin:0 0 4px" id="cp-name"></h3>
+    <p class="muted small" id="cp-sub" style="margin:0 0 14px"></p>
+    <div class="row tight" id="cp-pt" style="margin-bottom:8px">
+      <span class="tiny muted">Power / toughness</span>
+      <span class="grow"></span>
+      <input class="txt num sm" id="cp-power" inputmode="numeric" placeholder="&ndash;" aria-label="Power">
+      <span class="muted" aria-hidden="true">/</span>
+      <input class="txt num sm" id="cp-tough" inputmode="numeric" placeholder="&ndash;" aria-label="Toughness">
+    </div>
+    <p class="tiny muted" style="margin:0 0 16px">
+      Left as they are, the copy is the creature exactly. Change them for
+      &ldquo;&hellip;except it&rsquo;s a 4/4&rdquo;.
+    </p>
+    <div class="row">
+      <button class="btn primary grow" id="cp-next">Continue</button>
+      <button class="btn ghost" id="cp-back">Back</button>
+    </div>
   </div>
   <div id="token-step-search" hidden>
     <h3 style="margin:0 0 4px" id="ts-title"></h3>
@@ -2124,6 +2169,14 @@ function cardFace(card, opts = {}) {
       label = card.rarity;
       cls = /uncommon|rare|mythic/.test(card.rarity) ? " rare" : "";
     }
+    /* A copy wears the original's art, so the badge is the only thing on the
+       face that separates a 4/4 copy of a Bat from the 1/1 Bats beside it. It
+       wins over the rarity badge: a copy is never in a wave being read for its
+       rarity, and it inherits the printed card's. */
+    if (card.isCopy) {
+      label = "Copy" + (ptString(card) ? " " + ptString(card) : "");
+      cls = " copy";
+    }
     node.appendChild(el("div", "cf-badge" + cls, label));
   }
   if (card.hasDefender) node.appendChild(el("div", "cf-badge defender", "Defender"));
@@ -2617,7 +2670,7 @@ function createTokens(card, n) {
   snapshot();
   if (!G.cards[card.key]) G.cards[card.key] = card;
   addToBoard(card.key, n);
-  logit("+" + n + " " + card.name + (n === 1 ? " token" : " tokens") + ".");
+  logit("+" + n + " " + tokenLabel(card, n) + ".");
   fireEtbTriggers(card, n);
   notePeak();
   persistGame();
@@ -3696,6 +3749,10 @@ function renderCardActions() {
   // Only tokens: a printed creature comes out of the library, so making a
   // second one by hand would be inventing a card the deck doesn't hold.
   $("#cv-qty").hidden = !card.isToken;
+  /* Copying is different: what a copy effect makes is a token, so it's offered
+     on the Horde's printed creatures too — that's the case the library can't
+     cover. Not on a Treasure or a Clue, which nothing here copies. */
+  $("#cv-copy").hidden = categoryOf(card) !== "creature";
   $("#cv-dup").setAttribute("aria-label", "Add one more " + card.name +
     (hasCounters(stack) ? " with the same counters" : ""));
   $("#cv-counters-btn").textContent = hasCounters(stack) ? "Counters…"
@@ -3721,6 +3778,8 @@ function tokenStep(step) {
   $("#token-step-pick").hidden = step !== "pick";
   $("#token-step-search").hidden = step !== "search";
   $("#token-step-custom").hidden = step !== "custom";
+  $("#token-step-copysrc").hidden = step !== "copysrc";
+  $("#token-step-copy").hidden = step !== "copy";
   $("#token-step-qty").hidden = step !== "qty";
 }
 
@@ -3737,16 +3796,17 @@ function tokenSubtitle(card) {
   return what || where || "None on the battlefield yet";
 }
 
-function tokenChoice(card, onPick, nameLine) {
+function tokenChoice(card, onPick, opts = {}) {
   const slot = el("div", "slot");
   const btn = el("button", "plainbtn");
-  btn.setAttribute("aria-label", "Create " + card.name + " tokens");
+  btn.setAttribute("aria-label", opts.action
+    ? opts.action + " " + card.name : "Create " + card.name + " tokens");
   btn.appendChild(cardFace(card, { rule: G.waveEnd, badge: false }));
   slot.appendChild(btn);
   // Search results get their name spelled out: the printed one on a 120px face
   // is unreadable, and "Skeleton" and "Skeleton Warrior" are a tap apart.
-  if (nameLine) slot.appendChild(el("p", "tiny tokname", card.name));
-  slot.appendChild(el("p", "tiny muted", tokenSubtitle(card)));
+  if (opts.nameLine) slot.appendChild(el("p", "tiny tokname", card.name));
+  slot.appendChild(el("p", "tiny muted", opts.subtitle || tokenSubtitle(card)));
   btn.addEventListener("click", onPick);
   return slot;
 }
@@ -3775,8 +3835,8 @@ function openTokenDialog() {
 
 /* Kept apart from the import-time lookup on purpose: a search that fails at
    the table shouldn't trip networkDead and mark the whole session offline. */
-async function searchTokenCards(term) {
-  const q = term.replace(/[^\w\s',-]/g, " ").trim() + " is:token";
+async function searchCards(term, opts = {}) {
+  const q = term.replace(/[^\w\s',-]/g, " ").trim() + (opts.tokensOnly ? " is:token" : "");
   const res = await fetch(SCRYFALL + "/cards/search?q=" + encodeURIComponent(q) +
     "&unique=cards&order=name");
   if (res.status === 404) return [];      // Scryfall's "no results"
@@ -3786,7 +3846,10 @@ async function searchTokenCards(term) {
   const out = [];
   for (const sf of data.data || []) {
     const card = cardFromScryfall(sf, { name: sf.name });
-    card.isToken = true;                  // a token search returns only tokens
+    if (opts.tokensOnly) card.isToken = true;   // that search returns only tokens
+    // The copy picker is looking for a creature, and an unfiltered name search
+    // turns up the Sagas and Equipment that share the word.
+    if (opts.creaturesOnly && categoryOf(card) !== "creature") continue;
     // Reprints differ by art alone, which is no help when you're picking one.
     const dedupe = card.name.toLowerCase() + "|" + card.typeLine + "|" + ptString(card);
     if (seen.has(dedupe)) continue;
@@ -3796,6 +3859,8 @@ async function searchTokenCards(term) {
   }
   return out;
 }
+
+const searchTokenCards = (term) => searchCards(term, { tokensOnly: true });
 
 async function runTokenSearch(term) {
   const seq = ++tokenSearchSeq;
@@ -3823,8 +3888,8 @@ async function runTokenSearch(term) {
   $("#ts-sub").textContent = cards.length === 1 ? "One token." : cards.length + " tokens.";
   const grid = $("#token-search-grid");
   grid.textContent = "";
-  cards.forEach((card) =>
-    grid.appendChild(tokenChoice(card, () => openTokenQtyStep(card, "search"), true)));
+  cards.forEach((card) => grid.appendChild(
+    tokenChoice(card, () => openTokenQtyStep(card, "search"), { nameLine: true })));
 }
 
 /* Searching for a token the deck already has should feed the existing stack,
@@ -3851,12 +3916,172 @@ function buildPlainToken() {
   return card;
 }
 
+/* =========================================================================
+   Copies
+
+   "Create a token that's a copy of target creature" — and its cousin, the same
+   clause ending "except it's a 4/4". The creature copied is sometimes the
+   Horde's own and sometimes a survivor's, so the source is either a tile on
+   the board or any card found by name. What lands is a token either way: that
+   is what a copy token is, however printed the thing it copied was.
+   ========================================================================= */
+
+let copySource = null;        // the card being copied
+let copyBack = "copysrc";     // the step Back from the copy step returns to
+let copyBackStackId = null;   // ...or the board tile it was opened from
+let copySearchSeq = 0;        // so a slow search can't overwrite a newer one
+
+/* The copy keeps everything printed — art, type line, rules text, Defender —
+   and takes whatever P/T the effect names. isToken is what earns it the token
+   affordances: it stacks, it answers +1 and "Set how many…", and it's badged
+   as a token rather than a card, which is what it is however printed the thing
+   it copied was. Counters are deliberately not copied; a copy copies the
+   printed card, not whatever is sitting on the one it pointed at. */
+function buildCopyToken(source, pt) {
+  const card = Object.assign({}, source, {
+    key: "c_" + uid(),
+    isToken: true,
+    isCopy: true,
+    copyOf: source.name,
+  });
+  if (pt) { card.power = pt.power; card.toughness = pt.toughness; }
+  // A copy of a card with no type line — an offline import — still attacks.
+  if (!card.typeLine) card.catHint = "creature";
+  return card;
+}
+
+/* Where a copy belongs on the board. Two copies made the same way stack, but a
+   4/4 copy of a Bat must not join the 1/1 Bats, so the match is on the printed
+   identity *and* the stats the effect gave it.
+
+   An unaltered copy of a token the Horde already has out is simply one more of
+   those tokens — nothing about it differs — so it joins that stack rather than
+   standing a second, identical tile beside it. A copy of a printed creature
+   never does: the card in the library and the token on the battlefield are
+   different objects, and only one of them can die into the graveyard. */
+function existingCopyLike(card) {
+  return Object.values(G.cards).find((c) =>
+    c.typeLine === card.typeLine && c.power === card.power &&
+    c.toughness === card.toughness &&
+    (c.isCopy ? c.copyOf === card.copyOf : c.isToken && c.name === card.name));
+}
+
+/* What to call a card as it enters, in the log and in the toast: a copy carries
+   the original's name, so "+1 Bat" would be a lie about which Bats arrived. */
+const tokenLabel = (card, n) => card.isCopy
+  ? (n === 1 ? "copy" : "copies") + " of " + card.copyOf +
+    (ptString(card) ? " (" + ptString(card) + ")" : "")
+  : card.name + (n === 1 ? " token" : " tokens");
+
+/* One tile per distinct creature the Horde has out. Counters split a creature
+   across tiles and a copy doesn't take them along, so the split is no help
+   here — pick the card, not the pile. */
+function copySources() {
+  const seen = new Set();
+  const out = [];
+  for (const stack of G.board) {
+    const card = G.cards[stack.cardKey];
+    if (!card || seen.has(card.key) || categoryOf(card) !== "creature") continue;
+    seen.add(card.key);
+    out.push(card);
+  }
+  return out;
+}
+
+function copySrcStatus(msg) {
+  $("#copy-src-empty").textContent = msg || "";
+  $("#copy-src-empty").hidden = !msg;
+}
+
+/* The board list, which is also what a failed search falls back to. */
+function renderCopySources() {
+  const grid = $("#copy-src-grid");
+  grid.textContent = "";
+  const sources = copySources();
+  $("#copy-src-label").hidden = sources.length === 0;
+  $("#copy-src-label").textContent = "On the Horde\u2019s battlefield";
+  sources.forEach((card) => grid.appendChild(tokenChoice(card,
+    () => openCopyStep(card, "copysrc"), { action: "Copy" })));
+  return sources.length;
+}
+
+function openCopySrcStep() {
+  copySearchSeq++;
+  $("#copy-search").value = "";
+  copySrcStatus(renderCopySources() ? "" :
+    "The Horde has nothing out to copy \u2014 search above for the creature you need.");
+  tokenStep("copysrc");
+}
+
+async function runCopySearch(term) {
+  const seq = ++copySearchSeq;
+  $("#copy-src-grid").textContent = "";
+  $("#copy-src-label").hidden = true;
+  copySrcStatus("Searching Scryfall for \u201c" + term + "\u201d\u2026");
+
+  let cards;
+  try {
+    cards = await searchCards(term, { creaturesOnly: true });
+  } catch {
+    if (seq !== copySearchSeq) return;
+    renderCopySources();
+    copySrcStatus("Couldn\u2019t reach Scryfall. Copy one of the Horde\u2019s own, " +
+      "or make a plain token from the previous screen.");
+    return;
+  }
+  if (seq !== copySearchSeq) return;
+  if (!cards.length) {
+    renderCopySources();
+    copySrcStatus("No creature by that name.");
+    return;
+  }
+  // Art first, then one render: the faces would otherwise pop in one by one.
+  await Promise.all(cards.map(primeImage));
+  if (seq !== copySearchSeq) return;
+  copySrcStatus("");
+  $("#copy-src-label").hidden = false;
+  $("#copy-src-label").textContent = cards.length === 1
+    ? "One creature matching \u201c" + term + "\u201d"
+    : cards.length + " creatures matching \u201c" + term + "\u201d";
+  const grid = $("#copy-src-grid");
+  grid.textContent = "";
+  cards.forEach((card) => grid.appendChild(tokenChoice(card,
+    () => openCopyStep(card, "copysrc"), { nameLine: true, action: "Copy" })));
+}
+
+/* The P/T fields open on the original's, so a plain copy is one more tap and
+   "except it's a 4/4" is two numbers. */
+function openCopyStep(source, from, stackId) {
+  copySource = source;
+  copyBack = from;
+  copyBackStackId = stackId || null;
+  $("#cp-name").textContent = "Copy of " + source.name;
+  $("#cp-sub").textContent = cardMeta(source, { defender: true });
+  $("#cp-power").value = source.power == null ? "" : source.power;
+  $("#cp-tough").value = source.toughness == null ? "" : source.toughness;
+  tokenStep("copy");
+}
+
+function buildCopyFromForm() {
+  if (!copySource) return null;
+  const power = $("#cp-power").value.trim();
+  const tough = $("#cp-tough").value.trim();
+  // Both or neither: a 4/? is not a creature anyone can put on the table.
+  if ((power === "") !== (tough === "")) {
+    toast("Give the copy both a power and a toughness");
+    return null;
+  }
+  return buildCopyToken(copySource,
+    power === "" ? null : { power, toughness: tough });
+}
+
 function openTokenQtyStep(card, from) {
-  tokenPickCard = existingTokenLike(card) || card;
+  tokenPickCard = (card.isCopy ? existingCopyLike(card) : existingTokenLike(card)) || card;
   tokenQtyBack = from;
   tokenQtyMode = "add";
   tokenQtyInput = "1";
-  $("#tq-name").textContent = tokenPickCard.name;
+  $("#tq-name").textContent = tokenPickCard.isCopy
+    ? "Copy of " + tokenPickCard.copyOf : tokenPickCard.name;
   const pt = ptString(tokenPickCard);
   $("#tq-sub").textContent = (pt ? pt + " \u2014 h" : "H") + "ow many enter the battlefield?";
   $("#tq-add").textContent = "Add";
@@ -4067,19 +4292,27 @@ const byteLen = (str) => utf8.encode(str).length;
 
 /* A card is identified by its Scryfall id where it has one. Everything else —
    an offline import, a token typed in by hand — has no shared identity, so it
-   travels inline under a synthetic ref. */
+   travels inline under a synthetic ref.
+
+   A copy token is the exception that has an id and still can't use it: it is a
+   token, and may be a 4/4 where the printed card is a 2/2, so a viewer looking
+   the id up would be shown the creature it copied rather than the copy. It
+   travels inline with its id and image tacked on the end, which costs a little
+   of the budget but keeps the art. Older rows simply end sooner. */
 function shareRefs(G) {
   const refOf = new Map();   // host card key -> wire ref
   const inline = [];         // compact cards the viewer can't look up
   let n = 0;
   for (const [key, card] of Object.entries(G.cards)) {
-    if (card.scryfallId) { refOf.set(key, card.scryfallId); continue; }
+    if (card.scryfallId && !card.isCopy) { refOf.set(key, card.scryfallId); continue; }
     const ref = "x" + (n++);
     refOf.set(key, ref);
-    inline.push([ref, card.name, card.typeLine || "", card.oracleText || "",
+    const row = [ref, card.name, card.typeLine || "", card.oracleText || "",
       card.power, card.toughness, card.isToken ? 1 : 0, card.isLegendary ? 1 : 0,
       card.hasDefender ? 1 : 0, (card.colors || []).join(""), card.rarity || "",
-      card.catHint || "", card.resolved ? 1 : 0, card.handmade ? 1 : 0]);
+      card.catHint || "", card.resolved ? 1 : 0, card.handmade ? 1 : 0];
+    if (card.isCopy) row.push(1, card.scryfallId || "", card.imageUri || "");
+    inline.push(row);
   }
   return { refOf, inline };
 }
@@ -4190,14 +4423,19 @@ function decodeSnapshot(snap, cards) {
 
 function cardFromInline(c) {
   const [, name, typeLine, oracleText, power, toughness, isToken, isLegendary,
-    hasDefender, colors, rarity, catHint, resolved, handmade] = c;
+    hasDefender, colors, rarity, catHint, resolved, handmade,
+    isCopy, scryfallId, imageUri] = c;
   return {
-    key: c[0], name, scryfallId: null, isToken: !!isToken, rarity: rarity || null,
+    key: c[0], name, scryfallId: scryfallId || null, isToken: !!isToken,
+    rarity: rarity || null,
     isLegendary: !!isLegendary, hasDefender: !!hasDefender, typeLine,
     manaCost: "", oracleText, power, toughness,
-    colors: colors ? colors.split("") : [], imageUri: null,
+    colors: colors ? colors.split("") : [], imageUri: imageUri || null,
     // Without catHint a card with no type line stops counting as a creature.
     catHint: catHint || null, resolved: !!resolved, handmade: !!handmade,
+    // Only the badge cares, but a copy that read as a plain token on the
+    // watching phone would be indistinguishable from what it copied.
+    isCopy: !!isCopy, copyOf: isCopy ? name : undefined,
   };
 }
 
@@ -4799,6 +5037,15 @@ $$("[data-poison]").forEach((b) =>
 
 // --- stack dialog ---
 $("#cv-close").addEventListener("click", () => $("#card-dialog").close());
+$("#cv-copy").addEventListener("click", () => {
+  const stack = findStack(cardDialogStackId);
+  const card = stack && G.cards[stack.cardKey];
+  if (!card) return;
+  const id = stackId(stack);
+  $("#card-dialog").close();
+  openCopyStep(card, "card", id);
+  $("#token-dialog").showModal();
+});
 $("#cv-dup").addEventListener("click", () => {
   duplicateStack(cardDialogStackId);
   // Left open on purpose: three triggers is three taps, not three reopens.
@@ -4866,6 +5113,28 @@ $("#ct-apply").addEventListener("click", () => {
 // --- token dialog ---
 $("#btn-add-tokens").addEventListener("click", openTokenDialog);
 $("#token-pick-close").addEventListener("click", () => $("#token-dialog").close());
+$("#token-copy-open").addEventListener("click", openCopySrcStep);
+$("#copy-src-back").addEventListener("click", () => tokenStep("pick"));
+$("#copy-search-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const term = $("#copy-search").value.trim();
+  if (!term) { toast("Type a card name first"); return; }
+  runCopySearch(term);
+});
+$("#cp-back").addEventListener("click", () => {
+  // Reached from a board tile, Back is the card it was opened from.
+  if (copyBack === "card") {
+    const stack = findStack(copyBackStackId);
+    $("#token-dialog").close();
+    if (stack) openStackDialog(stack);
+    return;
+  }
+  tokenStep(copyBack);
+});
+$("#cp-next").addEventListener("click", () => {
+  const card = buildCopyFromForm();
+  if (card) openTokenQtyStep(card, "copy");
+});
 $("#tq-back").addEventListener("click", () => {
   // "set" was reached from the card, not from a step inside this dialog.
   if (tokenQtyBack === "card") {
@@ -4924,11 +5193,11 @@ $("#tq-add").addEventListener("click", () => {
     return;
   }
   if (!(n > 0)) { toast("Enter an amount first"); return; }
-  const name = tokenPickCard.name;
+  const what = tokenLabel(tokenPickCard, n);
   createTokens(tokenPickCard, n);
   $("#token-dialog").close();
   renderGame();
-  toast("+" + n + " " + name);
+  toast("+" + n + " " + what);
 });
 
 /* Clicking the backdrop closes any dialog. The click lands on the <dialog>
@@ -5035,6 +5304,7 @@ window.__horde = {
   set G(v) { G = v; },
   newGame, flipHordeTurn, resolveReveal, endHordeTurn, millCards, adjustLife, adjustPoison,
   killFromStack, createTokens, setTokenCount, duplicateStack, attackingPower, powerIsPartial,
+  buildCopyToken, existingCopyLike,
   creatureCount, yardStacks, yardTotal,
   setStackCounters, stackId, findStack, countOnBoard, countersLabel, effectivePT, normCounters,
   cardMeta, padPress, primeImages, renderGame, renderDecks, showScreen,
