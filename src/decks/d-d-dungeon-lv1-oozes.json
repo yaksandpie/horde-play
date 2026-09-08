@@ -1,0 +1,26 @@
+{
+  "name": "D&D Dungeon — Lv1 Oozes",
+  "waveEnd": "rarity",
+  "entries": [
+    {"q": 38, "n": "Ooze", "t": 1, "c": "creature"},
+    {"q": 18, "n": "Expanding Ooze", "t": 0, "c": "creature"},
+    {"q": 2, "n": "Baleful Beholder", "t": 0, "c": "creature"},
+    {"q": 6, "n": "Acidic Slime", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Biogenic Ooze", "t": 0, "c": "creature"},
+    {"q": 13, "n": "Gelatinous Cube", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Ravenous Slime", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Predator Ooze", "t": 0, "c": "creature"},
+    {"q": 2, "n": "Sludge Monster", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Uchuulon", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Aeve, Progenitor Ooze", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Slurrk, All-Ingesting", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Arms of Hadar", "t": 0, "c": "spell"},
+    {"q": 1, "n": "Creeping Renaissance", "t": 0, "c": "spell"},
+    {"q": 2, "n": "Crippling Fear", "t": 0, "c": "spell"},
+    {"q": 1, "n": "Power Word Kill", "t": 0, "c": "spell"},
+    {"q": 6, "n": "Slime Against Humanity", "t": 0, "c": "spell"},
+    {"q": 2, "n": "Split The Party", "t": 0, "c": "spell"},
+    {"q": 1, "n": "Gutter Grime", "t": 0, "c": "permanent"},
+    {"q": 1, "n": "March of the World Ooze", "t": 0, "c": "permanent"}
+  ]
+}

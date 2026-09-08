@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Horde Play</title>
+<meta name="description" content="Runs the Horde in Horde Magic: flips the deck, plays its cards, tracks its board, and takes damage as mill.">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Horde">
+<meta name="theme-color" content="#2c2a25">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Karla:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<!-- build:styles -->
+</head>
+<body>
+<div class="wrap">
+
+  <header class="app">
+    <div class="bar">
+      <h1 class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path fill="#c2b08a" d="M16 2 3 8v9c0 7.4 5.3 12.3 13 15 7.7-2.7 13-7.6 13-15V8z"/>
+          <path fill="#2c2a25" d="M16 5.2 6 9.7v7.3c0 5.7 4 9.7 10 12 6-2.3 10-6.3 10-12V9.7z"/>
+          <circle fill="#dcc99e" cx="12" cy="14" r="2.1"/>
+          <circle fill="#dcc99e" cx="20" cy="14" r="2.1"/>
+          <path stroke="#dcc99e" stroke-width="1.7" stroke-linecap="round" fill="none" d="M11 21h10M13 19v4M16 19v4M19 19v4"/>
+        </svg>
+        <span class="narrow-hide">Horde Play</span>
+      </h1>
+      <div class="spacer"></div>
+      <!-- The game's own actions. Icons only: the header has to hold all of
+           them on a phone, and each one has a title for the pointer. -->
+      <div class="bar-actions">
+        <button class="btn sm ghost icon" id="btn-undo" hidden
+                title="Undo the last action (U)" aria-label="Undo the last action">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 14 4 9l5-5"/>
+            <path d="M4 9h10a6 6 0 0 1 0 12h-3"/>
+          </svg>
+        </button>
+        <button class="btn sm ghost icon" id="btn-random" hidden
+                title="Pick a random survivor" aria-label="Pick a random survivor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linejoin="round" aria-hidden="true">
+            <rect x="4" y="4" width="16" height="16" rx="3.5"/>
+            <circle cx="9" cy="9" r="1.35" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="12" r="1.35" fill="currentColor" stroke="none"/>
+            <circle cx="15" cy="15" r="1.35" fill="currentColor" stroke="none"/>
+          </svg>
+        </button>
+        <button class="btn sm ghost icon" id="btn-log" hidden
+                title="Game log" aria-label="Game log">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" aria-hidden="true">
+            <path d="M4 6h10M4 12h10M4 18h7"/>
+            <circle cx="19" cy="6" r="1.2" fill="currentColor" stroke="none"/>
+            <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+          </svg>
+        </button>
+        <button class="btn sm ghost icon danger" id="btn-quit" hidden
+                title="End this game" aria-label="End this game">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" aria-hidden="true">
+            <path d="M12 4v8"/>
+            <path d="M17.7 7.3a8 8 0 1 1-11.4 0"/>
+          </svg>
+        </button>
+      </div>
+      <button class="btn sm ghost icon sharebtn" id="btn-share" hidden
+              title="Let others watch this game" aria-label="Share this game">
+        <!-- Two interlocking links: the lower one passes behind the upper,
+             so the mask punches a gap in it where the upper one crosses. -->
+        <svg id="share-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" aria-hidden="true">
+          <defs>
+            <mask id="share-link-cut" maskUnits="userSpaceOnUse"
+                  x="-6" y="-6" width="36" height="36">
+              <rect x="-6" y="-6" width="36" height="36" fill="#fff"/>
+              <rect x="10.5" y="8.5" width="11.5" height="7" rx="3.5"
+                    fill="none" stroke="#000" stroke-width="4"/>
+            </mask>
+          </defs>
+          <g transform="rotate(-45 12.25 12)">
+            <rect x="2.5" y="8.5" width="11.5" height="7" rx="3.5"
+                  mask="url(#share-link-cut)"/>
+            <rect x="10.5" y="8.5" width="11.5" height="7" rx="3.5"/>
+          </g>
+        </svg>
+        <span class="dotlive" id="share-dot" hidden></span>
+        <span id="share-btn-code" hidden></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= DECKS ================= -->
+  <section class="screen" id="screen-decks">
+    <div class="panel">
+      <h2>Horde decks</h2>
+      <div class="decklist" id="deck-list"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" id="btn-import">Import a decklist</button>
+        <button class="btn ghost" id="btn-bans">Ban list</button>
+        <button class="btn ghost" id="btn-watch">Watch a game</button>
+        <button class="btn ghost" id="btn-resume" hidden>Resume game in progress</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>How the Horde works</h2>
+      <div class="stack small muted">
+        <p style="margin:0">
+          The Horde has infinite mana, no hand, and no decisions. Each turn it casts cards straight off
+          the top of its library in <strong>waves</strong>. Tokens are shuffled in with everything else,
+          so they ride along inside a wave &mdash; the wave ends on a <strong>wave-ender</strong>, which
+          is an uncommon or better, or a non-token card, depending on the
+          <strong>ruleset</strong> you pick when the game starts.
+        </p>
+        <p style="margin:0">
+          Its creatures have haste and are
+          <button class="term-btn" type="button" popovertarget="def-goaded">goaded</button>;
+          only creatures with <strong><button class="term-btn" type="button" popovertarget="def-defender">Defender</button></strong> can block.
+          Damage to the Horde <strong>mills that many cards</strong> and lifegain does nothing.
+          Survivors share one life total &mdash; 100, minus 15 for each player past the first.
+        </p>
+        <p style="margin:0">
+          You win when its library and its board are both empty. Triggered and activated abilities are
+          still yours to read and apply &mdash; the card is shown large for exactly that reason.
+        </p>
+        <p style="margin:0">
+          Rules follow <a href="https://hordemagic.com/basic-horde-rules/" target="_blank" rel="noopener">hordemagic.com</a>,
+          including the recommended rule that a legendary milled by damage enters the battlefield and phases out.
+        </p>
+        <p style="margin:0">
+          <strong>Multi-library decks:</strong> the D&amp;D dungeon is three levels played in order, and
+          Angels &amp; Demons runs two libraries at once. Each is listed here as its own deck &mdash;
+          run them in separate games (or two screens) and treat the pair as beaten only when both are empty.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= IMPORT ================= -->
+  <section class="screen" id="screen-import">
+    <div class="panel" id="import-step-paste">
+      <h2>Import a decklist</h2>
+      <label class="field">
+        <span>Deck name</span>
+        <input class="txt" id="import-name" placeholder="My Horde" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>Paste the decklist</span>
+        <textarea class="paste" id="import-text" spellcheck="false" placeholder="Creatures:
+3 Corpse Knight
+6 Death Baron
+3 Gray Merchant of
+Asphodel
+
+Tokens:
+187 Token: Zombie
+13 Token: Zombie Giant"></textarea>
+      </label>
+      <div class="row" style="margin-bottom:12px">
+        <label class="row tight" style="gap:7px; cursor:pointer">
+          <input type="checkbox" id="opt-join" checked>
+          <span class="small">Join wrapped lines (a line with no quantity continues the one above)</span>
+        </label>
+      </div>
+      <div class="note">
+        Section headers like <code>Tokens (150)</code> mark everything under them as tokens.
+        The next screen shows what was found and lets you fix it.
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" id="btn-parse">Look these up</button>
+        <button class="btn ghost" id="btn-import-cancel">Cancel</button>
+      </div>
+    </div>
+
+    <div class="panel hidden" id="import-step-loading">
+      <h2>Looking up cards</h2>
+      <div class="progress" style="margin-bottom:10px"><i id="lookup-bar" style="width:0%"></i></div>
+      <p class="muted small" id="lookup-status">Starting&hellip;</p>
+      <button class="btn ghost sm" id="btn-skip-lookup">Skip &mdash; use text cards</button>
+    </div>
+
+    <div class="panel hidden" id="import-step-review">
+      <h2>Review &amp; save</h2>
+      <div id="review-warnings"></div>
+      <div class="row small muted" style="margin:6px 0 12px">
+        <span id="review-summary"></span>
+        <span class="grow"></span>
+        <button class="btn sm ghost" id="btn-all-token">All tokens</button>
+        <button class="btn sm ghost" id="btn-all-card">All cards</button>
+      </div>
+      <div id="review-rows"></div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn primary" id="btn-save-deck">Save deck</button>
+        <button class="btn ghost" id="btn-back-paste">Back to the paste</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= BAN LIST ================= -->
+  <section class="screen" id="screen-bans">
+    <div class="panel">
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn sm ghost" id="btn-bans-back">&larr; Back to decks</button>
+      </div>
+      <h2>Ban list</h2>
+      <p class="small muted" style="margin:0 0 4px">
+        These are barred from the <em>survivors'</em> EDH decks, not from the Horde's library, so the
+        app can't enforce them &mdash; it carries the list so it's on the table, and works offline.
+        From <a href="https://hordemagic.com/ban-list/" target="_blank" rel="noopener">hordemagic.com</a>.
+      </p>
+      <label class="field" style="margin:12px 0">
+        <span>Is a card banned?</span>
+        <input class="txt" id="ban-search" type="search" placeholder="Type a card name&hellip;"
+               autocomplete="off" spellcheck="false">
+      </label>
+      <p class="small muted" id="ban-count" style="margin:-6px 0 12px"></p>
+      <div id="ban-sections"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Banned combos</h2>
+      <ul class="banlist" id="ban-combos"></ul>
+    </div>
+
+    <div class="panel">
+      <h2>Why a card gets banned</h2>
+      <p class="small muted" style="margin:0 0 8px">
+        Anything that renders the Horde ineffectual is out. A permanent that swings the board for a
+        turn, or on the way in, is fine; a static ability that keeps the Horde's board permanently
+        clear isn't. The published rules of thumb:
+      </p>
+      <ul class="stack small muted" id="ban-rules" style="margin:0; padding-left:18px"></ul>
+    </div>
+  </section>
+
+  <!-- ================= SETUP ================= -->
+  <section class="screen" id="screen-setup">
+    <div class="panel">
+      <h2>New game &mdash; <span id="setup-deckname"></span></h2>
+
+      <div id="setup-players" class="stack"></div>
+      <div class="row" style="margin:10px 0 18px">
+        <button class="btn sm ghost" id="btn-add-player">+ Add survivor</button>
+      </div>
+
+      <label class="field">
+        <span>Ruleset</span>
+        <div class="chips" id="opt-ruleset"></div>
+      </label>
+
+      <p class="small muted rulesline" id="ruleset-blurb"></p>
+      <dl class="rules" id="setup-rules"></dl>
+
+      <div id="setup-custom" hidden>
+        <label class="field">
+          <span>A wave ends when the Horde casts&hellip;</span>
+          <div class="chips" id="opt-waveend">
+            <button class="chip" data-v="nontoken">a non-token card</button>
+            <button class="chip" data-v="rarity">an uncommon, rare or mythic</button>
+          </div>
+        </label>
+
+        <label class="field">
+          <span>Waves the Horde plays each turn</span>
+          <div class="chips" id="opt-wavepattern">
+            <button class="chip" data-v="snake">Snake &mdash; 1, 2, 3, 2, 1&hellip;</button>
+            <button class="chip" data-v="fixed">Always 1</button>
+          </div>
+        </label>
+
+        <div class="row">
+          <label class="field" style="margin:0">
+            <span>Shared life</span>
+            <input class="txt num" id="setup-life" type="number" min="1" max="999" value="85">
+          </label>
+          <label class="field" style="margin:0">
+            <span>Setup turns</span>
+            <input class="txt num" id="setup-turns" type="number" min="0" max="10" value="3">
+          </label>
+          <label class="field" style="margin:0">
+            <span>Poison limit</span>
+            <input class="txt num" id="setup-poison" type="number" min="1" max="99" value="10">
+          </label>
+        </div>
+
+        <label class="row tight" style="gap:7px; cursor:pointer; margin-top:6px">
+          <input type="checkbox" id="opt-legendary" checked>
+          <span class="small">A legendary milled by damage enters the battlefield, then phases out (recommended)</span>
+        </label>
+      </div>
+
+      <div class="note" style="margin-top:14px" id="setup-lifenote"></div>
+
+      <div class="row" style="margin-top:16px">
+        <button class="btn primary" id="btn-start">Shuffle &amp; begin</button>
+        <button class="btn ghost" id="btn-setup-cancel">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= GAME ================= -->
+  <section class="screen" id="screen-game">
+    <!-- Only up for a viewer, who is watching someone else's table and can change nothing. -->
+    <div class="viewerbar" id="viewer-bar" hidden>
+      <span class="dotlive" id="viewer-dot" aria-hidden="true"></span>
+      <span class="grow"><b>Watching</b> <span id="viewer-code"></span> &mdash; <span id="viewer-status">connecting&hellip;</span></span>
+      <button class="btn sm ghost" id="btn-viewer-leave">Leave</button>
+    </div>
+
+    <!-- The arena: what the Horde is doing right now, and what you do about it. -->
+    <div class="arena" id="arena" data-phase="survivors">
+      <div class="arena-head">
+        <span class="arena-phase"><i class="pulse" aria-hidden="true"></i><span id="arena-phase-label">Your turn</span></span>
+        <span class="arena-round">Round <b id="c-turn">1</b></span>
+      </div>
+
+      <div class="stage" id="stage">
+        <div id="stage-body"></div>
+      </div>
+
+      <div class="actions">
+        <button class="actiontile" id="tile-damage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/>
+            <line x1="13" y1="19" x2="19" y2="13"/>
+            <line x1="16" y1="16" x2="20" y2="20"/>
+            <line x1="19" y1="21" x2="21" y2="19"/>
+          </svg>
+          <span>
+            <span class="at-label">Damage<span class="narrow-hide"> the Horde</span></span>
+            <span class="at-val" id="tile-damage-val">Mill</span>
+          </span>
+          <span class="at-hint" aria-hidden="true">&rsaquo;</span>
+        </button>
+
+        <button class="actiontile" id="tile-life">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 20.5s-7.5-4.6-7.5-9.6A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 3.3c0 5-7.5 9.6-7.5 9.6z"/>
+          </svg>
+          <span>
+            <span class="at-label">Survivors</span>
+            <span class="at-val" id="tile-life-val">0</span>
+          </span>
+          <span class="at-hint" aria-hidden="true">&rsaquo;</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- The ledger: reference numbers, deliberately quiet next to the arena. -->
+    <div class="tally">
+      <div class="t hot"><span class="n" id="c-library">0</span><span class="k">Library</span></div>
+      <button class="t" id="tile-board" aria-label="Jump to the Horde's board">
+        <span class="n" id="c-board">0</span><span class="k">Creatures</span>
+      </button>
+      <div class="t"><span class="n" id="c-power">0</span><span class="k">Attacking</span></div>
+      <button class="t" id="tile-yard" aria-label="Open the graveyard">
+        <span class="n" id="c-yard">0</span><span class="k">Graveyard</span>
+      </button>
+    </div>
+
+    <p class="tiny muted rulesline" id="game-rules"></p>
+
+
+    <div class="panel board-panel" id="board-panel" tabindex="-1">
+      <div class="row" style="margin-bottom:8px">
+        <h2 style="margin:0">The Horde&rsquo;s board</h2>
+        <span class="grow"></span>
+        <span class="tiny muted" id="board-summary"></span>
+      </div>
+      <p class="tiny muted" style="margin:-2px 0 12px">
+        Haste, <button class="term-btn" type="button" popovertarget="def-goaded">goaded</button>, attacking every turn.
+        Only <button class="kw def term-btn" type="button" popovertarget="def-defender">Defender</button> can block.
+        <span id="board-hint-host">Tap a stack to kill one or all.</span>
+        <span id="board-hint-viewer" hidden>Tap a stack to read it.</span>
+      </p>
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn sm ghost" id="btn-add-tokens">+ Create tokens</button>
+      </div>
+      <div class="cardgrid board" id="board"></div>
+      <p class="muted small" id="board-empty">Nothing on the battlefield.</p>
+    </div>
+
+    <div class="sticky-action">
+      <button class="btn primary big" id="btn-action">Take the Horde&rsquo;s turn</button>
+    </div>
+  </section>
+
+  <!-- ================= END ================= -->
+  <section class="screen" id="screen-end">
+    <div class="confetti" id="confetti" aria-hidden="true"></div>
+    <div class="panel" style="text-align:center; padding:34px 20px">
+      <h2 id="end-title" style="font-size:30px; text-transform:none; letter-spacing:0; color:var(--ink)"></h2>
+      <p class="muted" id="end-sub" style="margin-bottom:18px"></p>
+      <div class="tally" id="end-stats" style="margin-bottom:22px"></div>
+      <div class="row" style="justify-content:center">
+        <button class="btn primary" id="btn-again">Play again</button>
+        <button class="btn ghost" id="btn-end-home">Back to decks</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<dialog id="damage-dialog" class="sheet">
+  <h3>Damage the Horde</h3>
+  <p class="sub" id="dd-sub"></p>
+  <div class="bignum" id="mill-out">0</div>
+  <div class="pad" id="mill-pad">
+    <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
+    <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
+    <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
+    <button data-k="clear">C</button><button data-d="0">0</button>
+    <button data-k="back" aria-label="Backspace">&larr;</button>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn primary grow" data-k="mill" id="dd-mill">Mill</button>
+    <button class="btn ghost" id="dd-close">Close</button>
+  </div>
+  <p class="tiny muted" style="margin:12px 0 0">
+    The Horde has no life total &mdash; damage and life loss mill it instead. Lifegain does nothing.
+  </p>
+</dialog>
+
+<dialog id="life-dialog" class="sheet">
+  <h3>Survivors</h3>
+  <p class="sub lifetotal"><b id="life-n">0</b> life left &mdash; one shared pool.</p>
+  <div class="bignum life" id="life-out">0</div>
+  <div class="pad" id="life-pad">
+    <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
+    <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
+    <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
+    <button data-k="clear">C</button><button data-d="0">0</button>
+    <button data-k="back" aria-label="Backspace">&larr;</button>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn primary grow" id="ld-lose">Lose</button>
+    <button class="btn grow" id="ld-gain">Gain</button>
+  </div>
+  <button class="btn" id="life-all" style="width:100%; margin-top:8px">Take all</button>
+  <p class="tiny muted" id="life-partial" style="margin:8px 0 0" hidden>
+    Some of the Horde's creatures have unknown power, so this total is only what's known.
+    Check the cards on the board.
+  </p>
+  <div class="poisonrow">
+    <span>Poison</span>
+    <button data-poison="-1" aria-label="Remove a poison counter">&minus;</button>
+    <b id="poison-n">0</b>
+    <button data-poison="1" aria-label="Add a poison counter">+</button>
+    <span id="poison-limit"></span>
+  </div>
+  <button class="btn ghost" id="ld-close" style="width:100%; margin-top:14px">Done</button>
+</dialog>
+
+<dialog id="card-dialog" class="cardview">
+  <div class="cv-art"><div class="slot" id="cv-slot"></div></div>
+  <h3 id="cv-name"></h3>
+  <p class="sub" id="cv-type"></p>
+  <p class="sub cv-ctr" id="cv-counters" hidden></p>
+  <p class="cv-oracle" id="cv-oracle"></p>
+  <div class="stack" id="cv-actions">
+    <button class="btn" id="cv-copy" style="width:100%">Copy it&hellip;</button>
+    <button class="btn" id="cv-counters-btn" style="width:100%">Counters&hellip;</button>
+    <button class="btn" id="cv-kill1" style="width:100%">Kill one &rarr; graveyard</button>
+    <button class="btn" id="cv-killall" style="width:100%">Kill the whole stack</button>
+    <div class="row tight" id="cv-qty">
+      <button class="btn" id="cv-dup" style="flex:0 0 92px">+1</button>
+      <button class="btn grow" id="cv-setqty">Set how many&hellip;</button>
+    </div>
+  </div>
+  <button class="btn ghost" id="cv-close" style="width:100%; margin-top:10px">Close</button>
+</dialog>
+
+<dialog id="token-dialog" class="sheet">
+  <div id="token-step-pick">
+    <h3 style="margin:0 0 4px">Create tokens</h3>
+    <p class="muted small" id="token-pick-sub" style="margin:0 0 12px">
+      Anything that puts tokens on the battlefield &mdash; Hare Apparent, Empty the Warrens, Skeletal
+      Swarming, Rite of Belzenlok. A manual add: the library, graveyard and wave count are untouched.
+    </p>
+    <form class="row tight" id="token-search-form" style="margin-bottom:14px">
+      <input class="txt grow" id="token-search" type="search" autocomplete="off"
+             placeholder="Any token &mdash; Skeleton, Demon, Food&hellip;">
+      <button class="btn sm" type="submit">Find</button>
+    </form>
+    <p class="tiny muted" id="token-pick-label" style="margin:0 0 8px">In this deck</p>
+    <div class="cardgrid tokengrid" id="token-pick-grid" style="margin-bottom:6px"></div>
+    <p class="muted small" id="token-pick-empty" hidden>
+      This deck defines no token types &mdash; search above for the one you need.
+    </p>
+    <button class="btn ghost" id="token-copy-open" style="width:100%; margin-top:8px">
+      Copy a creature&hellip;
+    </button>
+    <button class="btn ghost" id="token-pick-close" style="width:100%; margin-top:8px">Close</button>
+  </div>
+  <div id="token-step-copysrc" hidden>
+    <h3 style="margin:0 0 4px">Copy a creature</h3>
+    <p class="muted small" style="margin:0 0 12px">
+      For &ldquo;create a token that&rsquo;s a copy of target creature&rdquo;. Tap one the Horde
+      already has out, or search by name for a survivor&rsquo;s creature &mdash; the copy is a
+      token whatever it copied.
+    </p>
+    <form class="row tight" id="copy-search-form" style="margin-bottom:14px">
+      <input class="txt grow" id="copy-search" type="search" autocomplete="off"
+             placeholder="Any card &mdash; a survivor&rsquo;s creature&hellip;">
+      <button class="btn sm" type="submit">Find</button>
+    </form>
+    <p class="tiny muted" id="copy-src-label" style="margin:0 0 8px">On the Horde&rsquo;s battlefield</p>
+    <div class="cardgrid tokengrid" id="copy-src-grid" style="margin-bottom:6px"></div>
+    <p class="muted small" id="copy-src-empty" hidden>
+      The Horde has nothing out to copy &mdash; search above for the creature you need.
+    </p>
+    <button class="btn ghost" id="copy-src-back" style="width:100%; margin-top:8px">Back</button>
+  </div>
+  <div id="token-step-copy" hidden>
+    <h3 style="margin:0 0 4px" id="cp-name"></h3>
+    <p class="muted small" id="cp-sub" style="margin:0 0 14px"></p>
+    <div class="row tight" id="cp-pt" style="margin-bottom:8px">
+      <span class="tiny muted">Power / toughness</span>
+      <span class="grow"></span>
+      <input class="txt num sm" id="cp-power" inputmode="numeric" placeholder="&ndash;" aria-label="Power">
+      <span class="muted" aria-hidden="true">/</span>
+      <input class="txt num sm" id="cp-tough" inputmode="numeric" placeholder="&ndash;" aria-label="Toughness">
+    </div>
+    <p class="tiny muted" style="margin:0 0 16px">
+      Left as they are, the copy is the creature exactly. Change them for
+      &ldquo;&hellip;except it&rsquo;s a 4/4&rdquo;.
+    </p>
+    <div class="row">
+      <button class="btn primary grow" id="cp-next">Continue</button>
+      <button class="btn ghost" id="cp-back">Back</button>
+    </div>
+  </div>
+  <div id="token-step-search" hidden>
+    <h3 style="margin:0 0 4px" id="ts-title"></h3>
+    <p class="muted small" id="ts-sub" style="margin:0 0 12px"></p>
+    <div class="cardgrid tokengrid" id="token-search-grid" style="margin-bottom:10px"></div>
+    <div class="row">
+      <button class="btn ghost grow" id="ts-custom">Make a plain token</button>
+      <button class="btn ghost" id="ts-back">Back</button>
+    </div>
+  </div>
+  <div id="token-step-custom" hidden>
+    <h3 style="margin:0 0 4px">Plain token</h3>
+    <p class="muted small" style="margin:0 0 14px">
+      No art or rules text &mdash; just enough for the board and the attacking total.
+    </p>
+    <label class="field">
+      <span>Name</span>
+      <input class="txt" id="tc-name" placeholder="Skeleton" autocomplete="off">
+    </label>
+    <div class="row tight" style="margin-bottom:12px">
+      <button class="toggle" id="tc-kind" aria-pressed="true">Creature</button>
+      <span class="tiny muted" id="tc-kind-note">Counted in the attacking total</span>
+    </div>
+    <div class="row tight" id="tc-pt" style="margin-bottom:16px">
+      <span class="tiny muted">Power / toughness</span>
+      <span class="grow"></span>
+      <input class="txt num sm" id="tc-power" inputmode="numeric" placeholder="1" aria-label="Power">
+      <span class="muted" aria-hidden="true">/</span>
+      <input class="txt num sm" id="tc-tough" inputmode="numeric" placeholder="1" aria-label="Toughness">
+    </div>
+    <div class="row">
+      <button class="btn primary grow" id="tc-next">Continue</button>
+      <button class="btn ghost" id="tc-back">Back</button>
+    </div>
+  </div>
+  <div id="token-step-qty" hidden>
+    <h3 style="margin:0 0 4px" id="tq-name"></h3>
+    <p class="muted small" id="tq-sub" style="margin:0 0 14px"></p>
+    <div class="bignum" id="tq-out">0</div>
+    <div class="pad" id="token-qty-pad">
+      <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
+      <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
+      <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
+      <button data-k="clear">C</button><button data-d="0">0</button>
+      <button data-k="back" aria-label="Backspace">&larr;</button>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn primary grow" id="tq-add">Add</button>
+      <button class="btn ghost" id="tq-back">Back</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="counters-dialog" class="sheet">
+  <h3 style="margin:0 0 4px" id="ct-name"></h3>
+  <p class="muted small" id="ct-sub" style="margin:0 0 14px"></p>
+
+  <div class="row tight" id="ct-howmany" style="margin-bottom:12px">
+    <span class="grow">How many of them</span>
+    <button class="btn sm" id="ct-fewer" type="button" aria-label="One fewer creature">&minus;</button>
+    <b id="ct-n">1</b>
+    <button class="btn sm" id="ct-more" type="button" aria-label="One more creature">+</button>
+    <button class="btn sm" id="ct-one" type="button">One</button>
+    <button class="btn sm" id="ct-all" type="button">All</button>
+  </div>
+
+  <div class="stack" id="ct-rows"></div>
+
+  <form class="row tight" id="ct-add-form" style="margin-top:10px">
+    <input class="txt grow" id="ct-add-name" type="text" autocomplete="off"
+           placeholder="Another counter &mdash; stun, charge&hellip;">
+    <button class="btn sm" type="submit">Add</button>
+  </form>
+
+  <p class="tiny muted" id="ct-preview" style="margin:12px 0 0"></p>
+
+  <div class="row" style="margin-top:14px">
+    <button class="btn primary grow" id="ct-apply" type="button">Apply</button>
+    <button class="btn ghost" id="ct-cancel" type="button">Cancel</button>
+  </div>
+</dialog>
+
+<dialog id="yard-dialog" class="sheet">
+  <h3 style="margin:0 0 4px">Graveyard</h3>
+  <p class="muted small" id="yd-sub" style="margin:0 0 12px"></p>
+  <div class="cardgrid tokengrid" id="yd-grid" style="margin-bottom:6px"></div>
+  <p class="muted small" id="yd-empty" hidden>
+    Nothing here yet &mdash; damage mills the Horde, and its dead creatures land here too.
+  </p>
+  <button class="btn ghost" id="yd-close" style="width:100%; margin-top:10px">Close</button>
+</dialog>
+
+<dialog id="log-dialog" class="sheet">
+  <h3 id="log-title" tabindex="-1" style="margin:0 0 4px">Log</h3>
+  <p class="sub">Newest first &mdash; every wave, mill and life change this game, by round.</p>
+  <ul class="log" id="log"></ul>
+  <p class="muted small" id="log-empty" hidden style="margin:0">Nothing has happened yet.</p>
+  <button class="btn ghost" id="log-close" style="width:100%; margin-top:12px">Close</button>
+</dialog>
+
+<dialog id="share-dialog" class="sheet">
+  <h3 style="margin:0 0 4px">Share this game</h3>
+  <p class="sub">Viewers get the board, the wave and the counters, with no controls to press. Give the code out the way you'd give out a password.</p>
+
+  <div class="codebox" id="share-codebox">
+    <span class="tiny muted">Code</span>
+    <div class="code" id="share-code">------</div>
+  </div>
+
+  <div class="row" style="margin-top:14px">
+    <button class="btn primary grow" id="sh-toggle">Start sharing</button>
+    <button class="btn ghost" id="sh-copy">Copy link</button>
+  </div>
+  <p class="tiny muted" id="sh-note" style="margin:12px 0 0"></p>
+  <p class="tiny muted" style="margin:10px 0 0">
+    Sharing sends the board to <b>ntfy.sh</b>, a free public relay, so viewers on other
+    devices can read it. The code is the only thing protecting the game, and it works
+    both ways — anyone holding it can send to the game as well as watch it, so treat it
+    as something you hand to your table and not to a group chat. Nothing is sent until
+    you start, and the app can’t share while it’s offline.
+  </p>
+  <button class="btn ghost" id="sh-close" style="width:100%; margin-top:12px">Close</button>
+</dialog>
+
+<dialog id="join-dialog" class="sheet">
+  <h3 style="margin:0 0 4px">Watch a game</h3>
+  <p class="sub">Type the code from the screen running the game. You’ll see its board; you won’t be able to touch it.</p>
+  <label class="field">
+    <span>Game code</span>
+    <input id="join-code" type="text" inputmode="latin" autocomplete="off"
+           autocapitalize="characters" spellcheck="false" maxlength="7" placeholder="e.g. K7P2QM">
+  </label>
+  <p class="tiny warn-text" id="join-error" hidden></p>
+  <div class="row" style="margin-top:14px">
+    <button class="btn primary grow" id="join-go">Watch</button>
+    <button class="btn ghost" id="join-close">Cancel</button>
+  </div>
+  <p class="tiny muted" style="margin:12px 0 0">
+    Card art is fetched from Scryfall on this device, so a viewer needs a connection.
+  </p>
+</dialog>
+
+<dialog id="confirm-dialog">
+  <h3 style="margin:0 0 6px" id="cd-title"></h3>
+  <p class="muted small" id="cd-body" style="margin:0 0 16px"></p>
+  <div class="row" style="justify-content:flex-end">
+    <button class="btn ghost" id="cd-no">Cancel</button>
+    <button class="btn danger" id="cd-yes">Confirm</button>
+  </div>
+</dialog>
+
+<!-- MTG term glossary: one popover per term, opened from any button
+     anywhere in the page via popovertarget="def-<term>". -->
+<div id="def-goaded" class="term-pop" popover>
+  A goaded creature must attack this combat if able, and must attack a
+  player other than whoever goaded it, if able.
+</div>
+<div id="def-defender" class="term-pop" popover>
+  A creature with Defender can&rsquo;t attack, but it can still block.
+</div>
+
+<!-- build:script -->
+</body>
+</html>

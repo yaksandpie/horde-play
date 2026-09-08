@@ -1,0 +1,33 @@
+{
+  "name": "D&D Dungeon — Lv2 Goblins & Skeletons",
+  "waveEnd": "rarity",
+  "entries": [
+    {"q": 55, "n": "Goblin", "t": 1, "c": "creature"},
+    {"q": 4, "n": "Goblin Wizard", "t": 1, "c": "creature"},
+    {"q": 25, "n": "Stingscourger", "t": 0, "c": "creature"},
+    {"q": 4, "n": "Goblin Arsonist", "t": 0, "c": "creature"},
+    {"q": 11, "n": "Putrid Goblin", "t": 0, "c": "creature"},
+    {"q": 2, "n": "Scuzzback Marauders", "t": 0, "c": "creature"},
+    {"q": 9, "n": "Skeleton Archer", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Persistent Specimen", "t": 0, "c": "creature"},
+    {"q": 14, "n": "Carnage Gladiator", "t": 0, "c": "creature"},
+    {"q": 3, "n": "Ankle Shanker", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Goblin Trashmaster", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Death Tyrant", "t": 0, "c": "creature"},
+    {"q": 5, "n": "Gut, True Soul Zealot", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Bladewing, Deathless Tyrant", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Krenko, Mob Boss", "t": 0, "c": "creature"},
+    {"q": 10, "n": "Arms of Hadar", "t": 0, "c": "spell"},
+    {"q": 1, "n": "Austere Command", "t": 0, "c": "spell"},
+    {"q": 1, "n": "Rampage of the Clans", "t": 0, "c": "spell"},
+    {"q": 1, "n": "Vandalblast", "t": 0, "c": "spell"},
+    {"q": 12, "n": "Empty the Warrens", "t": 0, "c": "spell"},
+    {"q": 8, "n": "Goblin Grenade", "t": 0, "c": "spell"},
+    {"q": 12, "n": "Trumpet Blast", "t": 0, "c": "spell"},
+    {"q": 4, "n": "Turn to Slag", "t": 0, "c": "spell"},
+    {"q": 5, "n": "War Drums", "t": 0, "c": "permanent"},
+    {"q": 7, "n": "Skeletal Swarming", "t": 0, "c": "permanent"},
+    {"q": 2, "n": "Rite of the Dragoncaller", "t": 0, "c": "permanent"},
+    {"q": 2, "n": "Gruul War Chant", "t": 0, "c": "permanent"}
+  ]
+}

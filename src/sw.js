@@ -1,13 +1,11 @@
-const CACHE_VERSION = "v28";
+/* The build fills both of these in: CACHE_VERSION from a hash of the shell's
+   own bytes, APP_SHELL from what actually landed in _site. Shipping a changed
+   shell under a stale version is what leaves an installed copy serving old
+   files, and deriving the version from the files makes that impossible to
+   forget — there is no number here for anyone to bump. */
+const CACHE_VERSION = "__CACHE_VERSION__";
 const CACHE_NAME = `horde-play-${CACHE_VERSION}`;
-const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./manifest.json",
-  "./icon-192.png",
-  "./icon-512.png",
-  "./icon-180.png",
-];
+const APP_SHELL = __APP_SHELL__;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

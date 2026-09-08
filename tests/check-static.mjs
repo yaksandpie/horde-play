@@ -1,10 +1,13 @@
-/* Static checks for a repo that has no build step.
+/* Static checks on the built site.
  *
- * There is no bundler here to catch a typo, so CI does the job a build would
- * otherwise do: parse the inline script, parse the JSON, and prove that every
- * file the app and the service worker reference actually exists.
+ * The build catches what a build catches — an unresolved import, a syntax
+ * error in a module. These are the checks it can't make: that what actually
+ * landed in _site parses, that the manifest is valid, and that every file the
+ * page and the service worker reference is really sitting there next to them.
+ * It runs against the output rather than the source because the output is
+ * what Pages serves.
  *
- * Runs on plain Node with no dependencies: `node tests/check-static.mjs`.
+ * Run `node build.mjs` first. Dependency-free: `node tests/check-static.mjs`.
  */
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -12,7 +15,12 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
-const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const ROOT = fileURLToPath(new URL("../_site/", import.meta.url));
+
+if (!existsSync(join(ROOT, "index.html"))) {
+  console.error("\n  \u2717 _site/index.html is missing \u2014 run `node build.mjs` first.\n");
+  process.exit(1);
+}
 const problems = [];
 const fail = (msg) => problems.push(msg);
 const read = (name) => readFile(join(ROOT, name), "utf8");
@@ -22,7 +30,7 @@ const read = (name) => readFile(join(ROOT, name), "utf8");
 const html = await read("index.html");
 const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 
-if (!scripts.length) fail("index.html has no inline <script> — did the app move out of the file?");
+if (!scripts.length) fail("index.html has no inline <script> — did the build stop inlining it?");
 
 scripts.forEach(([, code], i) => {
   // Count the lines before this block so a syntax error points at index.html.
@@ -88,8 +96,10 @@ if (!shellMatch) {
   for (const ref of refs) {
     if (!shell.includes(ref)) fail(`index.html loads ${ref}, but sw.js does not precache it — it won't work offline.`);
   }
-  if (!/const CACHE_VERSION\s*=\s*"v\d+"/.test(sw)) {
-    fail('sw.js should keep a CACHE_VERSION of the form "v<number>".');
+  // Written by the build from a hash of the shell's bytes. A placeholder left
+  // in here means the substitution silently missed.
+  if (!/const CACHE_VERSION\s*=\s*"v[0-9a-f]{12}"/.test(sw)) {
+    fail('sw.js has no built CACHE_VERSION — expected "v<12 hex digits>" from the content hash.');
   }
 }
 

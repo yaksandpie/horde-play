@@ -1,0 +1,56 @@
+/* A term mentioned in prose that opens a quick definition via the native
+   Popover API. Reset first so the .kw badge rules below still win when a
+   button carries both classes (kw.def can also be a term-btn). */
+button.term-btn {
+  background: none; border: 0; padding: 0; margin: 0; font: inherit;
+  color: inherit; text-decoration: underline dotted; text-underline-offset: 2px;
+  cursor: help;
+}
+.term-btn:hover, .term-btn:focus-visible { color: var(--accent-hot); }
+
+/* A popover lives in the top layer, where the browser's default placement
+   is the dead centre of the viewport -- a long way from the word that was
+   tapped. placeTermPop() pins it to its own trigger instead; everything
+   scoped to .js-pop only applies once that script is running, so if the
+   script ever fails the definitions still open, just centred. */
+[popover].term-pop {
+  background: var(--surface-2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 14px; font-size: 13px; line-height: 1.4;
+  max-width: min(280px, calc(100vw - 20px));
+  box-shadow: var(--shadow); margin: auto;
+}
+/* Open but not yet measured and placed: hold it back for that one frame
+   rather than let it flash in the middle of the screen first. */
+.js-pop [popover].term-pop.anchoring:not(.placed) { visibility: hidden; }
+/* overflow is `auto` on [popover] in the UA stylesheet, which clips the
+   caret below back to the box; the text in here never needs to scroll. */
+.js-pop [popover].term-pop.placed { margin: 0; inset: auto; overflow: visible; }
+
+/* A caret pointing back at the word. --caret-x is set alongside the
+   coordinates so it still lands on the trigger when the popover has been
+   nudged sideways to stay on screen. */
+.js-pop .term-pop.placed::after {
+  content: ""; position: absolute; left: var(--caret-x, 50%);
+  width: 10px; height: 10px; margin-left: -5px;
+  background: var(--surface-2); border: 1px solid var(--line);
+  transform: rotate(45deg);
+}
+.js-pop .term-pop.below::after { top: -6px; border-width: 1px 0 0 1px; }
+.js-pop .term-pop.above::after { bottom: -6px; border-width: 0 1px 1px 0; }
+
+.kw {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 5px; margin-right: 4px;
+  background: var(--surface-3); border: 1px solid var(--line); color: var(--ink-soft);
+}
+.kw.def { background: #24405a; border-color: #3d6d96; color: #cfe6ff; }
+.kw.leg { background: #4a3c18; border-color: #8a6f28; color: #ffe3a3; }
+.kw.def.term-btn { text-decoration: none; cursor: help; }
+
+.cf-badge.rare { background: rgba(160,120,30,.92); border-color: #d3a63e; color: #fff6e0; }
+.cf-badge.defender { left: auto; right: 6px; background: rgba(36,64,90,.92); border-color: #3d6d96; color: #cfe6ff; }
+
+.cardface.defender { outline: 2px solid #3d6d96; outline-offset: -2px; }
+</style>

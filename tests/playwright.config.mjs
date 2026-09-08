@@ -21,7 +21,8 @@ export default defineConfig({
       : {},
   },
   webServer: {
-    command: `node serve.mjs`,
+    // Build first, so a run can never be served a stale _site.
+    command: `node ../build.mjs && node serve.mjs`,
     url: `http://127.0.0.1:${PORT}/index.html`,
     reuseExistingServer: !process.env.CI,
     env: { PORT: String(PORT) },

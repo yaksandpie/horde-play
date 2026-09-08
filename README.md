@@ -9,8 +9,10 @@ holds the library instead. You bring paper EDH decks; a screen between you casts
 the Horde's waves, stacks up its board, rolls random targets, and takes damage as
 mill.
 
-It's a single static page — no build step, no dependencies, no accounts. It
-installs to a home screen and runs offline once a deck has been loaded.
+What it serves is a single static page — no runtime dependencies, no accounts,
+one request. It installs to a home screen and runs offline once a deck has been
+loaded. The source is kept as ordinary files under `src/` and a small build
+(esbuild, the only dependency) puts them back together into that one page.
 
 ## What it does
 
@@ -283,20 +285,22 @@ site. One-time setup:
 4. On the tablet you'll play on, use **Add to Home Screen**. It installs as a real
    offline-capable app.
 
-The workflow publishes the repo root minus `.github/` and `tests/`, so what
-Pages serves is exactly the app.
+The workflow runs `node build.mjs` and publishes `_site/`, so what Pages serves
+is exactly the app and nothing else — the page with its styles and script
+inlined, the manifest, the icons, and the service worker.
 
 ## CI
 
 `.github/workflows/ci.yml` runs on every push to `main` and every pull request:
 
-- **Static checks** (`node tests/check-static.mjs`, no dependencies) — parses the
-  inline script and `sw.js`, validates `manifest.json`, and proves every file the
-  page and the service worker reference actually exists. There's no bundler here
-  to catch a typo, so this does the job a build would.
-- **Service worker cache version** — a pull request that touches `index.html`,
-  `manifest.json` or an icon has to bump `CACHE_VERSION` in `sw.js`, or installed
-  copies keep serving the old shell.
+- **Static checks** — builds the site, which is what catches an unresolved
+  import or a syntax error in any module, then runs `node tests/check-static.mjs`
+  (no dependencies) on the output: the inline script and `sw.js` parse,
+  `manifest.json` is valid, and every file the page and the service worker
+  reference is really sitting there in `_site`.
+- **Service worker cache version** — builds, perturbs the app shell, builds
+  again, and checks the version moved. Nobody bumps it by hand any more, so
+  what's worth checking is that the build's own hashing still works.
 - **Browser tests** — Playwright drives real Chromium against the real page:
   `tests/rules.spec.mjs` unit-tests the game rules through the `window.__horde`
   harness the app already exposes, `tests/share.spec.mjs` covers the live-share
@@ -313,25 +317,45 @@ the app's offline path, which is the one that matters on game night.
 The app has no dependencies; the tests do, and they keep them to themselves:
 
 ```sh
+npm install     # esbuild, for the build
+npm run build   # assemble _site/
+
 cd tests
 npm install
 npx playwright install chromium
-npm run check   # static checks
-npm test        # browser tests
+npm run check   # build, then static checks
+npm test        # browser tests (builds first)
 ```
 
-`npm run serve` alone starts the same static server on
+`npm run serve` from `tests/` builds and then serves `_site/` on
 <http://127.0.0.1:4173> if you just want to poke at the app over a real
 origin (service workers and IndexedDB don't work over `file://`).
 
 ## Files
 
-- `index.html` — the whole app
-- `manifest.json` — web app manifest
-- `sw.js` — service worker (network-first on page loads, cache-first on assets)
-- `icon-192.png`, `icon-512.png`, `icon-180.png` — app icons
-- `tests/` — the checks CI runs, and the only place with dependencies
+- `build.mjs` — assembles `_site/`, the site Pages serves
+- `src/index.html` — the markup, with `<!-- build:styles -->` and
+  `<!-- build:script -->` where the build inlines the rest
+- `src/styles/*.css` — the stylesheet, one file per section. CSS is
+  order-dependent, so the numeric prefix *is* the cascade order
+- `src/app/*.js` — the app as ES modules, cut at the seams the one-file
+  version already had: `helpers`, `persistence`, `parse`, `scryfall`, `cards`,
+  `state`, `screens`, `dialogs`, `tokens`, `copies`, `counters`, `share`,
+  `events`, `boot`. `boot.js` is the entry
+- `src/decks/*.json` — one horde deck per file; `src/decks.js` lists them in
+  the order they appear on the decks screen
+- `src/manifest.json`, `src/icon-*.png` — manifest and app icons
+- `src/sw.js` — service worker template (network-first on page loads,
+  cache-first on assets). The build fills in `CACHE_VERSION` and `APP_SHELL`
+- `tests/` — the checks CI runs
 - `.github/workflows/` — CI and the Pages deploy
+
+### The service worker's cache version
+
+`CACHE_VERSION` is a hash of the built shell's own bytes, and `APP_SHELL` is a
+list of what actually landed in `_site`. Both are written by `build.mjs`. A
+changed shell therefore cannot ship under a stale cache version, and there is no
+number for anyone to remember to bump.
 
 ## Not automated on purpose
 

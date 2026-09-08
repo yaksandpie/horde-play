@@ -1,0 +1,25 @@
+/* ---------- Full card view ---------- */
+
+dialog.cardview {
+  max-width: min(94vw, 520px);
+  text-align: center;
+}
+.cv-art { display: flex; justify-content: center; margin-bottom: 14px; }
+/* The slot is the container query root, so sizing it sizes generated faces too. */
+#cv-slot { container-type: inline-size; width: min(84vw, 440px); }
+@media (max-height: 820px) { #cv-slot { width: min(56vh, 440px); } }
+.cardview h3 { margin: 0 0 3px; font-size: 22px; }
+.cardview .cv-ctr { color: #9fdcae; font-weight: 700; }
+.cardview .sub { color: var(--ink-soft); font-size: 14px; margin: 0 0 10px; }
+.cardview .cv-oracle {
+  white-space: pre-wrap; text-align: left;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 12px;
+  font-size: 14px; color: var(--ink-soft); margin: 0 0 14px;
+}
+
+.cardbtn { all: unset; cursor: pointer; display: block; width: 100%; }
+.cardbtn:focus-visible { outline: 2px solid var(--accent-hot); outline-offset: 2px; border-radius: 10px; }
+
+.narrow-hide { display: inline; }
+@media (max-width: 560px) { .narrow-hide { display: none; } }

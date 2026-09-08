@@ -1,0 +1,13 @@
+{
+  "name": "horde-play",
+  "private": true,
+  "type": "module",
+  "description": "Build pipeline for Horde Play. The app ships with no runtime dependencies; esbuild only assembles the source into the single static page Pages serves.",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs && node tests/check-static.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

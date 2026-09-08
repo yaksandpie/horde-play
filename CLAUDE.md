@@ -1,52 +1,54 @@
 # Working in this repo
 
+## The app is built, not edited in place
+
+`src/` is the source and `_site/` is the build output Pages serves. There is no
+`index.html` at the repo root any more — `node build.mjs` assembles one from
+`src/index.html`, `src/styles/*.css` and the ES modules under `src/app/`, and
+inlines all of it so what ships is still a single static page with no runtime
+dependencies.
+
+- Edit `src/`. Never edit `_site/`; it's gitignored and rewritten every build.
+- `src/app/boot.js` is the bundle entry. It pulls in `events.js`, which pulls in
+  everything else, so the module graph decides evaluation order the way the
+  section order used to.
+- ES module bindings are read-only across files. A module that has to write
+  another module's `let` calls an exported setter (`setG`, `setMillInput`, …)
+  rather than assigning. Reads are ordinary imports — live bindings, so they see
+  the current value.
+- `src/styles/` is concatenated in filename order, so the numeric prefix is the
+  cascade order. Adding a file means picking where it belongs in that order.
+
 ## Lean on CI, don't reproduce it locally
 
 This repo has GitHub Actions CI (`.github/workflows/ci.yml`) covering static
 checks and a full Playwright suite. When making changes:
 
-- Do run `node tests/check-static.mjs` before pushing — it's dependency-free
-  and near-instant, so it's worth the local check.
+- Do run `node build.mjs && node tests/check-static.mjs` before pushing. The
+  build is where an unresolved import or a syntax error surfaces, and the static
+  check is dependency-free and near-instant, so both are worth the local run.
 - Don't re-run the full Playwright suite locally as a pre-push gate. Push and
   let the CI job be the source of truth; check the PR's status instead of
   reproducing the run here. Installing Playwright, launching Chromium, and
-  running 29 browser tests in-session on every iteration is slow and burns
+  running 75 browser tests in-session on every iteration is slow and burns
   tokens for a signal CI already gives for free.
+- A large or mechanical refactor of the app source is the exception worth
+  making: the suite drives the real page, and it is the only thing that catches
+  a module split that parses and builds but no longer behaves.
 - If a CI job fails, pull the failure from the job logs (`get_job_logs` /
   `gh run view --log-failed`) rather than guessing, then fix and push again.
 
-## Bump the service worker cache version with the app shell
+## Don't hand-write the service worker's cache version
 
-The `Service worker cache version` CI check fails any PR that touches
-`index.html`, `manifest.json`, or an `icon-*.png` without also bumping
-`CACHE_VERSION` in `sw.js`. This is easy to forget when the change is a
-small one (copy tweaks, a style fix) — bump it as part of the same commit
-whenever you touch one of those files, rather than waiting for CI to catch
-it and pushing a follow-up.
+`CACHE_VERSION` and `APP_SHELL` in `src/sw.js` are placeholders. `build.mjs`
+fills them in: the version from a SHA-256 of the built shell's bytes, the shell
+from what actually landed in `_site`. Shipping a changed app shell under a stale
+cache version — the thing that leaves an installed copy serving old files — is
+therefore not possible, and there is no number to remember to bump.
 
-## Cache version collisions fix themselves
-
-Two open PRs that both bump `CACHE_VERSION` clash once the first one lands —
-either as a conflict on line 1 of `sw.js` (different bumps) or, worse, as a
-clean merge that quietly ships two app shells under one version (identical
-bumps). `.github/workflows/cache-version-autofix.yml` runs whenever `sw.js`
-changes on `main` and repairs every open PR: it sets the branch to
-`max(branch, main + 1)`, which is "take the higher number" except when the
-branch is not actually higher, and then pushes.
-
-- It only touches a conflict whose entire disagreement is the `CACHE_VERSION`
-  line. Anything else is left alone for a human.
-- A push made with `GITHUB_TOKEN` starts no workflow run, so the autofix
-  dispatches `ci.yml` against the branch afterwards. That is why the
-  `cache-version` job runs on `workflow_dispatch` and not just `pull_request`.
-- Run it by hand from the Actions tab; `dry_run` reports without pushing, and
-  `pr` narrows it to one pull request.
-- The version arithmetic is unit-tested in
-  `.github/scripts/cache-version-autofix.test.mjs`, run by the static job.
-
-You still bump `CACHE_VERSION` yourself in the same commit as an app shell
-change. The autofix settles collisions between branches; it is not a substitute
-for the bump.
+This replaced a required CI job, a 218-line autofix script that rewrote open
+pull requests, and a standing rule to bump by hand. If you find yourself
+reaching for a version number, the build already has it.
 
 ## Merging against a moving `main`
 
@@ -77,12 +79,11 @@ Don't stop to ask before merging a PR you opened for work that was requested.
 Open it, enable auto-merge (squash), and let GitHub finish the job once every
 required check passes.
 
-- `main` carries a ruleset requiring `Static checks`, `Service worker cache
-  version`, and `Browser tests` on the head commit before a merge is allowed —
-  a fresh PR now shows `mergeable_state: blocked` instead of `clean`, so
-  `enable_pr_auto_merge` has something real to wait on. The browser suite is
-  the slow check and the one that matters; a passing `Static checks` alone
-  was never a result.
+- `main` carries a ruleset requiring the checks on the head commit before a
+  merge is allowed, so a fresh PR shows `mergeable_state: blocked` instead of
+  `clean` and `enable_pr_auto_merge` has something real to wait on. The browser
+  suite is the slow check and the one that matters; a passing `Static checks`
+  alone was never a result.
 - A red or still-running job still isn't a merge — auto-merge just keeps
   waiting. If a check fails, fix it and push (or say what's blocking); the
   next green run is what auto-merge fires on, no need to re-enable it.

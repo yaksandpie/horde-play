@@ -1,0 +1,56 @@
+/* ---------- Modal internals ---------- */
+
+dialog.sheet { max-width: 380px; }
+.sheet h3 { margin: 0 0 2px; font-size: 20px; }
+.sheet .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; }
+.bignum {
+  font-family: "Cinzel", Georgia, serif; font-weight: 700;
+  font-size: 48px; line-height: 1; text-align: center;
+  padding: 10px 0 16px; color: var(--accent-hot);
+}
+.bignum.life { color: var(--ink); }
+
+.pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pad button {
+  padding: 16px 0; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--surface-2);
+  font-size: 20px; font-weight: 700; line-height: 1;
+}
+.pad button:hover { background: var(--surface-3); }
+
+/* The survivors' life total is the state its pad edits, so it sits where the
+   damage sheet puts the library count -- just bigger, because a survivor
+   opens this to read it as often as to change it. */
+.sheet .sub.lifetotal { text-align: center; margin-bottom: 2px; }
+.lifetotal b { color: var(--ink); font-family: "Cinzel", Georgia, serif; font-size: 22px; }
+
+.poisonrow {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 14px;
+}
+.poisonrow button {
+  width: 34px; height: 34px; flex: none; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--surface-2);
+  font-weight: 700; font-size: 17px; line-height: 1;
+}
+.poisonrow button:hover { background: var(--surface-3); }
+.poisonrow b { color: var(--ink); font-size: 18px; min-width: 22px; text-align: center; }
+
+/* One row per counter type, with the same minus/plus as poison, because at
+   the table it's the same gesture. */
+.ctrrow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface-2);
+}
+.ctrrow.on { border-color: var(--accent-hot); }
+.ctrrow .nm { flex: 1; font-weight: 700; }
+.ctrrow button {
+  width: 34px; height: 34px; flex: none; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--surface);
+  font-weight: 700; font-size: 17px; line-height: 1;
+}
+.ctrrow button:hover { background: var(--surface-3); }
+.ctrrow button[disabled] { opacity: .35; }
+.ctrrow b { min-width: 22px; text-align: center; font-size: 18px; }
