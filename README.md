@@ -57,7 +57,10 @@ installs to a home screen and runs offline once a deck has been loaded.
   both the panel and the Creatures counter flare when a wave adds to it. The
   Creatures counter scrolls you down there on tap.
 - **Attacks.** Everything is goaded and attacking; `Defender` creatures are held
-  back as blockers and excluded from the attacking total.
+  back as blockers and excluded from the attacking total. Combat names the
+  attackers rather than redrawing them — tap one to read it, or take the jump
+  down to the board panel, which is the one place the Horde's creatures are
+  actually drawn.
 - **Shared life**, per the site's rules: 100 for one survivor, 15 less for each one
   after (2 players = 85). Poison tracked too.
 - **Random targeting** for the Horde's instants and sorceries, with a re-roll. A

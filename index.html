@@ -377,7 +377,6 @@
   .cardgrid .tokname { font-weight: 700; margin-bottom: -6px; }
   /* A long token list scrolls inside the sheet, so Back stays where you left it. */
   .cardgrid.tokengrid { max-height: 42vh; overflow-y: auto; }
-  .cardgrid.lg { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 
   /* ---------- Arena: the live action area ---------- */
 
@@ -450,6 +449,19 @@
     border-radius: 12px; padding: 10px 14px; margin-bottom: 10px;
   }
   .target .who { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 19px; color: var(--accent-hot); }
+
+  /* The combat roster: who is attacking, named rather than drawn, so the board
+     panel below stays reachable instead of being pushed off the screen by a
+     second copy of itself. Each chip opens the stack sheet. */
+  .stage-roster { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+  .roster-chip {
+    padding: 4px 10px; border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    font: inherit; font-size: 13px; color: var(--ink-soft);
+    cursor: pointer; transition: background .12s ease, border-color .12s ease;
+  }
+  .roster-chip:hover { background: var(--surface-3); border-color: var(--accent); color: var(--ink); }
+  .roster-chip:active { background: var(--surface-2); }
 
   @keyframes flipin { from { opacity: 0; transform: translateY(10px) scale(.94); } to { opacity: 1; transform: none; } }
   .flipin { animation: flipin .22s ease both; }
@@ -3369,13 +3381,25 @@ function renderStage() {
   oracle.append(" Block what you can, then take the rest off the shared life total.");
   body.appendChild(oracle);
   if (count) {
-    const grid = el("div", "cardgrid lg");
+    /* Combat used to redraw every attacker here at 160px tiles \u2014 the board
+       panel below restated above it, larger, which pushed the panel itself
+       further down the page exactly when it was being read. The roster names
+       what is coming without drawing it twice, and the board panel is the one
+       place creatures are rendered. The chips stay tappable: reading a card
+       mid-combat is the reason to look at the list, so each one opens the same
+       stack sheet the tile did. */
+    const roster = el("div", "stage-roster");
     for (const stack of attackers()) {
-      grid.appendChild(cardSlot(G.cards[stack.cardKey],
-        { count: stack.count, rule: G.waveEnd, stack },
-        () => openStackDialog(stack)));
+      const chip = el("button", "roster-chip",
+        G.cards[stack.cardKey].name + (stack.count > 1 ? " \u00d7" + stack.count : ""));
+      chip.type = "button";
+      chip.addEventListener("click", () => openStackDialog(stack));
+      roster.appendChild(chip);
     }
-    body.appendChild(grid);
+    body.appendChild(roster);
+    const jump = el("button", "btn sm ghost", "Review the board \u2193");
+    jump.addEventListener("click", jumpToBoard);
+    body.appendChild(jump);
   }
   btn.textContent = "Finish attacking";
 }

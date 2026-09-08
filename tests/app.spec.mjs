@@ -61,6 +61,29 @@ test("a game plays a turn: cast a wave, resolve it, pass back", async ({ app }) 
   await expect(app.locator("#c-turn")).toHaveText("5");
 });
 
+test("combat names its attackers, and a name opens the card", async ({ app }) => {
+  // The stage used to redraw every attacker at full size, restating the board
+  // panel below it and pushing that panel off the screen. It names them now,
+  // so the roster has to stay in step with the board and stay tappable.
+  await startGame(app, "Zombies Horde");
+  await app.locator("#btn-action").click(); // cast
+  await app.locator("#btn-action").click(); // resolve
+  await expect.poll(() => app.evaluate(() => window.__horde.G.phase)).toBe("combat");
+
+  const attacking = await app.evaluate(() =>
+    window.__horde.G.board.filter((s) => !window.__horde.G.cards[s.cardKey].hasDefender).length);
+  const chips = app.locator(".stage-roster .roster-chip");
+  await expect(chips).toHaveCount(attacking);
+  // No second copy of the board in the stage.
+  await expect(app.locator("#stage-body .cardface")).toHaveCount(0);
+
+  const first = chips.first();
+  const label = (await first.textContent()).replace(/\s*\u00d7\d+$/, "").trim();
+  await first.click();
+  await expect(app.locator("#card-dialog")).toBeVisible();
+  await expect(app.locator("#cv-name")).toHaveText(label);
+});
+
 test("the original rule lets tokens ride along inside a wave", async ({ app }) => {
   // 187 of the Zombies horde's 300 cards are tokens, so a wave that stops on
   // the first non-token still tends to bring a crowd. Over ten waves at least
