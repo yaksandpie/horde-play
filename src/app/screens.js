@@ -904,22 +904,57 @@ function renderGameActions() {
 
 const CONFETTI_COLORS = ["#c2b08a", "#efe5cf", "#4d9a72", "#6d5bd0", "#8b7b63", "#e8586a"];
 
-/* Only on a win, and skipped entirely under prefers-reduced-motion rather
-   than spawned and then hidden by CSS. */
-function renderConfetti(won) {
-  const box = $("#confetti");
+/* Ash is the confetti's opposite and the palette says so first: no accent, no
+   token purple, just the greys of a board that has finished burning, with one
+   dull ember in the mix so it isn't flat. They are lighter than the page
+   rather than darker — ash catches the light it is drifting through, and the
+   first pass, picked to sit near the background, read as a dirty screen. */
+const ASH_COLORS = ["#a79d8d", "#8d8474", "#c0b6a4", "#7a7264", "#b4aa98", "#9c5f4c"];
+
+/* The end screen gets weather either way. A win drops confetti from the top:
+   90 bright chips, quick, tumbling end over end. A loss gets the inverse on
+   every axis — two thirds as many motes, grey, round instead of chipped, rising off
+   the board instead of falling onto it, slow enough to read as settling smoke,
+   and fading out before they clear the page rather than landing.
+
+   Either way it is skipped entirely under prefers-reduced-motion rather than
+   spawned and then hidden by CSS. */
+function renderEndWeather(won) {
+  const box = $("#end-weather");
   box.textContent = "";
-  if (!won || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  for (let i = 0; i < 90; i++) {
-    const piece = el("i");
-    piece.style.left = (Math.random() * 100) + "%";
-    piece.style.width = (6 + Math.random() * 5) + "px";
-    piece.style.height = (10 + Math.random() * 8) + "px";
-    piece.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
-    piece.style.setProperty("--drift", Math.round((Math.random() - .5) * 160) + "px");
-    piece.style.animationDuration = (2.6 + Math.random() * 1.8) + "s";
-    piece.style.animationDelay = (Math.random() * -4) + "s";
-    box.appendChild(piece);
+  box.className = won ? "confetti" : "ash";
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  if (won) {
+    for (let i = 0; i < 90; i++) {
+      const piece = el("i");
+      piece.style.left = (Math.random() * 100) + "%";
+      piece.style.width = (6 + Math.random() * 5) + "px";
+      piece.style.height = (10 + Math.random() * 8) + "px";
+      piece.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+      piece.style.setProperty("--drift", Math.round((Math.random() - .5) * 160) + "px");
+      piece.style.animationDuration = (2.6 + Math.random() * 1.8) + "s";
+      piece.style.animationDelay = (Math.random() * -4) + "s";
+      box.appendChild(piece);
+    }
+    return;
+  }
+
+  for (let i = 0; i < 60; i++) {
+    const mote = el("i");
+    const size = 2 + Math.random() * 5;
+    mote.style.left = (Math.random() * 100) + "%";
+    mote.style.width = size + "px";
+    mote.style.height = size + "px";
+    mote.style.background = ASH_COLORS[i % ASH_COLORS.length];
+    /* Wider wander than the confetti's drift: nothing is pulling ash down, so
+       it has the whole climb to be pushed sideways. */
+    mote.style.setProperty("--drift", Math.round((Math.random() - .5) * 260) + "px");
+    /* The smaller motes read as further off, so they sit fainter. */
+    mote.style.setProperty("--peak", String((size < 4 ? .34 : .52) + Math.random() * .22));
+    mote.style.animationDuration = (7 + Math.random() * 6) + "s";
+    mote.style.animationDelay = (Math.random() * -13) + "s";
+    box.appendChild(mote);
   }
 }
 
@@ -929,7 +964,7 @@ function renderEnd() {
   $("#end-sub").textContent = won
     ? "Library empty, board clear — you made it out after " + (G.turn - 1) + " rounds."
     : "The survivors are down after " + (G.turn - 1) + " rounds.";
-  renderConfetti(won);
+  renderEndWeather(won);
 
   const stats = $("#end-stats");
   stats.textContent = "";
