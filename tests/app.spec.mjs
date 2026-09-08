@@ -158,6 +158,76 @@ test("counters split a board tile, and the tile says so", async ({ app }) => {
   await expect(app.locator("#board .cardface")).toHaveCount(1);
 });
 
+test("a board creature can be copied, at the stats the effect names", async ({ app }) => {
+  await startGame(app, "Zombies Horde");
+
+  // One printed Death Baron out — a card, not a token, which is the case the
+  // library can't cover by hand.
+  await app.evaluate(() => {
+    const h = window.__horde;
+    const key = Object.keys(h.G.cards).find((k) => h.G.cards[k].name === "Death Baron");
+    h.G.board = [{ cardKey: key, count: 1 }];
+    h.renderGame();
+  });
+  await expect(app.locator("#board .cardface")).toHaveCount(1);
+
+  await app.locator("#board .cardbtn").first().click();
+  await expect(app.locator("#card-dialog")).toBeVisible();
+  await app.locator("#cv-copy").click();
+
+  // The copy step opens on the original's stats; "...except it's a 4/4"
+  // overwrites them.
+  await expect(app.locator("#token-step-copy")).toBeVisible();
+  await expect(app.locator("#cp-name")).toHaveText("Copy of Death Baron");
+  await app.locator("#cp-power").fill("4");
+  await app.locator("#cp-tough").fill("4");
+  await app.locator("#cp-next").click();
+
+  await expect(app.locator("#token-step-qty")).toBeVisible();
+  await expect(app.locator("#tq-name")).toHaveText("Copy of Death Baron");
+  await app.locator("#tq-add").click();
+  await expect(app.locator("#token-dialog")).toBeHidden();
+
+  // A second tile: same art, badged as a copy, and carrying the given stats.
+  await expect(app.locator("#board .cardface")).toHaveCount(2);
+  await expect(app.locator("#board .cf-badge.copy")).toHaveText("Copy 4/4");
+  await expect(app.locator("#c-board")).toHaveText("2");
+
+  // Undo takes the copy back off.
+  await app.locator("#btn-undo").click();
+  await expect(app.locator("#board .cardface")).toHaveCount(1);
+});
+
+test("copying is offered from the token sheet too, for a survivor's creature",
+  async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+    await app.evaluate(() => {
+      const h = window.__horde;
+      const key = Object.keys(h.G.cards).find((k) => h.G.cards[k].name === "Zombie");
+      h.G.board = [{ cardKey: key, count: 6 }];
+      h.renderGame();
+    });
+
+    await app.locator("#btn-add-tokens").click();
+    await app.locator("#token-copy-open").click();
+    await expect(app.locator("#token-step-copysrc")).toBeVisible();
+
+    // The Horde's own board is the shortcut; the search is for everything else,
+    // and offline it says so rather than leaving an empty grid.
+    await expect(app.locator("#copy-src-grid .slot")).toHaveCount(1);
+    await app.locator("#copy-search").fill("Grave Titan");
+    await app.locator("#copy-search-form").getByRole("button", { name: "Find" }).click();
+    await expect(app.locator("#copy-src-empty")).toContainText("Couldn\u2019t reach Scryfall");
+    await expect(app.locator("#copy-src-grid .slot")).toHaveCount(1);
+
+    // An unaltered copy of a token already out is just one more of them.
+    await app.locator("#copy-src-grid .plainbtn").first().click();
+    await app.locator("#cp-next").click();
+    await app.locator("#tq-add").click();
+    await expect(app.locator("#board .cardface")).toHaveCount(1);
+    await expect(app.locator("#c-board")).toHaveText("7");
+  });
+
 test("the header carries the game's actions, and drops them with the game",
   async ({ app }) => {
     for (const id of ["#btn-undo", "#btn-random", "#btn-log", "#btn-quit"]) {

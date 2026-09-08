@@ -317,3 +317,113 @@ test.describe("counters", () => {
     expect(await horde(app, () => window.__horde.attackingPower())).toBe(10);
   });
 });
+
+test.describe("copies", () => {
+  /* A board with a printed 3/3 Squirrel Mob and six 1/1 Squirrel tokens, which
+     is the pair of cases "create a token that's a copy of target creature"
+     lands on: a card the library holds, and a token already out. */
+  const boardWithBoth = (page) => page.evaluate(() => {
+    const h = window.__horde;
+    const deck = {
+      id: "test", name: "Test",
+      entries: [{ qty: 1, card: { key: "filler", name: "Filler", typeLine: "Creature — Zombie" } }],
+    };
+    h.G = h.newGame(deck, {
+      players: ["A"], life: 100, poisonLimit: 10, ruleset: "hordemagic",
+      waveEnd: "rarity", wavePattern: "fixed", legendaryRule: true, setupTurns: 0,
+    });
+    h.G.cards.mob = {
+      key: "mob", name: "Squirrel Mob", isToken: false, resolved: true,
+      typeLine: "Creature — Squirrel", power: "3", toughness: "3",
+    };
+    h.G.cards.squirrel = {
+      key: "squirrel", name: "Squirrel", isToken: true, resolved: true,
+      typeLine: "Token Creature — Squirrel", power: "1", toughness: "1",
+    };
+    h.G.board = [{ cardKey: "mob", count: 1 }, { cardKey: "squirrel", count: 6 }];
+  });
+
+  /* Board tiles as [name, isToken, P/T, count] — a copy carries the original's
+     name, so the key alone wouldn't say which tile is which. */
+  const tiles = (page) => page.evaluate(() => window.__horde.G.board.map((s) => {
+    const c = window.__horde.G.cards[s.cardKey];
+    return [c.name, !!c.isToken, c.power + "/" + c.toughness, s.count];
+  }));
+
+  const copy = (page, sourceKey, pt) => page.evaluate(([key, pt]) => {
+    const h = window.__horde;
+    const card = h.buildCopyToken(h.G.cards[key], pt);
+    h.createTokens(h.existingCopyLike(card) || card, 1);
+  }, [sourceKey, pt || null]);
+
+  test("a copy of a printed creature enters as a token beside it", async ({ app }) => {
+    await boardWithBoth(app);
+    await copy(app, "mob");
+
+    expect(await tiles(app)).toEqual([
+      ["Squirrel Mob", false, "3/3", 1],
+      ["Squirrel", true, "1/1", 6],
+      ["Squirrel Mob", true, "3/3", 1],
+    ]);
+    // Three from the card, three from its copy, one each from the Squirrels.
+    expect(await app.evaluate(() => window.__horde.attackingPower())).toBe(12);
+  });
+
+  test("\"except it's a 4/4\" keeps its own tile and its own arithmetic", async ({ app }) => {
+    await boardWithBoth(app);
+    await copy(app, "squirrel", { power: "4", toughness: "4" });
+
+    expect(await tiles(app)).toEqual([
+      ["Squirrel Mob", false, "3/3", 1],
+      ["Squirrel", true, "1/1", 6],
+      ["Squirrel", true, "4/4", 1],
+    ]);
+    expect(await app.evaluate(() => window.__horde.attackingPower())).toBe(13);
+  });
+
+  test("two copies made the same way stack together", async ({ app }) => {
+    await boardWithBoth(app);
+    await copy(app, "mob", { power: "4", toughness: "4" });
+    await copy(app, "mob", { power: "4", toughness: "4" });
+
+    expect(await tiles(app)).toEqual([
+      ["Squirrel Mob", false, "3/3", 1],
+      ["Squirrel", true, "1/1", 6],
+      ["Squirrel Mob", true, "4/4", 2],
+    ]);
+  });
+
+  test("an unaltered copy of a token is just one more of that token", async ({ app }) => {
+    await boardWithBoth(app);
+    await copy(app, "squirrel");
+
+    expect(await tiles(app)).toEqual([
+      ["Squirrel Mob", false, "3/3", 1],
+      ["Squirrel", true, "1/1", 7],
+    ]);
+  });
+
+  test("a copy keeps Defender, so it blocks rather than attacking", async ({ app }) => {
+    await boardWithBoth(app);
+    await app.evaluate(() => { window.__horde.G.cards.mob.hasDefender = true; });
+    await copy(app, "mob");
+
+    // Six Squirrels; neither the Mob nor its copy is in the attacking total.
+    expect(await app.evaluate(() => window.__horde.attackingPower())).toBe(6);
+  });
+
+  test("a copy survives a save and reload with the stats it was given", async ({ app }) => {
+    await boardWithBoth(app);
+    await copy(app, "mob", { power: "4", toughness: "4" });
+
+    await app.reload();
+    await app.locator("#btn-resume").click();
+    await expect(app.locator("#screen-game")).toBeVisible();
+
+    expect(await tiles(app)).toEqual([
+      ["Squirrel Mob", false, "3/3", 1],
+      ["Squirrel", true, "1/1", 6],
+      ["Squirrel Mob", true, "4/4", 1],
+    ]);
+  });
+});

@@ -44,6 +44,18 @@ installs to a home screen and runs offline once a deck has been loaded.
   printed version, type a plain one (name, creature or not, P/T). Either way it's a
   manual add that doesn't touch the library, graveyard, or wave count, and the type
   stays on the list for the rest of the game.
+- **Copies.** "Create a token that's a copy of target creature" is its own move,
+  because the thing being copied is as often a survivor's card as the Horde's
+  own. Tap a creature on the board and **Copy it…**, or go in through **+ Create
+  tokens → Copy a creature…** and search Scryfall by name for whatever is
+  sitting in front of a player. The copy keeps the original's art, type line,
+  rules text and `Defender`, and enters as a token however printed the thing it
+  copied was. Its power and toughness open on the original's, so a plain copy is
+  one more tap and "…except it's a 4/4" is two numbers — and a copy at different
+  stats gets its own tile, badged with the stats that tell it apart, while an
+  unaltered copy of a token already out simply joins that stack. Counters aren't
+  copied: a copy copies the printed card, not what's sitting on the one it
+  pointed at.
 - **Damage → mill.** A numeric pad; the Horde has no life total. Legendaries milled
   by damage are called out so you can apply the ETB-and-phase-out rule, and they
   stay called out until the turn ends — two mills in one turn is ordinary, and the
