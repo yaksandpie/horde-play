@@ -1,0 +1,57 @@
+/* ---------- Live share ---------- */
+
+/* The viewer's standing reminder that this board is someone else's: it sits
+   above the arena for the whole session, so nothing on the screen reads as
+   a control they merely failed to find. */
+.viewerbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--token);
+  border-radius: 10px;
+  padding: 9px 12px;
+  margin-bottom: 14px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+.viewerbar b { color: var(--ink); }
+.dotlive {
+  width: 9px; height: 9px; flex: 0 0 9px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.dotlive.on {
+  background: var(--good);
+  box-shadow: 0 0 0 3px rgba(77, 154, 114, .18);
+  animation: livepulse 2s ease-in-out infinite;
+}
+.dotlive.bad { background: var(--bad); }
+@keyframes livepulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .dotlive.on { animation: none; } }
+
+/* In the header the code has to fit beside the brand on a phone, so a live
+   share reads as a dot and the code rather than a sentence. */
+.sharebtn { display: flex; align-items: center; gap: 6px; }
+.sharebtn.on { border-color: var(--good); color: #9fe0c0; }
+.sharebtn.warn { border-color: #b08a2e; color: #e6c877; }
+.sharebtn .dotlive { width: 7px; height: 7px; flex: 0 0 7px; }
+
+.codebox {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: center;
+}
+.codebox .code {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  /* The code gets read aloud across a table, so the glyphs have to be
+     unambiguous even before the alphabet drops the lookalikes. */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--ink);
+  margin-top: 2px;
+}

@@ -1,0 +1,29 @@
+/* ---------- Header ---------- */
+
+header.app {
+  position: sticky; top: 0; z-index: 30;
+  background: linear-gradient(var(--bg) 72%, transparent);
+  padding: 12px 0 10px;
+}
+.bar { display: flex; align-items: center; gap: 12px; }
+.brand {
+  display: flex; align-items: center; gap: 9px;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 18px;
+  margin: 0;
+}
+.brand svg { width: 26px; height: 26px; flex: none; }
+.bar .spacer { flex: 1; }
+/* The game's icon actions sit tighter than the header's own gap, so they
+   read as one group rather than four unrelated buttons. */
+.bar-actions { display: flex; align-items: center; gap: 6px; }
+/* Five icons all have to fit beside the logo, so the wordmark
+   and some of the padding go first on a narrow screen. */
+@media (max-width: 560px) {
+  .bar { gap: 8px; }
+  .bar-actions { gap: 4px; }
+  .btn.sm { padding: 6px 9px; }
+  /* After .btn.sm, which is equally specific and would otherwise keep its
+     wider side padding here: 30 - 2px border - 10px padding leaves the
+     glyph its full 18px. */
+  .btn.icon { width: 30px; height: 30px; padding: 5px; }
+}

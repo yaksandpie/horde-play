@@ -1,12 +1,13 @@
-/* A dependency-free static server for the test run. The app is a plain
-   directory of files, but it needs a real origin: service workers, IndexedDB
-   and the manifest are all unavailable over file://. */
+/* A dependency-free static server for the test run, pointed at the build
+   output — the tests exercise the same bytes Pages serves. It needs a real
+   origin: service workers, IndexedDB and the manifest are all unavailable
+   over file://. */
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const ROOT = fileURLToPath(new URL("../_site/", import.meta.url));
 const PORT = Number(process.env.PORT || 4173);
 
 const TYPES = {
@@ -20,7 +21,7 @@ const TYPES = {
 };
 
 const server = createServer(async (req, res) => {
-  // Strip the query and refuse anything that climbs out of the repo.
+  // Strip the query and refuse anything that climbs out of _site.
   const rel = normalize(decodeURIComponent(req.url.split("?")[0])).replace(/^(\.\.[/\\])+/, "");
   let file = join(ROOT, rel === "/" ? "index.html" : rel);
 

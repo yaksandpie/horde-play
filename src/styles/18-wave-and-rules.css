@@ -1,0 +1,32 @@
+/* ---------- Wave / shared life ---------- */
+
+.wave-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent-wash); border: 1px solid var(--accent);
+  border-radius: 999px; padding: 5px 14px; margin-bottom: 10px;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700;
+}
+.wave-chip .dots { display: inline-flex; gap: 4px; }
+.wave-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--surface-3); border: 1px solid var(--line); }
+.wave-chip .dot.on { background: var(--accent-hot); border-color: var(--accent-hot); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  border: 1px solid var(--line); background: var(--surface-2);
+  border-radius: 999px; padding: 5px 11px; font-size: 13px; font-weight: 700;
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent-hot); color: var(--accent-ink); }
+
+/* The values a ruleset fixes, shown rather than hidden behind the choice. */
+.rules { margin: 0 0 12px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.rules > div {
+  display: flex; gap: 12px; align-items: baseline;
+  padding: 8px 12px; border-top: 1px solid var(--line);
+}
+.rules > div:first-child { border-top: 0; }
+.rules dt {
+  flex: 0 0 42%; margin: 0; font-size: 11px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted);
+}
+.rules dd { flex: 1; margin: 0; font-size: 14px; color: var(--ink); }
+.rulesline { margin: 8px 2px 14px; }

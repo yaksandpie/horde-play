@@ -1,0 +1,24 @@
+{
+  "name": "Angels & Demons — Clerics and Devils",
+  "waveEnd": "rarity",
+  "entries": [
+    {"q": 5, "n": "Whisper, Blood Liturgist", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Lyzolda, the Blood Witch", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Karlach, Fury of Avernus", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Raphael, Fiendish Savior", "t": 0, "c": "creature"},
+    {"q": 60, "n": "Cleric", "t": 1, "c": "creature"},
+    {"q": 82, "n": "Devil", "t": 1, "c": "creature"},
+    {"q": 1, "n": "Vile Deacon", "t": 0, "c": "creature"},
+    {"q": 4, "n": "Shadow-Rite Priest", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Pious Evangel", "t": 0, "c": "creature"},
+    {"q": 3, "n": "Priest of the Blood Rite", "t": 0, "c": "creature"},
+    {"q": 11, "n": "Demon's Disciple", "t": 0, "c": "creature"},
+    {"q": 9, "n": "Havoc Jester", "t": 0, "c": "creature"},
+    {"q": 4, "n": "Hellrider", "t": 0, "c": "creature"},
+    {"q": 8, "n": "Mayhem Devil", "t": 0, "c": "creature"},
+    {"q": 6, "n": "Pyretic Prankster", "t": 0, "c": "creature"},
+    {"q": 7, "n": "Scourge Devil", "t": 0, "c": "creature"},
+    {"q": 2, "n": "Tibalt, Rakish Instigator", "t": 0, "c": "permanent"},
+    {"q": 4, "n": "Rite of Belzenlok", "t": 0, "c": "permanent"}
+  ]
+}

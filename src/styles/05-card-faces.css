@@ -1,0 +1,109 @@
+/* ---------- Card faces ---------- */
+
+.cardface {
+  position: relative;
+  aspect-ratio: 488 / 680;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  text-align: left;
+  width: 100%;
+}
+.cardface img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* generated (no-image) face */
+.cardface.gen { padding: 30px 7% 8%; background: linear-gradient(160deg, var(--surface-3), var(--surface-2)); gap: 4%; }
+.cardface.gen .cf-top { display: flex; gap: 6px; align-items: baseline; }
+.cardface.gen .cf-name {
+  font-family: "Cinzel", Georgia, serif; font-weight: 700;
+  font-size: clamp(11px, 7.2cqw, 22px); line-height: 1.15; flex: 1;
+}
+.cardface.gen .cf-cost { font-size: clamp(9px, 5.4cqw, 15px); color: var(--muted); white-space: nowrap; }
+.cardface.gen .cf-type {
+  font-size: clamp(8.5px, 4.9cqw, 14px); color: var(--ink-soft);
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  padding: 3% 0; line-height: 1.25;
+}
+.cardface.gen .cf-oracle {
+  flex: 1; min-height: 0; overflow: hidden;
+  font-size: clamp(8px, 4.5cqw, 13px); line-height: 1.32; color: var(--ink-soft);
+  white-space: pre-wrap;
+}
+.cardface.gen .cf-pt {
+  align-self: flex-end;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700;
+  font-size: clamp(11px, 6.4cqw, 20px);
+  background: var(--bg-deep); border: 1px solid var(--line);
+  border-radius: 7px; padding: 1% 8%;
+}
+.cardface.c-W.gen { background: linear-gradient(160deg, #4a4438, #2b2822); }
+.cardface.c-U.gen { background: linear-gradient(160deg, #26404f, #1b2a33); }
+.cardface.c-B.gen { background: linear-gradient(160deg, #2b2529, #171416); }
+.cardface.c-R.gen { background: linear-gradient(160deg, #4a2a22, #2c1a15); }
+.cardface.c-G.gen { background: linear-gradient(160deg, #26402f, #1a2a20); }
+.cardface.c-M.gen { background: linear-gradient(160deg, #4a4028, #2c261a); }
+
+.cf-badge {
+  position: absolute; top: 6px; left: 6px; z-index: 2;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  padding: 3px 7px; border-radius: 6px;
+  background: rgba(31,30,26,.82); border: 1px solid var(--line); color: var(--ink-soft);
+  backdrop-filter: blur(3px);
+}
+.cf-badge.token { background: rgba(109,91,208,.9); border-color: #8f7ff0; color: #fff; }
+/* A token copy of another creature reads as neither quite: same art as
+   what it copied, so the badge carries the stats that tell them apart. */
+.cf-badge.copy { background: rgba(122,68,140,.92); border-color: #b98ccc; color: #fff; }
+.cf-count {
+  position: absolute; right: 6px; bottom: 6px; z-index: 2;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 17px;
+  min-width: 34px; text-align: center;
+  padding: 3px 8px; border-radius: 8px;
+  background: rgba(31,30,26,.88); border: 1px solid var(--line);
+  backdrop-filter: blur(3px);
+}
+/* Counters ride on the tile, next to the P/T they add up to: mid-combat
+   what a stack is worth is the number being read off the screen. */
+.cf-counters {
+  position: absolute; left: 6px; bottom: 6px; right: 46px; z-index: 2;
+  display: flex; flex-wrap: wrap; gap: 3px;
+  font-size: 10.5px; font-weight: 700; line-height: 1.25;
+}
+.cf-counters span {
+  padding: 2px 5px; border-radius: 5px;
+  background: rgba(31,30,26,.88); border: 1px solid var(--line); color: var(--ink-soft);
+  backdrop-filter: blur(3px);
+}
+.cf-counters .cc-pt { background: rgba(31,74,45,.94); border-color: #4f8a5f; color: #dff5e4; }
+.cardface.countered { outline: 2px solid #4f8a5f; outline-offset: -2px; }
+
+.cardgrid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+.cardgrid.board { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+
+/* The board is live game state sitting in a row of otherwise static
+   reference panels, so it carries an accent edge they don't — lit only while
+   the Horde actually has something standing, dark when the board is clear.
+   scroll-margin keeps the heading clear of the sticky header when the
+   Creatures tally jumps down here. */
+.board-panel {
+  margin-top: 14px;
+  border-left: 3px solid var(--line);
+  scroll-margin-top: 76px;
+  transition: border-left-color .2s ease;
+}
+.board-panel:focus { outline: none; }
+.board-panel.live { border-left-color: var(--accent); }
+.board-panel.live h2 { color: var(--ink); }
+/* A creature landing here is silent to anyone watching the arena up top, so
+   the panel and its tally cell flare together when the board grows. */
+.board-panel.bump { animation: boardbump 1.1s ease-out; }
+@keyframes boardbump {
+  0% { box-shadow: var(--shadow), 0 0 0 0 var(--accent-glow); }
+  70%, 100% { box-shadow: var(--shadow), 0 0 0 16px transparent; }
+}
+.cardgrid .slot { container-type: inline-size; }
+.cardgrid .tokname { font-weight: 700; margin-bottom: -6px; }
+/* A long token list scrolls inside the sheet, so Back stays where you left it. */
+.cardgrid.tokengrid { max-height: 42vh; overflow-y: auto; }

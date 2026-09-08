@@ -24,69 +24,44 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      # No dependencies: parses the inline script and the JSON, and proves
-      # every file the app and the service worker reference exists.
-      - name: Check the static site
+      # esbuild is the only build dependency, and the app has no runtime ones.
+      - name: Install the build
+        run: npm ci
+
+      # Catches an unresolved import or a syntax error in any module, and is
+      # also what proves the page can still be assembled at all.
+      - name: Build the site
+        run: node build.mjs
+
+      # The checks the build can't make: that what landed in _site parses,
+      # that the manifest is valid, and that every file the page and the
+      # service worker reference is really there.
+      - name: Check the built site
         run: node tests/check-static.mjs
-
-      # The autofix pushes commits to PR branches unattended, so its parsing of
-      # git's conflict markers is worth pinning down. Dependency-free too.
-      - name: Check the cache version autofix
-        run: node --test .github/scripts/cache-version-autofix.test.mjs
 
   cache-version:
     name: Service worker cache version
     runs-on: ubuntu-latest
-    # Also runs on workflow_dispatch, because the cache version autofix pushes
-    # with GITHUB_TOKEN — which starts no run of its own — and asks for CI back
-    # by dispatch. Skipping this job there would leave the required check
-    # unreported on the very commit the autofix just wrote.
-    if: github.event_name != 'push'
     steps:
       - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
         with:
-          fetch-depth: 0
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      # The service worker precaches the app shell, so shipping a new
-      # index.html under the old CACHE_VERSION leaves installed copies stale.
-      - name: Require a CACHE_VERSION bump when the app shell changes
-        env:
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
-          PR_HEAD: ${{ github.event.pull_request.head.sha }}
-        run: |
-          if [ -n "$PR_BASE" ]; then
-            HEAD="$PR_HEAD"
-            # base.sha follows the tip of main, so once main moves ahead of the
-            # branch, diffing against it attributes main's own commits to this
-            # PR. The fork point is what the PR actually changed.
-            BASE=$(git merge-base "$PR_BASE" "$PR_HEAD")
-          else
-            # Dispatched against a branch: compare it with where it left main.
-            git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
-            HEAD=$(git rev-parse HEAD)
-            BASE=$(git merge-base origin/main HEAD)
-          fi
+      - name: Install the build
+        run: npm ci
 
-          changed=$(git diff --name-only "$BASE" "$HEAD")
-          shell_changed=$(echo "$changed" | grep -E '^(index\.html|manifest\.json|icon-.*\.png)$' || true)
-
-          if [ -z "$shell_changed" ]; then
-            echo "No app shell files changed — nothing to bump."
-            exit 0
-          fi
-
-          echo "App shell changed:"
-          echo "$shell_changed"
-
-          before=$(git show "$BASE:sw.js" | grep -oP 'CACHE_VERSION = "\K[^"]+')
-          after=$(git show "$HEAD:sw.js" | grep -oP 'CACHE_VERSION = "\K[^"]+')
-
-          if [ "$before" = "$after" ]; then
-            echo "::error file=sw.js::The app shell changed but CACHE_VERSION is still $after. Bump it so installed copies pick up the new files."
-            exit 1
-          fi
-          echo "CACHE_VERSION bumped: $before -> $after"
+      # Nobody bumps CACHE_VERSION by hand any more — the build hashes the
+      # shell's own bytes. This checks that derivation is really wired up, by
+      # perturbing the shell and watching the version move.
+      - name: Prove the cache version tracks the app shell
+        run: node tests/check-cache-version.mjs
 
   test:
     name: Browser tests
@@ -98,7 +73,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: tests/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            tests/package-lock.json
+
+      - name: Install the build
+        run: npm ci
 
       - name: Install test tooling
         working-directory: tests
@@ -126,7 +106,9 @@ jobs:
         working-directory: tests
         run: npx playwright install --with-deps chromium
 
-
+      # The Playwright config builds _site before serving it, so the suite
+      # always runs against freshly assembled output.
+      #
       # Scryfall is stubbed out in the tests, so this runs without touching
       # the network — and without hammering a free public API on every push.
       - name: Run the tests

@@ -1,0 +1,35 @@
+/* ---------- Reveal stage ---------- */
+
+.stage {
+  background: radial-gradient(120% 90% at 50% 0%, #24201d 0%, var(--bg-deep) 72%);
+  padding: 16px 14px;
+}
+.stage-hero { display: flex; gap: 18px; align-items: flex-start; }
+.stage-hero .slot { width: min(280px, 40vw); flex: none; container-type: inline-size; }
+.stage-hero .meta { flex: 1; min-width: 0; }
+.stage-title { font-size: clamp(20px, 3.6vw, 30px); margin: 0 0 4px; }
+.stage-type { color: var(--ink-soft); margin: 0 0 10px; }
+.stage-oracle { white-space: pre-wrap; color: var(--ink-soft); font-size: 15px; margin: 0 0 12px; }
+
+.target {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: var(--accent-wash); border: 1px solid var(--accent);
+  border-radius: 12px; padding: 10px 14px; margin-bottom: 10px;
+}
+.target .who { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 19px; color: var(--accent-hot); }
+
+/* The combat roster: who is attacking, named rather than drawn, so the board
+   panel below stays reachable instead of being pushed off the screen by a
+   second copy of itself. Each chip opens the stack sheet. */
+.stage-roster { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.roster-chip {
+  padding: 4px 10px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--line);
+  font: inherit; font-size: 13px; color: var(--ink-soft);
+  cursor: pointer; transition: background .12s ease, border-color .12s ease;
+}
+.roster-chip:hover { background: var(--surface-3); border-color: var(--accent); color: var(--ink); }
+.roster-chip:active { background: var(--surface-2); }
+
+@keyframes flipin { from { opacity: 0; transform: translateY(10px) scale(.94); } to { opacity: 1; transform: none; } }
+.flipin { animation: flipin .22s ease both; }

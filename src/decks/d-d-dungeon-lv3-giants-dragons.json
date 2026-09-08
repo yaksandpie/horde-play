@@ -1,0 +1,33 @@
+{
+  "name": "D&D Dungeon — Lv3 Giants & Dragons",
+  "waveEnd": "rarity",
+  "entries": [
+    {"q": 70, "n": "Giant Wizard", "t": 1, "c": "creature"},
+    {"q": 12, "n": "Baleful Beholder", "t": 0, "c": "creature"},
+    {"q": 6, "n": "Rimeshield Frost Giant", "t": 0, "c": "creature"},
+    {"q": 5, "n": "Benthic Giant", "t": 0, "c": "creature"},
+    {"q": 4, "n": "Cinderheart Giant", "t": 0, "c": "creature"},
+    {"q": 8, "n": "Writhing Necromass", "t": 0, "c": "creature"},
+    {"q": 8, "n": "Sparktongue Dragon", "t": 0, "c": "creature"},
+    {"q": 8, "n": "Noxious Dragon", "t": 0, "c": "creature"},
+    {"q": 8, "n": "Borderland Behemoth", "t": 0, "c": "creature"},
+    {"q": 8, "n": "Sunrise Sovereign", "t": 0, "c": "creature"},
+    {"q": 5, "n": "Quakebringer", "t": 0, "c": "creature"},
+    {"q": 3, "n": "Calamity Bearer", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Palisade Giant", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Kalemne's Captain", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Xanathar, Guild Kingpin", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Storvald, Frost Giant Jarl", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Icingdeath, Frost Tongue", "t": 0, "c": "creature"},
+    {"q": 20, "n": "Arms of Hadar", "t": 0, "c": "spell"},
+    {"q": 3, "n": "Eyes of the Beholder", "t": 0, "c": "spell"},
+    {"q": 4, "n": "Squash", "t": 0, "c": "spell"},
+    {"q": 1, "n": "Vandalblast", "t": 0, "c": "spell"},
+    {"q": 3, "n": "Slaughter the Strong", "t": 0, "c": "spell"},
+    {"q": 8, "n": "Split the Party", "t": 0, "c": "spell"},
+    {"q": 1, "n": "Seismic Stomp", "t": 0, "c": "spell"},
+    {"q": 8, "n": "You Come to a River", "t": 0, "c": "spell"},
+    {"q": 1, "n": "Twilight's Call", "t": 0, "c": "spell"},
+    {"q": 1, "n": "Campfire", "t": 0, "c": "permanent"}
+  ]
+}

@@ -1,0 +1,102 @@
+:root {
+  --bg: #2c2a25;
+  --bg-deep: #1f1e1a;
+  --surface: #35322b;
+  --surface-2: #413c33;
+  --surface-3: #5a5246;
+  --ink: #efe5cf;
+  --ink-soft: #d3c6ac;
+  --muted: #a2937b;
+  --line: #4e4739;
+  --accent: #c2b08a;
+  --accent-hot: #dcc99e;
+  --accent-ink: #2c2a25;
+  --accent-wash: rgba(194, 176, 138, .16);
+  --accent-glow: rgba(220, 201, 158, .5);
+  --good: #4d9a72;
+  --bad: #b4453a;
+  --token: #6d5bd0;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.45);
+}
+
+/* Bloomburrow forest theme: applied to <body> while a Bloomburrow deck is
+   selected for setup or in play. See applyDeckTheme() in the script.
+
+   The <html> selector matters as much as the <body> one: the canvas behind
+   the page is painted from <html>'s own background, so with the variables
+   redefined on <body> alone a short page went green only as far as the
+   body box reached and showed the default brown below it. */
+body.theme-bloomburrow,
+html:has(body.theme-bloomburrow) {
+  --bg: #0f1a12;
+  --bg-deep: #0a120c;
+  --surface: #16261b;
+  --surface-2: #1e3326;
+  --surface-3: #2a4433;
+  --ink: #eef5ec;
+  --ink-soft: #cbdcc9;
+  --muted: #86a488;
+  --line: #35503d;
+  --accent: #3f7d43;
+  --accent-hot: #5fae5a;
+  --accent-ink: #f3fff0;
+  --accent-wash: rgba(63, 125, 67, .2);
+  --accent-glow: rgba(95, 174, 90, .55);
+  --token: #a68b3f;
+}
+
+* { box-sizing: border-box; }
+
+/* Double-tapping a counter used to zoom the page instead of pressing the
+   button twice, which is never what was meant at the table. `manipulation`
+   drops the double-tap gesture and leaves panning and pinch-zoom alone, so
+   card art can still be magnified by hand. The rule on the interactive
+   elements is belt and braces for older WebKit, which has been unreliable
+   about honouring touch-action set on the root alone. */
+html { touch-action: manipulation; }
+button, a, input, label, summary, [tabindex] { touch-action: manipulation; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100%;
+}
+
+/* Reserve the scrollbar's width up front, so freezing the page below a
+   modal doesn't shunt the layout sideways when the bar disappears. */
+html { scrollbar-gutter: stable; }
+
+/* A modal is up: the page behind it stops scrolling, and a tall sheet
+   scrolls inside itself instead (see the `dialog` rule further down). */
+html:has(dialog[open]) { overflow: hidden; }
+
+body {
+  font-family: "Karla", ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+h1, h2, h3, .display { font-family: "Cinzel", Georgia, serif; letter-spacing: .01em; }
+
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, [tabindex]:focus-visible, textarea:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent-hot);
+  outline-offset: 2px;
+}
+
+.wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px 150px; }
+.screen { display: none; }
+.screen.active { display: block; }
+.hidden { display: none !important; }
+/* A display rule on a class would otherwise outrank the hidden attribute. */
+[hidden] { display: none !important; }

@@ -1,0 +1,20 @@
+/* ---------- Deck list ---------- */
+
+/* Tiles rather than full-width rows: a dozen-odd decks fit in a couple of
+   screenfuls instead of a long single column. auto-fill packs as many
+   240px columns as the 1100px wrap allows (four on a desktop, one on a
+   phone) with no breakpoints to keep in sync. */
+.decklist {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.deckrow {
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 12px; padding: 12px 14px;
+}
+.deckrow .dname { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 17px; }
+/* margin-top:auto pins the buttons to the bottom of the tile, so they line
+   up across a row whose names wrap to different heights. */
+.deckrow .deck-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+.deckrow .deck-actions .btn { flex: 1 1 auto; }

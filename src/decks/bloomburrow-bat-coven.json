@@ -1,0 +1,31 @@
+{
+  "name": "Bloomburrow — Bat Coven",
+  "waveEnd": "rarity",
+  "entries": [
+    {"q": 178, "n": "Bat", "t": 1, "c": "creature"},
+    {"q": 16, "n": "Lifecreed Duo", "t": 0, "c": "creature"},
+    {"q": 14, "n": "Wax-Wane Witness", "t": 0, "c": "creature"},
+    {"q": 12, "n": "Glidedive Duo", "t": 0, "c": "creature"},
+    {"q": 10, "n": "Starlit Soothsayer", "t": 0, "c": "creature"},
+    {"q": 10, "n": "Moonrise Cleric", "t": 0, "c": "creature"},
+    {"q": 8, "n": "Starscape Cleric", "t": 0, "c": "creature"},
+    {"q": 6, "n": "Moonstone Harbinger", "t": 0, "c": "creature"},
+    {"q": 5, "n": "Essence Channeler", "t": 0, "c": "creature"},
+    {"q": 4, "n": "Darkstar Augur", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Starseer Mentor", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Star Charter", "t": 0, "c": "creature"},
+    {"q": 1, "n": "Zoraline, Cosmos Caller", "t": 0, "c": "creature"},
+    {"q": 5, "n": "Trumpet Blast", "t": 0, "c": "spell"},
+    {"q": 3, "n": "Barter in Blood", "t": 0, "c": "spell"},
+    {"q": 3, "n": "Overcome", "t": 0, "c": "spell"},
+    {"q": 2, "n": "Crippling Fear", "t": 0, "c": "spell"},
+    {"q": 2, "n": "Plague Wind", "t": 0, "c": "spell"},
+    {"q": 5, "n": "Bad Moon", "t": 0, "c": "permanent"},
+    {"q": 4, "n": "Cover of Darkness", "t": 0, "c": "permanent"},
+    {"q": 3, "n": "Sanguine Bond", "t": 0, "c": "permanent"},
+    {"q": 2, "n": "Shared Animosity", "t": 0, "c": "permanent"},
+    {"q": 2, "n": "Coat of Arms", "t": 0, "c": "permanent"},
+    {"q": 2, "n": "Anointed Procession", "t": 0, "c": "permanent"},
+    {"q": 1, "n": "Divine Visitation", "t": 0, "c": "permanent"}
+  ]
+}

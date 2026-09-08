@@ -1,0 +1,35 @@
+/* ---------- Import review ---------- */
+
+textarea.paste {
+  width: 100%; min-height: 220px; resize: vertical;
+  background: var(--bg-deep); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 11px;
+  padding: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13.5px; line-height: 1.55;
+}
+input.txt {
+  background: var(--bg-deep); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 9px 11px; font: inherit; width: 100%;
+}
+input.num { width: 84px; text-align: center; }
+input.num.sm { width: 60px; }
+label.field { display: block; margin-bottom: 12px; }
+label.field > span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; letter-spacing: .04em; text-transform: uppercase; }
+
+.review-row {
+  display: grid; grid-template-columns: 62px 1fr auto; gap: 12px; align-items: center;
+  padding: 9px 0; border-bottom: 1px solid var(--line);
+}
+.review-row:last-child { border-bottom: 0; }
+.review-row .slot { container-type: inline-size; }
+.review-row .rname { font-weight: 700; }
+.toggle {
+  border: 1px solid var(--line); background: var(--surface-2);
+  border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; white-space: nowrap;
+}
+.toggle[aria-pressed="true"] { background: var(--token); border-color: #8f7ff0; color: #fff; }
+
+.progress { height: 7px; background: var(--surface-3); border-radius: 999px; overflow: hidden; }
+.progress > i { display: block; height: 100%; background: var(--accent-hot); transition: width .2s ease; }

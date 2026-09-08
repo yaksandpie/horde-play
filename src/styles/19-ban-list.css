@@ -1,0 +1,11 @@
+.bansec { margin-bottom: 16px; }
+.bansec h3 {
+  margin: 0 0 7px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); font-family: inherit; font-weight: 700;
+}
+.banlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px; }
+.banlist li {
+  list-style: none; padding: 6px 10px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--surface-2); font-size: 14px;
+}
+.banlist li mark { background: var(--accent); color: var(--accent-ink); border-radius: 3px; }

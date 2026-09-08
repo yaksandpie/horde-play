@@ -1,0 +1,14 @@
+/* ---------- Log ---------- */
+
+.log { max-height: 260px; overflow-y: auto; font-size: 14px; }
+.log li { padding: 5px 0; border-bottom: 1px solid var(--line); color: var(--ink-soft); list-style: none; }
+.log li:last-child { border-bottom: 0; }
+.log .t { color: var(--muted); font-size: 12px; margin-right: 6px; }
+ul.log { margin: 0; padding: 0; }
+/* 150 entries of prose, so the log sheet takes the full dialog width rather
+   than the narrow one the number pads use, and the dialog does the
+   scrolling instead of trapping a second scrollbar inside the list. */
+#log-dialog { max-width: 460px; }
+#log-dialog .log { max-height: none; }
+/* Focused only to keep the sheet from opening scrolled to its Close button. */
+#log-title:focus { outline: none; }

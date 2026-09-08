@@ -1,0 +1,35 @@
+/* ---------- Action tiles ---------- */
+
+.actions {
+  display: grid; gap: 8px; grid-template-columns: 1fr 1fr;
+  padding: 10px; border-top: 1px solid var(--line);
+}
+
+.actiontile {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 12px; padding: 10px 14px;
+  text-align: left; width: 100%;
+  transition: border-color .12s ease, background .12s ease;
+}
+.actiontile:hover { background: var(--surface-3); border-color: var(--accent); }
+.actiontile:active { transform: translateY(1px); }
+.actiontile:disabled { opacity: .55; }
+.actiontile:disabled:hover { background: var(--surface-2); border-color: var(--line); }
+.actiontile:disabled .at-hint { visibility: hidden; }
+.actiontile svg { width: 26px; height: 26px; flex: none; }
+.actiontile .at-label {
+  font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--muted); font-weight: 700; display: block;
+}
+.actiontile .at-val {
+  font-family: "Cinzel", Georgia, serif; font-weight: 700;
+  font-size: 22px; line-height: 1.15; display: block;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.actiontile > span { min-width: 0; }
+.actiontile .at-hint { margin-left: auto; color: var(--muted); font-size: 20px; line-height: 1; }
+#tile-damage svg { color: var(--accent-hot); }
+#tile-life svg { color: #e0566b; }
+#tile-life.low { border-color: var(--bad); }
+#tile-life.low .at-val { color: #ff6b52; }

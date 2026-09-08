@@ -1,0 +1,13 @@
+/* ---------- Confetti (the survivors' win, falling from the top) ---------- */
+
+.confetti { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+.confetti i {
+  position: absolute; top: -12px; left: 0;
+  border-radius: 1px;
+  animation: confetti-fall linear infinite;
+}
+@keyframes confetti-fall {
+  from { transform: translate3d(0, -10vh, 0) rotate(0deg); }
+  to { transform: translate3d(var(--drift, 0px), 110vh, 0) rotate(720deg); }
+}
+@media (prefers-reduced-motion: reduce) { .confetti { display: none; } }

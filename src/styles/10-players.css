@@ -1,0 +1,21 @@
+/* ---------- Players ---------- */
+
+.players { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.player {
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 12px; padding: 12px;
+}
+.player.dead { opacity: .45; }
+.player .pname { font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.life-row { display: flex; align-items: center; gap: 8px; }
+.life-row .life {
+  flex: 1; text-align: center;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 30px; line-height: 1.1;
+}
+.step {
+  width: 40px; height: 40px; flex: none; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface-3);
+  font-size: 20px; font-weight: 700; line-height: 1;
+  display: grid; place-items: center;
+}
+.step:hover { background: var(--surface); }

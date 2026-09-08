@@ -1,0 +1,28 @@
+/* ---------- Cards / panels ---------- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.panel + .panel { margin-top: 14px; }
+.panel h2 { margin: 0 0 10px; font-size: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+.tiny { font-size: 12.5px; }
+
+.note {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.note.warn { border-left-color: #b08a2e; }
+.note.bad { border-left-color: var(--bad); }
+
+.warn-text { color: #d8a93e; }
