@@ -64,6 +64,42 @@ async function buildJs() {
   return result.outputFiles[0].text;
 }
 
+/* ---- partials ---------------------------------------------------------- */
+
+/* Markup the page uses more than once lives in src/partials/ and is pulled in
+   by name:
+
+     <!-- build:partial pad mill-pad -->
+
+   inlines src/partials/pad.html with __ID__ replaced by "mill-pad". Today the
+   numeric pad is the only one — the same eleven buttons in the damage sheet,
+   the life sheet and the token quantity step, differing only in the id, and
+   already sharing their behaviour through padPress(). The marker's own
+   indentation is applied to every line, so the assembled page reads as if the
+   markup had been written there by hand. */
+const PARTIAL = /^([ \t]*)<!-- build:partial (\S+) (\S+) -->[ \t]*$/gm;
+
+async function inlinePartials(html) {
+  const bodies = new Map();
+  for (const [, , name] of html.matchAll(PARTIAL)) {
+    if (bodies.has(name)) continue;
+    try {
+      bodies.set(name, (await readFile(join(SRC, "partials", `${name}.html`), "utf8")).trim());
+    } catch {
+      throw new Error(`src/index.html asks for partial "${name}", but src/partials/${name}.html is missing`);
+    }
+  }
+  // Replacer functions rather than strings, for the same reason as below: in a
+  // string replacement "$&" and friends are substitutions, and neither the
+  // markup nor an id has any business being read that way.
+  return html.replace(PARTIAL, (_, indent, name, id) =>
+    bodies.get(name)
+      .replaceAll("__ID__", () => id)
+      .split("\n")
+      .map((line) => (line ? indent + line : line))
+      .join("\n"));
+}
+
 /* ---- assembly ---------------------------------------------------------- */
 
 const shortHash = (bufs) => {
@@ -90,7 +126,7 @@ async function main() {
   // string replacement "$$" means a literal "$", which would quietly eat the
   // app's own $$ helper on the way into the page; a replacer function is
   // handed through untouched.
-  const page = html
+  const page = (await inlinePartials(html))
     .replace("<!-- build:styles -->", () => `<style>\n${css}</style>`)
     // A "</script>" inside a string literal would close the tag early. esbuild
     // has no reason to emit one today, but inlining is what makes it possible.

@@ -416,13 +416,7 @@ Tokens:
   <h3>Damage the Horde</h3>
   <p class="sub" id="dd-sub"></p>
   <div class="bignum" id="mill-out">0</div>
-  <div class="pad" id="mill-pad">
-    <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
-    <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
-    <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
-    <button data-k="clear">C</button><button data-d="0">0</button>
-    <button data-k="back" aria-label="Backspace">&larr;</button>
-  </div>
+  <!-- build:partial pad mill-pad -->
   <div class="row" style="margin-top:14px">
     <button class="btn primary grow" data-k="mill" id="dd-mill">Mill</button>
     <button class="btn ghost" id="dd-close">Close</button>
@@ -436,13 +430,7 @@ Tokens:
   <h3>Survivors</h3>
   <p class="sub lifetotal"><b id="life-n">0</b> life left &mdash; one shared pool.</p>
   <div class="bignum life" id="life-out">0</div>
-  <div class="pad" id="life-pad">
-    <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
-    <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
-    <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
-    <button data-k="clear">C</button><button data-d="0">0</button>
-    <button data-k="back" aria-label="Backspace">&larr;</button>
-  </div>
+  <!-- build:partial pad life-pad -->
   <div class="row" style="margin-top:14px">
     <button class="btn primary grow" id="ld-lose">Lose</button>
     <button class="btn grow" id="ld-gain">Gain</button>
@@ -579,13 +567,7 @@ Tokens:
     <h3 style="margin:0 0 4px" id="tq-name"></h3>
     <p class="muted small" id="tq-sub" style="margin:0 0 14px"></p>
     <div class="bignum" id="tq-out">0</div>
-    <div class="pad" id="token-qty-pad">
-      <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
-      <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
-      <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
-      <button data-k="clear">C</button><button data-d="0">0</button>
-      <button data-k="back" aria-label="Backspace">&larr;</button>
-    </div>
+    <!-- build:partial pad token-qty-pad -->
     <div class="row" style="margin-top:14px">
       <button class="btn primary grow" id="tq-add">Add</button>
       <button class="btn ghost" id="tq-back">Back</button>
