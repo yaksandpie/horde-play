@@ -322,6 +322,53 @@ test.describe("the wire format", () => {
       expect(out.isToken).toBe(true);
       expect(out.pt).toEqual(["4", "4"]);
     });
+
+  test("a copy travels inline with its stats, not as the card it copied",
+    async ({ app }) => {
+      await startGame(app, "Zombies Horde");
+
+      const out = await app.evaluate(() => {
+        const { encodeSnapshot, decodeSnapshot, cardFromInline, buildCopyToken, G } = window.__horde;
+        // A printed card the viewer could otherwise look up by id — which is
+        // exactly the trap: the lookup would hand back the 2/2, not the copy.
+        const printed = Object.assign(
+          window.__horde.cardFromEntry({ name: "Diregraf Ghoul" }), {
+            key: "c_printed", scryfallId: "0000-printed", imageUri: "https://img/ghoul.jpg",
+            typeLine: "Creature — Zombie", power: "2", toughness: "2", resolved: true,
+          });
+        const copy = buildCopyToken(printed, { power: "4", toughness: "4" });
+        G.cards[printed.key] = printed;
+        G.cards[copy.key] = copy;
+        G.board = [{ cardKey: printed.key, count: 1 }, { cardKey: copy.key, count: 2 }];
+
+        const snap = encodeSnapshot(G);
+        const cards = {};
+        for (const c of snap.ic) cards[c[0]] = cardFromInline(c);
+        // The printed card still travels as a bare id, so the viewer resolves
+        // it the usual way; only the copy is inline.
+        cards["0000-printed"] = printed;
+        const V = decodeSnapshot(snap, cards);
+        const seen = V.cards[V.board[1].cardKey];
+        return {
+          inlineCount: snap.ic.length,
+          printedRef: snap.bd[0][0],
+          name: seen.name, isToken: seen.isToken, isCopy: seen.isCopy,
+          pt: [seen.power, seen.toughness],
+          art: seen.scryfallId, image: seen.imageUri,
+        };
+      });
+
+      expect(out.inlineCount).toBe(1);
+      expect(out.printedRef).toBe("0000-printed");
+      expect(out.name).toBe("Diregraf Ghoul");
+      expect(out.isToken).toBe(true);
+      expect(out.isCopy).toBe(true);
+      expect(out.pt).toEqual(["4", "4"]);
+      // The copy still points at the printed card's art, so a watching phone
+      // sees the same picture the table does.
+      expect(out.art).toBe("0000-printed");
+      expect(out.image).toBe("https://img/ghoul.jpg");
+    });
 });
 
 test.describe("viewer mode", () => {
