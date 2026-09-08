@@ -94,12 +94,18 @@ function protoA(html) {
        further down the page exactly when it was being read. The roster names
        what is coming without drawing it twice, and the board panel below is
        the one place creatures are rendered. */
-    const roster = el("p", "stage-roster");
-    attackers().forEach((stack, i) => {
-      if (i) roster.append(document.createTextNode(" "));
-      roster.appendChild(el("span", "roster-chip",
-        G.cards[stack.cardKey].name + (stack.count > 1 ? " \\u00d7" + stack.count : "")));
-    });
+    const roster = el("div", "stage-roster");
+    for (const stack of attackers()) {
+      /* Every attacker tile used to be tappable, and losing that to save the
+         space would have cost more than it saved: reading a card mid-combat is
+         the whole reason to look at this list. The chip opens the same stack
+         sheet the tile did. */
+      const chip = el("button", "roster-chip",
+        G.cards[stack.cardKey].name + (stack.count > 1 ? " \\u00d7" + stack.count : ""));
+      chip.type = "button";
+      chip.addEventListener("click", () => openStackDialog(stack));
+      roster.appendChild(chip);
+    }
     body.appendChild(roster);
     const jump = el("button", "btn sm ghost", "Review the board \\u2193");
     jump.addEventListener("click", jumpToBoard);
@@ -110,10 +116,13 @@ function protoA(html) {
   /* ---------- Prototype A: the combat roster ---------- */
   .stage-roster { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
   .roster-chip {
-    padding: 4px 9px; border-radius: 999px;
+    padding: 4px 10px; border-radius: 999px;
     background: var(--surface-2); border: 1px solid var(--line);
-    font-size: 13px; color: var(--ink-soft);
+    font: inherit; font-size: 13px; color: var(--ink-soft);
+    cursor: pointer; transition: background .12s ease, border-color .12s ease;
   }
+  .roster-chip:hover { background: var(--surface-3); border-color: var(--accent); color: var(--ink); }
+  .roster-chip:active { background: var(--surface-2); }
 </style>`, "A: css");
 
   return html;

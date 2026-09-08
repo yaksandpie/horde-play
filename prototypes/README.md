@@ -17,7 +17,9 @@ here ships, and no `CACHE_VERSION` bump is owed for them.
 at 160px tiles, restating the board panel above it at a larger size and pushing
 the panel itself further down exactly when it was being read. Now the stage
 names the attackers as chips and offers **Review the board ↓**; the panel below
-is the one place creatures are drawn.
+is the one place creatures are drawn. The chips are buttons, opening the same
+stack sheet the tiles opened — reading a card mid-combat is the reason to look
+at this list, so the tap survives even though the art doesn't.
 
 **B — `b-board-strip.html`.** The board in miniature — a horizontally scrolling
 row of 76px stacks — stuck under the header so it stays on screen through every
@@ -47,6 +49,7 @@ copy with the change missing.
 `index.html`, so these check themselves. Beyond that both were driven in
 Chromium from a new game through to the Horde's combat step: no page errors, the
 board panel renders, A shows its roster chips and no longer emits the `cardgrid
-lg` attacker grid, and B's strip holds exactly as many stacks as the panel.
+lg` attacker grid, clicking a chip opens the stack sheet for that card, and B's
+strip holds exactly as many stacks as the panel.
 Those runs were scratch tests and aren't checked in — nothing in CI covers this
 directory.
