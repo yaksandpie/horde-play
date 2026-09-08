@@ -24,6 +24,9 @@
 .btn.danger { color: #ffb4ab; border-color: #5c2a24; }
 .btn.danger:hover { background: #3a1f1b; }
 .btn.sm { padding: 6px 11px; font-size: 14px; border-radius: 10px; }
+/* Fills the width it is given. A sheet stacks its actions rather than
+   sitting them side by side, so most buttons inside a dialog are this. */
+.btn.wide { width: 100%; }
 /* A header action that carries no label. Kept the same height as the
    buttons beside it so the row still lines up. */
 .btn.icon {

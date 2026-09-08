@@ -104,7 +104,7 @@
     <div class="panel">
       <h2>Horde decks</h2>
       <div class="decklist" id="deck-list"></div>
-      <div class="row" style="margin-top:14px">
+      <div class="row foot">
         <button class="btn primary" id="btn-import">Import a decklist</button>
         <button class="btn ghost" id="btn-bans">Ban list</button>
         <button class="btn ghost" id="btn-watch">Watch a game</button>
@@ -176,7 +176,7 @@ Tokens:
         Section headers like <code>Tokens (150)</code> mark everything under them as tokens.
         The next screen shows what was found and lets you fix it.
       </div>
-      <div class="row" style="margin-top:14px">
+      <div class="row foot">
         <button class="btn primary" id="btn-parse">Look these up</button>
         <button class="btn ghost" id="btn-import-cancel">Cancel</button>
       </div>
@@ -417,7 +417,7 @@ Tokens:
   <p class="sub" id="dd-sub"></p>
   <div class="bignum" id="mill-out">0</div>
   <!-- build:partial pad mill-pad -->
-  <div class="row" style="margin-top:14px">
+  <div class="row foot">
     <button class="btn primary grow" data-k="mill" id="dd-mill">Mill</button>
     <button class="btn ghost" id="dd-close">Close</button>
   </div>
@@ -431,11 +431,11 @@ Tokens:
   <p class="sub lifetotal"><b id="life-n">0</b> life left &mdash; one shared pool.</p>
   <div class="bignum life" id="life-out">0</div>
   <!-- build:partial pad life-pad -->
-  <div class="row" style="margin-top:14px">
+  <div class="row foot">
     <button class="btn primary grow" id="ld-lose">Lose</button>
     <button class="btn grow" id="ld-gain">Gain</button>
   </div>
-  <button class="btn" id="life-all" style="width:100%; margin-top:8px">Take all</button>
+  <button class="btn wide" id="life-all" style="margin-top:8px">Take all</button>
   <p class="tiny muted" id="life-partial" style="margin:8px 0 0" hidden>
     Some of the Horde's creatures have unknown power, so this total is only what's known.
     Check the cards on the board.
@@ -447,7 +447,7 @@ Tokens:
     <button data-poison="1" aria-label="Add a poison counter">+</button>
     <span id="poison-limit"></span>
   </div>
-  <button class="btn ghost" id="ld-close" style="width:100%; margin-top:14px">Done</button>
+  <button class="btn ghost wide" id="ld-close" style="margin-top:14px">Done</button>
 </dialog>
 
 <dialog id="card-dialog" class="cardview">
@@ -457,22 +457,22 @@ Tokens:
   <p class="sub cv-ctr" id="cv-counters" hidden></p>
   <p class="cv-oracle" id="cv-oracle"></p>
   <div class="stack" id="cv-actions">
-    <button class="btn" id="cv-copy" style="width:100%">Copy it&hellip;</button>
-    <button class="btn" id="cv-counters-btn" style="width:100%">Counters&hellip;</button>
-    <button class="btn" id="cv-kill1" style="width:100%">Kill one &rarr; graveyard</button>
-    <button class="btn" id="cv-killall" style="width:100%">Kill the whole stack</button>
+    <button class="btn wide" id="cv-copy">Copy it&hellip;</button>
+    <button class="btn wide" id="cv-counters-btn">Counters&hellip;</button>
+    <button class="btn wide" id="cv-kill1">Kill one &rarr; graveyard</button>
+    <button class="btn wide" id="cv-killall">Kill the whole stack</button>
     <div class="row tight" id="cv-qty">
       <button class="btn" id="cv-dup" style="flex:0 0 92px">+1</button>
       <button class="btn grow" id="cv-setqty">Set how many&hellip;</button>
     </div>
   </div>
-  <button class="btn ghost" id="cv-close" style="width:100%; margin-top:10px">Close</button>
+  <button class="btn ghost wide" id="cv-close" style="margin-top:10px">Close</button>
 </dialog>
 
 <dialog id="token-dialog" class="sheet">
   <div id="token-step-pick">
-    <h3 style="margin:0 0 4px">Create tokens</h3>
-    <p class="muted small" id="token-pick-sub" style="margin:0 0 12px">
+    <h3>Create tokens</h3>
+    <p class="sub" id="token-pick-sub">
       Anything that puts tokens on the battlefield &mdash; Hare Apparent, Empty the Warrens, Skeletal
       Swarming, Rite of Belzenlok. A manual add: the library, graveyard and wave count are untouched.
     </p>
@@ -486,14 +486,14 @@ Tokens:
     <p class="muted small" id="token-pick-empty" hidden>
       This deck defines no token types &mdash; search above for the one you need.
     </p>
-    <button class="btn ghost" id="token-copy-open" style="width:100%; margin-top:8px">
+    <button class="btn ghost wide" id="token-copy-open" style="margin-top:8px">
       Copy a creature&hellip;
     </button>
-    <button class="btn ghost" id="token-pick-close" style="width:100%; margin-top:8px">Close</button>
+    <button class="btn ghost wide" id="token-pick-close" style="margin-top:8px">Close</button>
   </div>
   <div id="token-step-copysrc" hidden>
-    <h3 style="margin:0 0 4px">Copy a creature</h3>
-    <p class="muted small" style="margin:0 0 12px">
+    <h3>Copy a creature</h3>
+    <p class="sub">
       For &ldquo;create a token that&rsquo;s a copy of target creature&rdquo;. Tap one the Horde
       already has out, or search by name for a survivor&rsquo;s creature &mdash; the copy is a
       token whatever it copied.
@@ -508,11 +508,11 @@ Tokens:
     <p class="muted small" id="copy-src-empty" hidden>
       The Horde has nothing out to copy &mdash; search above for the creature you need.
     </p>
-    <button class="btn ghost" id="copy-src-back" style="width:100%; margin-top:8px">Back</button>
+    <button class="btn ghost wide" id="copy-src-back" style="margin-top:8px">Back</button>
   </div>
   <div id="token-step-copy" hidden>
-    <h3 style="margin:0 0 4px" id="cp-name"></h3>
-    <p class="muted small" id="cp-sub" style="margin:0 0 14px"></p>
+    <h3 id="cp-name"></h3>
+    <p class="sub" id="cp-sub"></p>
     <div class="row tight" id="cp-pt" style="margin-bottom:8px">
       <span class="tiny muted">Power / toughness</span>
       <span class="grow"></span>
@@ -530,8 +530,8 @@ Tokens:
     </div>
   </div>
   <div id="token-step-search" hidden>
-    <h3 style="margin:0 0 4px" id="ts-title"></h3>
-    <p class="muted small" id="ts-sub" style="margin:0 0 12px"></p>
+    <h3 id="ts-title"></h3>
+    <p class="sub" id="ts-sub"></p>
     <div class="cardgrid tokengrid" id="token-search-grid" style="margin-bottom:10px"></div>
     <div class="row">
       <button class="btn ghost grow" id="ts-custom">Make a plain token</button>
@@ -539,8 +539,8 @@ Tokens:
     </div>
   </div>
   <div id="token-step-custom" hidden>
-    <h3 style="margin:0 0 4px">Plain token</h3>
-    <p class="muted small" style="margin:0 0 14px">
+    <h3>Plain token</h3>
+    <p class="sub">
       No art or rules text &mdash; just enough for the board and the attacking total.
     </p>
     <label class="field">
@@ -564,11 +564,11 @@ Tokens:
     </div>
   </div>
   <div id="token-step-qty" hidden>
-    <h3 style="margin:0 0 4px" id="tq-name"></h3>
-    <p class="muted small" id="tq-sub" style="margin:0 0 14px"></p>
+    <h3 id="tq-name"></h3>
+    <p class="sub" id="tq-sub"></p>
     <div class="bignum" id="tq-out">0</div>
     <!-- build:partial pad token-qty-pad -->
-    <div class="row" style="margin-top:14px">
+    <div class="row foot">
       <button class="btn primary grow" id="tq-add">Add</button>
       <button class="btn ghost" id="tq-back">Back</button>
     </div>
@@ -576,8 +576,8 @@ Tokens:
 </dialog>
 
 <dialog id="counters-dialog" class="sheet">
-  <h3 style="margin:0 0 4px" id="ct-name"></h3>
-  <p class="muted small" id="ct-sub" style="margin:0 0 14px"></p>
+  <h3 id="ct-name"></h3>
+  <p class="sub" id="ct-sub"></p>
 
   <div class="row tight" id="ct-howmany" style="margin-bottom:12px">
     <span class="grow">How many of them</span>
@@ -598,32 +598,32 @@ Tokens:
 
   <p class="tiny muted" id="ct-preview" style="margin:12px 0 0"></p>
 
-  <div class="row" style="margin-top:14px">
+  <div class="row foot">
     <button class="btn primary grow" id="ct-apply" type="button">Apply</button>
     <button class="btn ghost" id="ct-cancel" type="button">Cancel</button>
   </div>
 </dialog>
 
 <dialog id="yard-dialog" class="sheet">
-  <h3 style="margin:0 0 4px">Graveyard</h3>
-  <p class="muted small" id="yd-sub" style="margin:0 0 12px"></p>
+  <h3>Graveyard</h3>
+  <p class="sub" id="yd-sub"></p>
   <div class="cardgrid tokengrid" id="yd-grid" style="margin-bottom:6px"></div>
   <p class="muted small" id="yd-empty" hidden>
     Nothing here yet &mdash; damage mills the Horde, and its dead creatures land here too.
   </p>
-  <button class="btn ghost" id="yd-close" style="width:100%; margin-top:10px">Close</button>
+  <button class="btn ghost wide" id="yd-close" style="margin-top:10px">Close</button>
 </dialog>
 
 <dialog id="log-dialog" class="sheet">
-  <h3 id="log-title" tabindex="-1" style="margin:0 0 4px">Log</h3>
+  <h3 id="log-title" tabindex="-1">Log</h3>
   <p class="sub">Newest first &mdash; every wave, mill and life change this game, by round.</p>
   <ul class="log" id="log"></ul>
   <p class="muted small" id="log-empty" hidden style="margin:0">Nothing has happened yet.</p>
-  <button class="btn ghost" id="log-close" style="width:100%; margin-top:12px">Close</button>
+  <button class="btn ghost wide" id="log-close" style="margin-top:12px">Close</button>
 </dialog>
 
 <dialog id="share-dialog" class="sheet">
-  <h3 style="margin:0 0 4px">Share this game</h3>
+  <h3>Share this game</h3>
   <p class="sub">Viewers get the board, the wave and the counters, with no controls to press. Give the code out the way you'd give out a password.</p>
 
   <div class="codebox" id="share-codebox">
@@ -631,7 +631,7 @@ Tokens:
     <div class="code" id="share-code">------</div>
   </div>
 
-  <div class="row" style="margin-top:14px">
+  <div class="row foot">
     <button class="btn primary grow" id="sh-toggle">Start sharing</button>
     <button class="btn ghost" id="sh-copy">Copy link</button>
   </div>
@@ -643,11 +643,11 @@ Tokens:
     as something you hand to your table and not to a group chat. Nothing is sent until
     you start, and the app can’t share while it’s offline.
   </p>
-  <button class="btn ghost" id="sh-close" style="width:100%; margin-top:12px">Close</button>
+  <button class="btn ghost wide" id="sh-close" style="margin-top:12px">Close</button>
 </dialog>
 
 <dialog id="join-dialog" class="sheet">
-  <h3 style="margin:0 0 4px">Watch a game</h3>
+  <h3>Watch a game</h3>
   <p class="sub">Type the code from the screen running the game. You’ll see its board; you won’t be able to touch it.</p>
   <label class="field">
     <span>Game code</span>
@@ -655,7 +655,7 @@ Tokens:
            autocapitalize="characters" spellcheck="false" maxlength="7" placeholder="e.g. K7P2QM">
   </label>
   <p class="tiny warn-text" id="join-error" hidden></p>
-  <div class="row" style="margin-top:14px">
+  <div class="row foot">
     <button class="btn primary grow" id="join-go">Watch</button>
     <button class="btn ghost" id="join-close">Cancel</button>
   </div>
