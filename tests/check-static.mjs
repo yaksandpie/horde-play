@@ -103,6 +103,16 @@ if (!shellMatch) {
   }
 }
 
+/* ---- 6. No build marker survived into the output ---- */
+
+/* The build assembles the page by substituting <!-- build:… --> markers: the
+   stylesheet, the script, and each partial. One left behind means a
+   substitution silently missed and the page is shipping without whatever
+   belonged there — the same failure the CACHE_VERSION check above guards. */
+for (const [marker] of html.matchAll(/<!-- build:[^>]*-->/g)) {
+  fail(`index.html still contains ${marker} — the build did not substitute it.`);
+}
+
 /* ---- Report ---- */
 
 if (problems.length) {
