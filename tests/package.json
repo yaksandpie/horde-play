@@ -10,6 +10,7 @@
     "serve": "node ../build.mjs && node serve.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
     "@playwright/test": "^1.62.1"
   }
 }

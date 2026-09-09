@@ -31,6 +31,13 @@ function showScreen(id) {
   if (id === "screen-decks") applyDeckTheme(null);
   setWakeLock(id === "screen-game");
   window.scrollTo(0, 0);
+
+  /* The screen that was up is display:none now, so whatever had focus inside
+     it no longer can — the browser drops focus to <body>, which puts a
+     keyboard player back at the top of the document and tells a screen-reader
+     player nothing about where they just arrived. Moving focus to the new
+     screen's heading announces it and starts tabbing from the right place. */
+  $(`#${id} h2`)?.focus({ preventScroll: true });
 }
 
 /* A tablet propped on the table shouldn't dim between waves. Held only while

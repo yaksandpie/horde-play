@@ -90,6 +90,13 @@ function tokenTypes() {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/* Each step's heading, so the sheet is named by the step actually showing
+   rather than by whichever one happened to be first in the markup. */
+const TOKEN_STEP_TITLE = {
+  pick: "token-h-pick", search: "ts-title", custom: "token-h-custom",
+  copysrc: "token-h-copysrc", copy: "cp-name", qty: "tq-name",
+};
+
 function tokenStep(step) {
   $("#token-step-pick").hidden = step !== "pick";
   $("#token-step-search").hidden = step !== "search";
@@ -97,6 +104,7 @@ function tokenStep(step) {
   $("#token-step-copysrc").hidden = step !== "copysrc";
   $("#token-step-copy").hidden = step !== "copy";
   $("#token-step-qty").hidden = step !== "qty";
+  $("#token-dialog").setAttribute("aria-labelledby", TOKEN_STEP_TITLE[step]);
 }
 
 /* A tile in either token grid: the face, then what it is and how many are out.

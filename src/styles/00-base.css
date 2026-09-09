@@ -6,7 +6,7 @@
   --surface-3: #5a5246;
   --ink: #efe5cf;
   --ink-soft: #d3c6ac;
-  --muted: #a2937b;
+  --muted: #b1a591;
   --line: #4e4739;
   --accent: #c2b08a;
   --accent-hot: #dcc99e;
@@ -89,7 +89,14 @@ body {
 h1, h2, h3, .display { font-family: "Cinzel", Georgia, serif; letter-spacing: .01em; }
 
 button { font: inherit; color: inherit; cursor: pointer; }
-button:focus-visible, [tabindex]:focus-visible, textarea:focus-visible, input:focus-visible {
+
+/* Links inherit nothing from the palette on their own, so the browser default
+   (#0000ee) landed on the dark surfaces at 1.36:1 — unreadable. */
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { color: var(--accent-hot); }
+
+button:focus-visible, [tabindex]:focus-visible, textarea:focus-visible, input:focus-visible,
+a:focus-visible {
   outline: 2px solid var(--accent-hot);
   outline-offset: 2px;
 }
@@ -98,5 +105,17 @@ button:focus-visible, [tabindex]:focus-visible, textarea:focus-visible, input:fo
 .screen { display: none; }
 .screen.active { display: block; }
 .hidden { display: none !important; }
+
+/* Present to a screen reader, absent to everyone else. Not display:none and
+   not visibility:hidden — both of those take it out of the accessibility tree
+   too, which is the opposite of the point. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 /* A display rule on a class would otherwise outrank the hidden attribute. */
 [hidden] { display: none !important; }
