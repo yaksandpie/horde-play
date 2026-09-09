@@ -37,9 +37,9 @@ function parseDecklist(text, opts = {}) {
     if (line.startsWith("//") || line.startsWith("#")) continue;
     line = line.replace(/^(SB|MB):\s*/i, "");
 
-    // Section header: no leading count, and either "(...)"-suffixed, ':'-suffixed,
-    // or a bare known heading word.
-    if (!/^\d/.test(line)) {
+    // Section header: no leading count ("3 ..." or "x3 ..."), and either
+    // "(...)"-suffixed, ':'-suffixed, or a bare known heading word.
+    if (!/^(\d|[xX]\d+\s)/.test(line)) {
       const h = line.match(HEADER_RE);
       const isHeader = h || line.endsWith(":") || (BARE_HEADERS.test(line) && line.split(" ").length <= 4);
       // A wrapped continuation always wins over a header guess when the

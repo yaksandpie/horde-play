@@ -15,6 +15,10 @@ import { getImage, putImage } from "./persistence.js";
 const SCRYFALL = "https://api.scryfall.com";
 const COLLECTION_CHUNK = 75;
 const THROTTLE_MS = 110; // Scryfall asks for 50-100ms between requests
+/* Art comes off Scryfall's image CDN, not the rate-limited API, so a few
+   downloads can be in flight at once. Six is enough to hide the latency
+   without opening a tab's worth of sockets on a phone. */
+const IMAGE_CONCURRENCY = 6;
 
 let lookupAborted = false;
 /* A dead network should cost one failed request, not one per card: the first
@@ -69,6 +73,19 @@ function cardFromEntry(entry) {
   };
 }
 
+function readJSON(res) {
+  if (!res.ok) throw new Error("Scryfall " + res.status);
+  return res.json();
+}
+
+/* One request, with no memory of failure. The viewer resolves cards through
+   this: a dropped request on the watching phone is that snapshot's problem,
+   not a reason to stop looking anything up for the rest of the game. */
+const fetchJSON = (url, opts) => fetch(url, opts).then(readJSON);
+
+/* The import-time lookup: one connection-level failure short-circuits the
+   rest of the run, so a dead network costs one request rather than one per
+   card. Only runImport and startGame reset it. */
 async function sfJSON(url, opts) {
   if (networkDead) throw new Error("offline");
   let res;
@@ -79,8 +96,7 @@ async function sfJSON(url, opts) {
     networkDead = true;
     throw e;
   }
-  if (!res.ok) throw new Error("Scryfall " + res.status);
-  return res.json();
+  return readJSON(res);
 }
 
 async function lookupNamed(entry) {
@@ -156,21 +172,28 @@ async function resolveEntries(entries, onProgress) {
 /* Download and cache art. Failures are silent by design — a missing image
    costs a prettier card, not a playable one. */
 async function cacheImages(cards, onProgress) {
-  const withArt = cards.filter((c) => c.imageUri && c.scryfallId);
+  // One download per printing: a deck lists the same token under several
+  // names less often than it lists the same card twice.
+  const seen = new Set();
+  const withArt = cards.filter((c) =>
+    c.imageUri && c.scryfallId && !seen.has(c.scryfallId) && seen.add(c.scryfallId));
   let done = 0;
-  for (const card of withArt) {
+  const report = (label) => onProgress && onProgress(done, withArt.length, label);
+  report("");
+  for (let i = 0; i < withArt.length; i += IMAGE_CONCURRENCY) {
     if (lookupAborted || networkDead) break;
-    onProgress && onProgress(done, withArt.length, card.name);
-    try {
-      if (!(await getImage(card.scryfallId))) {
-        const res = await fetch(card.imageUri);
-        if (res.ok) await putImage(card.scryfallId, await res.blob());
-      }
-    } catch { /* keep going */ }
-    done++;
-    await sleep(40);
+    await Promise.all(withArt.slice(i, i + IMAGE_CONCURRENCY).map(async (card) => {
+      try {
+        if (!(await getImage(card.scryfallId))) {
+          const res = await fetch(card.imageUri);
+          if (res.ok) await putImage(card.scryfallId, await res.blob());
+        }
+      } catch { /* keep going */ }
+      done++;
+      report(card.name);
+    }));
   }
-  onProgress && onProgress(done, withArt.length, "");
+  report("");
 }
 
 /* Written from other modules; ESM bindings are read-only across files. */
@@ -178,6 +201,6 @@ export const setLookupAborted = (v) => { lookupAborted = v; };
 export const setNetworkDead = (v) => { networkDead = v; };
 
 export {
-  COLLECTION_CHUNK, SCRYFALL, THROTTLE_MS, cacheImages, cardFromEntry, cardFromScryfall,
-  lookupAborted, networkDead, resolveEntries, sfJSON,
+  COLLECTION_CHUNK, IMAGE_CONCURRENCY, SCRYFALL, THROTTLE_MS, cacheImages, cardFromEntry,
+  cardFromScryfall, fetchJSON, lookupAborted, networkDead, resolveEntries, sfJSON,
 };

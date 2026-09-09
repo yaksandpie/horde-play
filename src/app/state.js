@@ -373,9 +373,9 @@ function resolveReveal() {
       logit(card.name + " resolves" + (target ? " — random target: " + target.name : "") + ".");
       G.graveyard.push(key);
     } else {
-      addToBoard(key, 1);
+      const joined = addToBoard(key, 1);
       logit(card.name + " enters the battlefield.");
-      fireEtbTriggers(card, 1);
+      fireEtbTriggers(card, 1, joined);
     }
   }
   G.revealed = [];
@@ -482,13 +482,20 @@ function setStackCounters(id, howMany, counters) {
   if (stackId({ cardKey: from.cardKey, counters: next }) === stackId(from)) return from;
   snapshot();
   const was = countersLabel(from);
-  from.count -= n;
-  if (from.count <= 0) G.board.splice(G.board.indexOf(from), 1);
-  const to = addToBoard(from.cardKey, n, next);
+  const to = moveCounters(from, n, next);
   logit(n + "\u00d7 " + G.cards[to.cardKey].name + ": " +
     (hasCounters(to) ? countersLabel(to) : "counters removed" + (was ? " (was " + was + ")" : "")) + ".");
   persistGame();
   return to;
+}
+
+/* The move itself: n copies leave `from` for the tile whose counters are
+   `next`. No snapshot and no save, because it is one step of an action the
+   caller owns — a wave that fires three triggers is still one Undo. */
+function moveCounters(from, n, next) {
+  from.count -= n;
+  if (from.count <= 0) G.board.splice(G.board.indexOf(from), 1);
+  return addToBoard(from.cardKey, n, next);
 }
 
 /* "+1" on a tile: one more of exactly what the tile shows, counters and all,
@@ -498,9 +505,9 @@ function duplicateStack(id) {
   const stack = findStack(id);
   if (!stack) return;
   snapshot();
-  addToBoard(stack.cardKey, 1, stack.counters);
+  const joined = addToBoard(stack.cardKey, 1, stack.counters);
   logit("+1 " + stackLabel(stack) + " token.");
-  fireEtbTriggers(G.cards[stack.cardKey], 1);
+  fireEtbTriggers(G.cards[stack.cardKey], 1, joined);
   notePeak();
   persistGame();
 }
@@ -513,9 +520,9 @@ function duplicateStack(id) {
 function createTokens(card, n) {
   snapshot();
   if (!G.cards[card.key]) G.cards[card.key] = card;
-  addToBoard(card.key, n);
+  const joined = addToBoard(card.key, n);
   logit("+" + n + " " + tokenLabel(card, n) + ".");
-  fireEtbTriggers(card, n);
+  fireEtbTriggers(card, n, joined);
   notePeak();
   persistGame();
 }
@@ -530,9 +537,9 @@ function setTokenCount(id, n) {
   const label = stackLabel(stack);   // read before the stack can be spliced out
   snapshot();
   if (n > have) {
-    addToBoard(stack.cardKey, n - have, stack.counters);
+    const joined = addToBoard(stack.cardKey, n - have, stack.counters);
     logit("+" + (n - have) + " " + label + " \u2014 " + n + " on the battlefield.");
-    fireEtbTriggers(G.cards[stack.cardKey], n - have);
+    fireEtbTriggers(G.cards[stack.cardKey], n - have, joined);
     notePeak();
   } else {
     removeFromStack(stack, have - n, false);
@@ -554,8 +561,10 @@ function setTokenCount(id, n) {
 
    "Another" is handled without per-permanent identity: a stack is already
    a homogeneous group of otherwise-identical copies, so excluding "itself"
-   just means excluding however many of *this* entry just joined that same
-   stack — the rest were already on the board before this trigger fired. */
+   just means excluding however many of *this* entry just joined the stack
+   they landed on — every other copy of the same card, on that tile or on
+   one its counters split off, was already on the board before this trigger
+   fired. */
 const ETB_TRIGGERS = {
   "Valley Mightcaller": {
     watchTypes: ["Frog", "Rabbit", "Raccoon", "Squirrel"],
@@ -571,21 +580,33 @@ function subtypesOf(card) {
 }
 
 /* Call once per permanent (or same-named group of `justEnteredN`) joining
-   the board, after addToBoard. Grants apply immediately; there's nothing
-   left for the player to decide. */
-function fireEtbTriggers(enteredCard, justEnteredN = 1) {
+   the board, after addToBoard, with the stack addToBoard put them on. Grants
+   apply immediately; there's nothing left for the player to decide.
+
+   Part of the action that put the creature there, not an action of its own:
+   the caller took the snapshot and does the save, so Undo takes the wave
+   and its triggers back together.
+
+   The grants are planned against the board as it stood when the creature
+   entered, then applied. Applying as you go would count copies twice: the
+   plain tile's copies move onto the "+1/+1" tile, and if that tile is later
+   in the walk it would then be read with them already in it. */
+function fireEtbTriggers(enteredCard, justEnteredN = 1, joined = null) {
   if (!(justEnteredN > 0)) return;
   const enteredTypes = subtypesOf(enteredCard);
   if (!enteredTypes.length) return;
-  for (const stack of G.board.slice()) {
+  const plan = [];
+  for (const stack of G.board) {
     const watcher = G.cards[stack.cardKey];
     const trig = watcher && ETB_TRIGGERS[watcher.name];
     if (!trig || !trig.watchTypes.some((t) => enteredTypes.includes(t))) continue;
-    const already = stack.count - (stack.cardKey === enteredCard.key ? justEnteredN : 0);
-    if (already <= 0) continue;
+    const already = stack.count - (stack === joined ? justEnteredN : 0);
+    if (already > 0) plan.push({ stack, watcher, trig, already });
+  }
+  for (const { stack, watcher, trig, already } of plan) {
     const next = normCounters(stack.counters);
     next[trig.grant] = (next[trig.grant] || 0) + 1;
-    setStackCounters(stackId(stack), already, next);
+    moveCounters(stack, already, next);
     logit(watcher.name + ": " + enteredCard.name + " entered — " + trig.grant +
       (already > 1 ? " (×" + already + ")" : "") + ".");
   }

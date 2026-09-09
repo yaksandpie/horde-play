@@ -1,7 +1,7 @@
 /* The game rules, exercised through the window.__horde harness the app
    already exposes. These are unit tests that happen to run in a browser,
    because that's where the code lives. */
-import { test, expect } from "./fixtures.mjs";
+import { test, expect, startGame } from "./fixtures.mjs";
 
 const horde = (page, fn, arg) => page.evaluate(fn, arg);
 
@@ -17,6 +17,13 @@ test.describe("decklist parsing", () => {
       [2, "Grave Titan"],
       [1, "Zombie Apocalypse"],
     ]);
+  });
+
+  test('an "x3 Card" line is a quantity, not a wrapped continuation', async ({ app }) => {
+    const entries = await horde(app, () => window.__horde.parseDecklist(
+      "4 Zombie\nx3 Ghoul\n2 Skeleton"
+    ).entries.map((e) => [e.qty, e.name]));
+    expect(entries).toEqual([[4, "Zombie"], [3, "Ghoul"], [2, "Skeleton"]]);
   });
 
   test("a token heading marks everything under it", async ({ app }) => {
@@ -425,5 +432,64 @@ test.describe("copies", () => {
       ["Squirrel", true, "1/1", 6],
       ["Squirrel Mob", true, "4/4", 1],
     ]);
+  });
+});
+
+test.describe("ETB triggers", () => {
+  /* Valley Mightcaller puts a +1/+1 counter on itself whenever another Frog,
+     Rabbit, Raccoon or Squirrel enters under the Horde's control. Scryfall is
+     blocked in the tests, so the type lines the trigger reads are set here,
+     on top of whatever deck the game was started with. */
+  const rig = (page, board) => page.evaluate((board) => {
+    const h = window.__horde;
+    h.G.cards.vm = {
+      key: "vm", name: "Valley Mightcaller", typeLine: "Legendary Creature — Frog Warrior",
+      power: "3", toughness: "3", isToken: false, resolved: true,
+    };
+    h.G.cards.fr = {
+      key: "fr", name: "Frog", typeLine: "Token Creature — Frog",
+      power: "1", toughness: "1", isToken: true, resolved: true,
+    };
+    h.G.board = board;
+    h.renderGame();
+  }, board);
+  const board = (page) => page.evaluate(() =>
+    window.__horde.G.board.map((s) => [s.cardKey, s.count, s.counters || null]));
+  const enter = (page, key, n) => page.evaluate(([key, n]) => {
+    const h = window.__horde;
+    h.createTokens(h.G.cards[key], n);
+    h.renderGame();
+  }, [key, n]);
+
+  test("a token entering grants every Mightcaller out a counter, whichever tile it is on",
+    async ({ app }) => {
+      await startGame(app, "Zombies Horde");
+      // Two Mightcallers, split across tiles by the counter one already has.
+      await rig(app, [{ cardKey: "vm", count: 1 }, { cardKey: "vm", count: 1, counters: { "+1/+1": 1 } }]);
+      await enter(app, "fr", 1);
+      const after = await board(app);
+      expect(after).toHaveLength(3);
+      expect(after).toEqual(expect.arrayContaining([
+        ["fr", 1, null], ["vm", 1, { "+1/+1": 1 }], ["vm", 1, { "+1/+1": 2 }],
+      ]));
+    });
+
+  test("a second Mightcaller entering triggers the first and not itself", async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+    await rig(app, [{ cardKey: "vm", count: 1, counters: { "+1/+1": 1 } }]);
+    await enter(app, "vm", 1);
+    const after = await board(app);
+    expect(after).toHaveLength(2);
+    expect(after).toEqual(expect.arrayContaining([["vm", 1, null], ["vm", 1, { "+1/+1": 2 }]]));
+  });
+
+  test("the entry and the triggers it fired are one Undo", async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+    await rig(app, [{ cardKey: "vm", count: 1 }]);
+    await enter(app, "fr", 2);
+    await expect(app.locator("#board .cf-counters")).toHaveCount(1);
+    await app.locator("#btn-undo").click();
+    expect(await board(app)).toEqual([["vm", 1, null]]);
+    await expect(app.locator("#board .cardface")).toHaveCount(1);
   });
 });

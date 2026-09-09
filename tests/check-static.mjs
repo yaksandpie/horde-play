@@ -72,10 +72,14 @@ if (manifest) {
 /* ---- 4. Every local file index.html references exists ---- */
 
 const refs = new Set();
-for (const [, attr, url] of html.matchAll(/\b(href|src)\s*=\s*"([^"]+)"/gi)) {
-  if (/^(https?:|data:|mailto:|#|\/\/)/i.test(url)) continue;
+const addRef = (url) => {
+  if (/^(https?:|data:|mailto:|#|\/\/)/i.test(url)) return;
   refs.add(url.replace(/^\.\//, "").split(/[?#]/)[0]);
-}
+};
+for (const [, , url] of html.matchAll(/\b(href|src)\s*=\s*"([^"]+)"/gi)) addRef(url);
+// The stylesheet is inlined, so what it loads — the fonts — is a reference of
+// the page's too.
+for (const [, , url] of html.matchAll(/\burl\(\s*(["']?)([^"')]+)\1\s*\)/gi)) addRef(url);
 for (const ref of refs) {
   if (!existsSync(join(ROOT, ref))) fail(`index.html references a missing file: ${ref}`);
 }
