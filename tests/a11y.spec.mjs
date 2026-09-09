@@ -11,7 +11,7 @@
  * signal that stays honest. If a rule ever needs to come off, take it off
  * explicitly in RULES below with a comment saying why. */
 import AxeBuilder from "@axe-core/playwright";
-import { test, expect, backToDecks } from "./fixtures.mjs";
+import { test, expect, backToDecks, startGame } from "./fixtures.mjs";
 
 /* WCAG 2.1 A and AA. Deliberately not `best-practice`: those are opinions
    rather than the standard, and mixing them in makes a failure ambiguous. */
@@ -92,3 +92,159 @@ test("the Bloomburrow palette is clean", async ({ app: page }) => {
   await expect(page.locator("#screen-game")).toBeVisible();
   await scan(page, "game — Bloomburrow skin");
 });
+
+/* ---- Keyboard ----
+
+   The app is built for a tablet, but "built for touch" is not a reason to be
+   unreachable without one. These drive it by key alone. */
+
+test("every screen change moves focus to the new screen", async ({ app: page }) => {
+  // Without this the old screen goes display:none under the focused element,
+  // the browser drops focus to <body>, and the next Tab starts from the top of
+  // the document with nothing said about where you now are.
+  for (const [button, screen, heading] of [
+    ["#btn-import", "#screen-import", "Import a decklist"],
+    ["#btn-bans", "#screen-bans", "Ban list"],
+  ]) {
+    await page.locator(button).click();
+    await expect(page.locator(screen)).toBeVisible();
+    await expect(page.locator(`${screen} h2`).first()).toBeFocused();
+    await expect(page.locator(`${screen} h2`).first()).toHaveText(heading);
+    await backToDecks(page);
+  }
+});
+
+test("a game can be started and played without a pointer", async ({ app: page }) => {
+  const row = page.locator(".deckrow").first();
+  await row.getByRole("button", { name: "New game" }).press("Enter");
+  await expect(page.locator("#screen-setup")).toBeVisible();
+
+  await page.locator("#btn-start").press("Enter");
+  await expect(page.locator("#screen-game")).toBeVisible();
+  await expect(page.locator("#screen-game h2").first()).toBeFocused();
+
+  // Space on the focused action tile takes the turn, and must take exactly one
+  // — the global shortcut handler bows out for a focused button so a single
+  // press can't fire both paths.
+  const before = await page.evaluate(() => window.__horde.G.turn);
+  await page.locator("#btn-action").focus();
+  await page.keyboard.press(" ");
+  await expect.poll(() => page.evaluate(() => window.__horde.G.turn)).toBeGreaterThan(before);
+});
+
+test("the sheets are reachable, dismissable and give focus back", async ({ app: page }) => {
+  await startGame(page, "Zombies Horde");
+
+  const opener = page.locator("#btn-log");
+  await opener.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#log-dialog")).toBeVisible();
+
+  // A native <dialog> opened with showModal() keeps Tab inside itself, so the
+  // page behind is unreachable until it closes.
+  await expect(page.locator("#log-dialog")).toContainText("Log");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#log-dialog")).toBeHidden();
+  await expect(opener).toBeFocused();
+});
+
+test("a keyboard shortcut is ignored while a sheet is open or a field has focus",
+  async ({ app: page }) => {
+    await startGame(page, "Zombies Horde");
+
+    await page.locator("#btn-log").click();
+    await expect(page.locator("#log-dialog")).toBeVisible();
+    const turn = await page.evaluate(() => window.__horde.G.turn);
+    await page.keyboard.press("u");
+    expect(await page.evaluate(() => window.__horde.G.turn)).toBe(turn);
+    await page.keyboard.press("Escape");
+  });
+
+/* ---- Screen reader ----
+
+   No real screen reader runs here. What can be checked is the thing a screen
+   reader reads: the accessibility tree, and whether the app writes to a live
+   region when the board changes underneath it. */
+
+test("every sheet is announced by name, not as a bare dialog", async ({ app: page }) => {
+  await startGame(page, "Zombies Horde");
+
+  for (const [button, dialog, name] of [
+    ["#btn-log", "#log-dialog", "Log"],
+    ["#btn-share", "#share-dialog", "Share this game"],
+  ]) {
+    await page.locator(button).click();
+    await expect(page.locator(dialog)).toBeVisible();
+    // aria-labelledby has to resolve to a real element with real text — an id
+    // pointing at nothing gives the dialog no name at all, silently.
+    const label = await page.locator(dialog).evaluate((d) => {
+      const t = document.getElementById(d.getAttribute("aria-labelledby"));
+      return t && t.textContent.trim();
+    });
+    expect(label, `${dialog} should be named "${name}"`).toBe(name);
+    await page.keyboard.press("Escape");
+  }
+});
+
+test("the token sheet is named by the step actually showing", async ({ app: page }) => {
+  await startGame(page, "Zombies Horde");
+  await page.locator("#btn-add-tokens").click();
+  await expect(page.locator("#token-dialog")).toBeVisible();
+
+  const named = () => page.locator("#token-dialog").evaluate((d) =>
+    document.getElementById(d.getAttribute("aria-labelledby"))?.textContent.trim());
+  expect(await named()).toBe("Create tokens");
+
+  await page.locator("#token-copy-open").click();
+  await expect(page.locator("#token-step-copysrc")).toBeVisible();
+  expect(await named()).toBe("Copy a creature");
+});
+
+test("what the Horde does is announced, not just written to the log",
+  async ({ app: page }) => {
+    await startGame(page, "Zombies Horde");
+    const status = page.locator("#sr-status");
+
+    // The region has to be in the tree from the start — one created at the
+    // moment of the announcement is not reliably spoken.
+    await expect(status).toHaveAttribute("aria-live", "polite");
+    await expect(status).toHaveAttribute("role", "status");
+
+    await page.locator("#btn-action").click();
+    await expect(status).not.toHaveText("");
+
+    // A wave logs several lines at once; they are flushed together so the
+    // region is not overwritten four times and read once.
+    const said = await status.textContent();
+    const newest = await page.evaluate(() => window.__horde.G.log[0].msg);
+    expect(said).toContain(newest);
+  });
+
+test("a repeated action is announced again rather than passing in silence",
+  async ({ app: page }) => {
+    await startGame(page, "Zombies Horde");
+
+    /* Writing an identical string to a live region is not a change, and so is
+       never spoken — two identical waves in a row would announce once. The
+       region clears before it refills, which is two mutations either way.
+       Watching the mutations is the only way to see that from out here; the
+       final text alone can't tell the two implementations apart. */
+    await page.evaluate(() => {
+      window.__seen = [];
+      new MutationObserver(() => window.__seen.push(document.getElementById("sr-status").textContent))
+        .observe(document.getElementById("sr-status"), { childList: true, characterData: true, subtree: true });
+    });
+
+    await page.locator("#btn-action").click();
+    await expect(page.locator("#sr-status")).not.toHaveText("");
+    await page.locator("#btn-action").click();
+    await expect(page.locator("#sr-status")).not.toHaveText("");
+
+    const seen = await page.evaluate(() => window.__seen);
+    const filled = seen.filter((t) => t !== "");
+    expect(filled.length, `expected two announcements, saw ${JSON.stringify(seen)}`)
+      .toBeGreaterThanOrEqual(2);
+    // The clear between them is what makes the second one audible.
+    expect(seen.indexOf(""), `expected the region to be cleared between announcements`)
+      .toBeGreaterThan(-1);
+  });

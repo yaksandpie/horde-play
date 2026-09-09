@@ -105,5 +105,17 @@ a:focus-visible {
 .screen { display: none; }
 .screen.active { display: block; }
 .hidden { display: none !important; }
+
+/* Present to a screen reader, absent to everyone else. Not display:none and
+   not visibility:hidden — both of those take it out of the accessibility tree
+   too, which is the opposite of the point. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 /* A display rule on a class would otherwise outrank the hidden attribute. */
 [hidden] { display: none !important; }

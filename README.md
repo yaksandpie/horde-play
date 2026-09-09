@@ -310,7 +310,10 @@ inlined, the manifest, the icons, and the service worker.
   in each state a player passes through, including the Bloomburrow skin, which
   is the one path that swaps the colour tokens. It asserts no violations at
   all: the app is clean today, so there is no baseline of known failures to
-  carry, and a rule that ever has to come off should come off by name.
+  carry, and a rule that ever has to come off should come off by name. The
+  same file covers what axe cannot — that a game can be started and played by
+  keyboard alone, that focus follows a screen change, and that the live region
+  announces what the Horde did rather than leaving it only in the log.
 
 Scryfall is stubbed out in every test, so the suite runs offline, deterministically,
 and without hammering a free public API on each push. That also means CI exercises

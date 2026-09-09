@@ -170,6 +170,38 @@ function undo() {
 function logit(msg) {
   G.log.unshift({ t: G.turn, msg });
   if (G.log.length > 150) G.log.pop();
+  announce(msg);
+}
+
+/* ---- Announcements ----
+
+   The log is the running account of what the Horde just did, and until now it
+   was only readable — you had to open the sheet and look. logit() is the one
+   funnel every game event passes through, so hanging the live region off it
+   covers the whole app rather than the handful of places someone remembered.
+
+   One action can log several lines (a wave puts out four creatures, then
+   attacks), and a live region given four rapid writes announces the last one
+   and drops the rest. So they are collected and flushed together on the next
+   microtask, by which point the action has finished logging. */
+let srQueue = [];
+
+function announce(msg) {
+  srQueue.push(msg);
+  if (srQueue.length === 1) queueMicrotask(flushAnnouncements);
+}
+
+function flushAnnouncements() {
+  const text = srQueue.join(". ");
+  srQueue = [];
+  const el = document.getElementById("sr-status");
+  if (!el) return;
+  /* A live region announces a *change*. Two identical waves in a row would
+     write the same string twice and the second would pass in silence, so the
+     region is cleared first and filled on the next frame — two mutations, and
+     the repeat is spoken like any other. */
+  el.textContent = "";
+  requestAnimationFrame(() => { el.textContent = text; });
 }
 
 /* ---- Counters ----

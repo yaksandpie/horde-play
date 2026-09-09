@@ -102,7 +102,7 @@
   <!-- ================= DECKS ================= -->
   <section class="screen" id="screen-decks">
     <div class="panel">
-      <h2>Horde decks</h2>
+      <h2 tabindex="-1">Horde decks</h2>
       <div class="decklist" id="deck-list"></div>
       <div class="row foot">
         <button class="btn primary" id="btn-import">Import a decklist</button>
@@ -149,7 +149,7 @@
   <!-- ================= IMPORT ================= -->
   <section class="screen" id="screen-import">
     <div class="panel" id="import-step-paste">
-      <h2>Import a decklist</h2>
+      <h2 tabindex="-1">Import a decklist</h2>
       <label class="field">
         <span>Deck name</span>
         <input class="txt" id="import-name" placeholder="My Horde" autocomplete="off">
@@ -212,7 +212,7 @@ Tokens:
       <div class="row" style="margin-bottom:12px">
         <button class="btn sm ghost" id="btn-bans-back">&larr; Back to decks</button>
       </div>
-      <h2>Ban list</h2>
+      <h2 tabindex="-1">Ban list</h2>
       <p class="small muted" style="margin:0 0 4px">
         These are barred from the <em>survivors'</em> EDH decks, not from the Horde's library, so the
         app can't enforce them &mdash; it carries the list so it's on the table, and works offline.
@@ -246,7 +246,7 @@ Tokens:
   <!-- ================= SETUP ================= -->
   <section class="screen" id="screen-setup">
     <div class="panel">
-      <h2>New game &mdash; <span id="setup-deckname"></span></h2>
+      <h2 tabindex="-1">New game &mdash; <span id="setup-deckname"></span></h2>
 
       <div id="setup-players" class="stack"></div>
       <div class="row" style="margin:10px 0 18px">
@@ -310,6 +310,7 @@ Tokens:
 
   <!-- ================= GAME ================= -->
   <section class="screen" id="screen-game">
+    <h2 class="sr-only" tabindex="-1">Game in progress</h2>
     <!-- Only up for a viewer, who is watching someone else's table and can change nothing. -->
     <div class="viewerbar" id="viewer-bar" hidden>
       <span class="dotlive" id="viewer-dot" aria-hidden="true"></span>
@@ -400,7 +401,7 @@ Tokens:
   <section class="screen" id="screen-end">
     <div id="end-weather" aria-hidden="true"></div>
     <div class="panel" style="text-align:center; padding:34px 20px">
-      <h2 id="end-title" style="font-size:30px; text-transform:none; letter-spacing:0; color:var(--ink)"></h2>
+      <h2 id="end-title" tabindex="-1" style="font-size:30px; text-transform:none; letter-spacing:0; color:var(--ink)"></h2>
       <p class="muted" id="end-sub" style="margin-bottom:18px"></p>
       <div class="tally" id="end-stats" style="margin-bottom:22px"></div>
       <div class="row" style="justify-content:center">
@@ -412,8 +413,13 @@ Tokens:
 
 </div>
 
-<dialog id="damage-dialog" class="sheet">
-  <h3>Damage the Horde</h3>
+<!-- Everything that reaches the log reaches here too, so a screen-reader
+     player hears the wave, the mill and the deaths a sighted player reads.
+     Batched per action by announce(), so one wave is one announcement. -->
+<p id="sr-status" class="sr-only" role="status" aria-live="polite"></p>
+
+<dialog id="damage-dialog" aria-labelledby="dmg-title" class="sheet">
+  <h3 id="dmg-title">Damage the Horde</h3>
   <p class="sub" id="dd-sub"></p>
   <div class="bignum" id="mill-out">0</div>
   <!-- build:partial pad mill-pad -->
@@ -426,8 +432,8 @@ Tokens:
   </p>
 </dialog>
 
-<dialog id="life-dialog" class="sheet">
-  <h3>Survivors</h3>
+<dialog id="life-dialog" aria-labelledby="life-title" class="sheet">
+  <h3 id="life-title">Survivors</h3>
   <p class="sub lifetotal"><b id="life-n">0</b> life left &mdash; one shared pool.</p>
   <div class="bignum life" id="life-out">0</div>
   <!-- build:partial pad life-pad -->
@@ -450,7 +456,7 @@ Tokens:
   <button class="btn ghost wide" id="ld-close" style="margin-top:14px">Done</button>
 </dialog>
 
-<dialog id="card-dialog" class="cardview">
+<dialog id="card-dialog" aria-labelledby="cv-name" class="cardview">
   <div class="cv-art"><div class="slot" id="cv-slot"></div></div>
   <h3 id="cv-name"></h3>
   <p class="sub" id="cv-type"></p>
@@ -469,9 +475,9 @@ Tokens:
   <button class="btn ghost wide" id="cv-close" style="margin-top:10px">Close</button>
 </dialog>
 
-<dialog id="token-dialog" class="sheet">
+<dialog id="token-dialog" aria-labelledby="token-h-pick" class="sheet">
   <div id="token-step-pick">
-    <h3>Create tokens</h3>
+    <h3 id="token-h-pick">Create tokens</h3>
     <p class="sub" id="token-pick-sub">
       Anything that puts tokens on the battlefield &mdash; Hare Apparent, Empty the Warrens, Skeletal
       Swarming, Rite of Belzenlok. A manual add: the library, graveyard and wave count are untouched.
@@ -492,7 +498,7 @@ Tokens:
     <button class="btn ghost wide" id="token-pick-close" style="margin-top:8px">Close</button>
   </div>
   <div id="token-step-copysrc" hidden>
-    <h3>Copy a creature</h3>
+    <h3 id="token-h-copysrc">Copy a creature</h3>
     <p class="sub">
       For &ldquo;create a token that&rsquo;s a copy of target creature&rdquo;. Tap one the Horde
       already has out, or search by name for a survivor&rsquo;s creature &mdash; the copy is a
@@ -539,7 +545,7 @@ Tokens:
     </div>
   </div>
   <div id="token-step-custom" hidden>
-    <h3>Plain token</h3>
+    <h3 id="token-h-custom">Plain token</h3>
     <p class="sub">
       No art or rules text &mdash; just enough for the board and the attacking total.
     </p>
@@ -575,7 +581,7 @@ Tokens:
   </div>
 </dialog>
 
-<dialog id="counters-dialog" class="sheet">
+<dialog id="counters-dialog" aria-labelledby="ct-name" class="sheet">
   <h3 id="ct-name"></h3>
   <p class="sub" id="ct-sub"></p>
 
@@ -604,8 +610,8 @@ Tokens:
   </div>
 </dialog>
 
-<dialog id="yard-dialog" class="sheet">
-  <h3>Graveyard</h3>
+<dialog id="yard-dialog" aria-labelledby="yard-title" class="sheet">
+  <h3 id="yard-title">Graveyard</h3>
   <p class="sub" id="yd-sub"></p>
   <div class="cardgrid tokengrid" id="yd-grid" style="margin-bottom:6px"></div>
   <p class="muted small" id="yd-empty" hidden>
@@ -614,7 +620,7 @@ Tokens:
   <button class="btn ghost wide" id="yd-close" style="margin-top:10px">Close</button>
 </dialog>
 
-<dialog id="log-dialog" class="sheet">
+<dialog id="log-dialog" aria-labelledby="log-title" class="sheet">
   <h3 id="log-title" tabindex="-1">Log</h3>
   <p class="sub">Newest first &mdash; every wave, mill and life change this game, by round.</p>
   <ul class="log" id="log"></ul>
@@ -622,8 +628,8 @@ Tokens:
   <button class="btn ghost wide" id="log-close" style="margin-top:12px">Close</button>
 </dialog>
 
-<dialog id="share-dialog" class="sheet">
-  <h3>Share this game</h3>
+<dialog id="share-dialog" aria-labelledby="share-title" class="sheet">
+  <h3 id="share-title">Share this game</h3>
   <p class="sub">Viewers get the board, the wave and the counters, with no controls to press. Give the code out the way you'd give out a password.</p>
 
   <div class="codebox" id="share-codebox">
@@ -646,8 +652,8 @@ Tokens:
   <button class="btn ghost wide" id="sh-close" style="margin-top:12px">Close</button>
 </dialog>
 
-<dialog id="join-dialog" class="sheet">
-  <h3>Watch a game</h3>
+<dialog id="join-dialog" aria-labelledby="join-title" class="sheet">
+  <h3 id="join-title">Watch a game</h3>
   <p class="sub">Type the code from the screen running the game. You’ll see its board; you won’t be able to touch it.</p>
   <label class="field">
     <span>Game code</span>
@@ -664,7 +670,7 @@ Tokens:
   </p>
 </dialog>
 
-<dialog id="confirm-dialog">
+<dialog id="confirm-dialog" aria-labelledby="cd-title">
   <h3 style="margin:0 0 6px" id="cd-title"></h3>
   <p class="muted small" id="cd-body" style="margin:0 0 16px"></p>
   <div class="row" style="justify-content:flex-end">
