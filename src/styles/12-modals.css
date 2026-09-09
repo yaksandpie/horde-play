@@ -1,8 +1,13 @@
 /* ---------- Modal internals ---------- */
 
 dialog.sheet { max-width: 380px; }
-.sheet h3 { margin: 0 0 2px; font-size: 20px; }
-.sheet .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; }
+/* 4px, not the 2px this rule used to carry: eleven of the thirteen sheet
+   titles overrode it inline to 4px, so 2px was the value nobody wanted. */
+.sheet h3 { margin: 0 0 4px; font-size: 20px; }
+/* 14px matches .small and .cardview .sub — the app's one small-text size.
+   This rule read 13.5px while every sheet that hand-rolled its own subtitle
+   used .small at 14px, so the odd half-pixel was never really in use. */
+.sheet .sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
 .bignum {
   font-family: "Cinzel", Georgia, serif; font-weight: 700;
   font-size: 48px; line-height: 1; text-align: center;
