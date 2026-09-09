@@ -407,3 +407,53 @@ test("a definition with no room beneath it opens above the word instead",
     expect(p.y + p.height).toBeLessThanOrEqual(w.y);
     expect(p.y).toBeGreaterThanOrEqual(0);
   });
+
+test("each ending gets its own weather: confetti for the win, ash for the loss",
+  async ({ app }) => {
+    await startGame(app, "Zombies Horde");
+
+    // The survivors go down: life to zero, and the game screen re-renders into
+    // the end screen the way it does after any action that kills them.
+    await app.evaluate(() => {
+      window.__horde.adjustLife(-999);
+      window.__horde.renderGame();
+    });
+    await expect(app.locator("#screen-end")).toBeVisible();
+    await expect(app.locator("#end-title")).toHaveText("The Horde wins.");
+
+    const weather = app.locator("#end-weather");
+    await expect(weather).toHaveClass("ash");
+    // Rising, unspinning and round — the confetti's opposite on every axis.
+    const mote = weather.locator("i").first();
+    await expect(mote).toHaveCSS("animation-name", "ash-rise");
+    await expect(mote).toHaveCSS("border-radius", "50%");
+
+    // And the win still gets the confetti it always had.
+    await backToDecks(app);
+    await startGame(app, "Zombies Horde");
+    await app.evaluate(() => {
+      const H = window.__horde;
+      H.G.library = [];
+      H.G.revealed = [];
+      H.G.board = [];
+      H.G.over = "survivors";
+      H.renderGame();
+    });
+    await expect(app.locator("#end-title")).toHaveText("The Horde falls.");
+    await expect(weather).toHaveClass("confetti");
+    await expect(weather.locator("i").first())
+      .toHaveCSS("animation-name", "confetti-fall");
+  });
+
+test("neither ending animates for a reader who asked for less motion",
+  async ({ app }) => {
+    await app.emulateMedia({ reducedMotion: "reduce" });
+    await startGame(app, "Zombies Horde");
+    await app.evaluate(() => {
+      window.__horde.adjustLife(-999);
+      window.__horde.renderGame();
+    });
+    await expect(app.locator("#screen-end")).toBeVisible();
+    // Not spawned and then hidden by CSS — never spawned at all.
+    await expect(app.locator("#end-weather i")).toHaveCount(0);
+  });
