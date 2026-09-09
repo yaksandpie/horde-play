@@ -13,26 +13,35 @@
  *
  * Dependency-free apart from the build itself: `node tests/check-cache-version.mjs`.
  */
-import { readFile, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const PAGE = join(ROOT, "src", "index.html");
 
-const build = () => execFileSync("node", [join(ROOT, "build.mjs")], { cwd: ROOT, stdio: "pipe" });
+/* Everything happens on a copy: the perturbation goes into a scratch src/ and
+   the builds land in a scratch out/, so the real source is never edited and
+   a run killed halfway leaves nothing behind but a temp directory. */
+const WORK = await mkdtemp(join(tmpdir(), "horde-cache-version-"));
+const SRC = join(WORK, "src");
+const OUT = join(WORK, "out");
+const PAGE = join(SRC, "index.html");
+
+const build = () =>
+  execFileSync("node", [join(ROOT, "build.mjs"), "--src", SRC, "--out", OUT], { cwd: ROOT, stdio: "pipe" });
 const versionOf = async () => {
-  const sw = await readFile(join(ROOT, "_site", "sw.js"), "utf8");
+  const sw = await readFile(join(OUT, "sw.js"), "utf8");
   const m = sw.match(/const CACHE_VERSION\s*=\s*"([^"]+)"/);
   if (!m) throw new Error("built sw.js has no CACHE_VERSION");
   return m[1];
 };
 
-const original = await readFile(PAGE, "utf8");
 const problems = [];
 
 try {
+  await cp(join(ROOT, "src"), SRC, { recursive: true });
   build();
   const before = await versionOf();
   if (!/^v[0-9a-f]{12}$/.test(before)) {
@@ -46,6 +55,7 @@ try {
   if (again !== before) problems.push(`Two builds of the same source disagreed: ${before} then ${again}.`);
 
   // A changed app shell must change the version. This is the whole point.
+  const original = await readFile(PAGE, "utf8");
   await writeFile(PAGE, original.replace("</head>", "<!-- cache version probe -->\n</head>"));
   build();
   const after = await versionOf();
@@ -53,8 +63,7 @@ try {
     problems.push(`The app shell changed but CACHE_VERSION stayed ${after}. Installed copies would keep serving the old shell.`);
   }
 } finally {
-  await writeFile(PAGE, original);
-  build();
+  await rm(WORK, { recursive: true, force: true });
 }
 
 if (problems.length) {

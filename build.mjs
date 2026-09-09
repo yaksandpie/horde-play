@@ -13,20 +13,33 @@
  * cannot ship under a stale cache version.
  *
  *   node build.mjs
+ *   node build.mjs --src <dir> --out <dir>   # build another tree somewhere else
  */
 import { rm, mkdir, readFile, writeFile, copyFile, readdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
-const SRC = join(ROOT, "src");
-const OUT = join(ROOT, "_site");
+
+/* Both default to the repo's own src/ and _site/. The cache-version check
+   passes its own, so it can perturb a copy of the source rather than the
+   source, and leave _site alone. */
+const flag = (name, fallback) => {
+  const i = process.argv.indexOf(name);
+  return i > 0 && process.argv[i + 1] ? resolve(process.argv[i + 1]) : fallback;
+};
+const SRC = flag("--src", join(ROOT, "src"));
+const OUT = flag("--out", join(ROOT, "_site"));
 
 /* Copied through untouched. Icons are referenced by the manifest and the
-   page; the manifest is referenced by the page. */
+   page; the manifest is referenced by the page; the fonts by the stylesheet.
+   Everything here is precached, so a font added under src/fonts/ is in the
+   shell without anyone listing it. */
 const ASSETS = ["manifest.json", "icon-192.png", "icon-512.png", "icon-180.png"];
+const fontFiles = async () =>
+  (await readdir(join(SRC, "fonts"))).filter((f) => f.endsWith(".woff2")).sort().map((f) => "fonts/" + f);
 
 /* ---- the stylesheet ---------------------------------------------------- */
 
@@ -58,6 +71,9 @@ async function buildJs() {
     // Card names carry accents and the prose carries em dashes; without this
     // esbuild would escape them all into \u sequences.
     charset: "utf8",
+    // The readable source is src/; what ships is for the tablet to run. This
+    // takes about 40% off the script, and the page it's inlined into.
+    minify: true,
     write: false,
     logLevel: "warning",
   });
@@ -133,11 +149,13 @@ async function main() {
     .replace("<!-- build:script -->", () => `<script>\n${js.replace(/<\/script/gi, "<\\/script")}</script>`);
 
   await writeFile(join(OUT, "index.html"), page);
-  for (const a of ASSETS) await copyFile(join(SRC, a), join(OUT, a));
+  const assets = [...ASSETS, ...(await fontFiles())];
+  await mkdir(join(OUT, "fonts"), { recursive: true });
+  await Promise.all(assets.map((a) => copyFile(join(SRC, a), join(OUT, a))));
 
   /* The service worker precaches whatever the build produced, under a version
      that is a hash of those same bytes. "./" is the page itself. */
-  const shell = ["index.html", ...ASSETS];
+  const shell = ["index.html", ...assets];
   const bytes = await Promise.all(shell.map((f) => readFile(join(OUT, f))));
   const version = "v" + shortHash(bytes);
   const sw = (await readFile(join(SRC, "sw.js"), "utf8"))

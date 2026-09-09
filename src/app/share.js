@@ -2,7 +2,8 @@
 
 import { $, el, sleep } from "./helpers.js";
 import {
-  COLLECTION_CHUNK, SCRYFALL, THROTTLE_MS, cardFromEntry, cardFromScryfall, sfJSON,
+  COLLECTION_CHUNK, IMAGE_CONCURRENCY, SCRYFALL, THROTTLE_MS, cardFromEntry, cardFromScryfall,
+  fetchJSON,
 } from "./scryfall.js";
 import { primeImage, primeImages } from "./cards.js";
 import { G, normCounters, setG } from "./state.js";
@@ -192,6 +193,11 @@ function decodeSnapshot(snap, cards) {
   };
 }
 
+/* The only place an image URL crosses the wire, and a viewer fetches it. The
+   room code is the whole of the access control on that wire, so the URL is
+   held to where the host's own art came from rather than fetched on trust. */
+const SCRYFALL_ART = /^https:\/\/([a-z0-9-]+\.)*scryfall\.(io|com)\//i;
+
 function cardFromInline(c) {
   const [, name, typeLine, oracleText, power, toughness, isToken, isLegendary,
     hasDefender, colors, rarity, catHint, resolved, handmade,
@@ -201,7 +207,8 @@ function cardFromInline(c) {
     rarity: rarity || null,
     isLegendary: !!isLegendary, hasDefender: !!hasDefender, typeLine,
     manaCost: "", oracleText, power, toughness,
-    colors: colors ? colors.split("") : [], imageUri: imageUri || null,
+    colors: colors ? colors.split("") : [],
+    imageUri: SCRYFALL_ART.test(imageUri || "") ? imageUri : null,
     // Without catHint a card with no type line stops counting as a creature.
     catHint: catHint || null, resolved: !!resolved, handmade: !!handmade,
     // Only the badge cares, but a copy that read as a plain token on the
@@ -508,7 +515,12 @@ async function viewerResolveLoop() {
 
 /* Fill viewerCards with everything this snapshot names. Inline cards come with
    the snapshot; the rest are Scryfall ids resolved through the same endpoint
-   and image cache the import uses, so a viewer gets real art. */
+   and image cache the import uses, so a viewer gets real art.
+
+   Not through sfJSON: that one remembers a failure as "offline" and refuses
+   every call after it, which is right for an import and wrong here, where a
+   viewer never runs the import that would clear it. One dropped request would
+   otherwise leave every later card an "Unknown card" for the rest of the game. */
 async function viewerResolve(snap) {
   for (const c of snap.ic || []) {
     if (!viewerCards[c[0]]) viewerCards[c[0]] = cardFromInline(c);
@@ -524,7 +536,7 @@ async function viewerResolve(snap) {
   for (let i = 0; i < missing.length; i += COLLECTION_CHUNK) {
     const slice = missing.slice(i, i + COLLECTION_CHUNK);
     try {
-      const data = await sfJSON(SCRYFALL + "/cards/collection", {
+      const data = await fetchJSON(SCRYFALL + "/cards/collection", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifiers: slice.map((id) => ({ id })) }),
@@ -547,8 +559,8 @@ async function viewerResolve(snap) {
   }
 
   const fresh = [...want].map((r) => viewerCards[r]).filter((c) => c && c.imageUri);
-  for (let i = 0; i < fresh.length; i += 6) {
-    await Promise.all(fresh.slice(i, i + 6).map((c) => primeImage(c)));
+  for (let i = 0; i < fresh.length; i += IMAGE_CONCURRENCY) {
+    await Promise.all(fresh.slice(i, i + IMAGE_CONCURRENCY).map((c) => primeImage(c)));
   }
 }
 

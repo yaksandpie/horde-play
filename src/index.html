@@ -13,9 +13,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Horde">
 <meta name="theme-color" content="#2c2a25">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Karla:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<!-- The two faces the page is set in, shipped with it: a font fetched from
+     a third party is neither in the service worker's shell nor available
+     offline, and its stylesheet blocked first paint while the request went
+     out to fail. Preloaded because a font is otherwise only requested once
+     layout finds a glyph that needs it. -->
+<link rel="preload" href="fonts/karla-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/cinzel-latin.woff2" as="font" type="font/woff2" crossorigin>
 <!-- build:styles -->
 </head>
 <body>

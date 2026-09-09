@@ -23,37 +23,45 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+/* Only a good response is worth keeping. A 404 or 503 from Pages mid-deploy,
+   or a captive portal's 200 with someone else's page in it, would otherwise
+   replace the shell an installed copy has to fall back on. */
+const keep = (request, response) => {
+  if (!response.ok || response.type !== "basic") return;
+  const copy = response.clone();
+  caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+};
+
+const cachedPage = (request) =>
+  caches.match(request).then((cached) => cached || caches.match("./index.html"));
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
   // Page loads: try the network first so you always get the latest version
-  // when you have signal, and fall back to the cached copy when you don't.
+  // when you have signal, and fall back to the cached copy when you don't —
+  // or when what came back is an error page rather than the app.
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
+          if (response.ok) { keep(request, response); return response; }
+          return cachedPage(request).then((cached) => cached || response);
         })
-        .catch(() => caches.match(request).then((cached) => cached || caches.match("./index.html")))
+        .catch(() => cachedPage(request))
     );
     return;
   }
 
-  // Same-origin assets (manifest, icons): serve from cache instantly,
+  // Same-origin assets (manifest, icons, fonts): serve from cache instantly,
   // and refresh the cache in the background when online.
   if (new URL(request.url).origin === self.location.origin) {
     event.respondWith(
       caches.match(request).then((cached) => {
         const networkFetch = fetch(request)
-          .then((response) => {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-            return response;
-          })
-          .catch(() => cached);
+          .then((response) => { keep(request, response); return response; })
+          .catch(() => cached || Response.error());
         return cached || networkFetch;
       })
     );

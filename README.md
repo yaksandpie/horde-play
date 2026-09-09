@@ -296,11 +296,12 @@ inlined, the manifest, the icons, and the service worker.
 - **Static checks** — builds the site, which is what catches an unresolved
   import or a syntax error in any module, then runs `node tests/check-static.mjs`
   (no dependencies) on the output: the inline script and `sw.js` parse,
-  `manifest.json` is valid, and every file the page and the service worker
-  reference is really sitting there in `_site`.
-- **Service worker cache version** — builds, perturbs the app shell, builds
-  again, and checks the version moved. Nobody bumps it by hand any more, so
-  what's worth checking is that the build's own hashing still works.
+  `manifest.json` is valid, and every file the page, the stylesheet and the
+  service worker reference is really sitting there in `_site`. The same job
+  then runs `node tests/check-cache-version.mjs`, which builds a copy of the
+  source, perturbs the app shell, builds again, and checks the cache version
+  moved. Nobody bumps it by hand any more, so what's worth checking is that
+  the build's own hashing still works.
 - **Browser tests** — Playwright drives real Chromium against the real page:
   `tests/rules.spec.mjs` unit-tests the game rules through the `window.__horde`
   harness the app already exposes, `tests/share.spec.mjs` covers the live-share

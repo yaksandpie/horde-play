@@ -13,11 +13,13 @@ const objectUrls = new Map(); // scryfallId -> object URL
 async function primeImages(cards) {
   for (const url of objectUrls.values()) URL.revokeObjectURL(url);
   objectUrls.clear();
-  for (const card of cards) {
-    if (!card.scryfallId) continue;
-    const blob = await getImage(card.scryfallId);
-    if (blob) objectUrls.set(card.scryfallId, URL.createObjectURL(blob));
-  }
+  // Every read at once rather than one after another: this runs at the start
+  // of every game, over every card in the deck.
+  const ids = [...new Set(cards.map((c) => c.scryfallId).filter(Boolean))];
+  const blobs = await Promise.all(ids.map(getImage));
+  ids.forEach((id, i) => {
+    if (blobs[i]) objectUrls.set(id, URL.createObjectURL(blobs[i]));
+  });
 }
 
 /* One card's art, on demand: a token created mid-game never went through the

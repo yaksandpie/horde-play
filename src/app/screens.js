@@ -65,11 +65,20 @@ document.addEventListener("visibilitychange", () => {
 
 /* Bundled decks are stored compactly and enriched from Scryfall on first use;
    until then they play as text cards with the token flag from the decklist. */
+const bundledId = (b) => "b_" + b.name.replace(/\W+/g, "").toLowerCase();
+
+/* What a bundled decklist says, as one string: an enriched copy carries the
+   signature of the list it was made from, so a later change to that list is
+   told apart from the copy of it a device already holds. */
+const bundledSignature = (b) =>
+  b.entries.map((e) => e.q + "\u00d7" + e.n + (e.t ? "/t" : "")).join("\n");
+
 function hydrateBundled(b) {
   return {
-    id: "b_" + b.name.replace(/\W+/g, "").toLowerCase(),
+    id: bundledId(b),
     name: b.name,
     builtin: true,
+    source: bundledSignature(b),
     waveEnd: b.waveEnd,
     enriched: false,
     entries: b.entries.map((e) => ({
@@ -79,8 +88,16 @@ function hydrateBundled(b) {
   };
 }
 
+/* An enriched bundled deck is saved like an imported one and stands in for
+   the bundled copy from then on. It only should while the bundled list is the
+   one it was made from: a fix to the decklist upstream would otherwise never
+   reach a device that had already played it. A saved copy whose source no
+   longer matches steps aside, and the fresh list enriches again on its next
+   game. Copies saved before the signature existed are taken as current. */
 function allDecks() {
-  const saved = loadDecks();
+  const current = new Map(BUNDLED_DECKS.map((b) => [bundledId(b), bundledSignature(b)]));
+  const saved = loadDecks().filter((d) =>
+    !d.builtin || d.source == null || d.source === current.get(d.id));
   const savedIds = new Set(saved.map((d) => d.id));
   const builtin = BUNDLED_DECKS.map(hydrateBundled).filter((d) => !savedIds.has(d.id));
   return saved.concat(builtin);
@@ -569,9 +586,11 @@ function renderGame() {
     return;
   }
 
+  const pw = attackingPower();
+  const partial = powerIsPartial();
   $("#c-library").textContent = G.library.length;
   $("#c-board").textContent = creatureCount();
-  $("#c-power").textContent = attackingPower() + (powerIsPartial() ? "+?" : "");
+  $("#c-power").textContent = pw + (partial ? "+?" : "");
   $("#c-yard").textContent = yardTotal();
   $("#c-turn").textContent = G.turn;
   $("#game-rules").textContent = rulesetOfGame(G).name + " — waves end on " +
@@ -589,16 +608,18 @@ function renderGame() {
   $("#mill-out").textContent = millInput || "0";
   $("#dd-sub").textContent = G.library.length + " cards left in the library.";
   $("#dd-mill").textContent = millInput ? "Mill " + millInput : "Mill";
-  const pw = attackingPower();
   const takeAll = $("#life-all");
   takeAll.textContent = pw > 0 ? "Take all " + pw : "Nothing is attacking";
   takeAll.disabled = pw <= 0;
-  $("#life-partial").hidden = !powerIsPartial();
+  $("#life-partial").hidden = !partial;
   $("#btn-undo").disabled = undoStack.length === 0;
 
   renderStage();
   renderBoard();
-  renderLog();
+  // The log is drawn when its sheet opens. While it's open — a viewer's board
+  // moves under it — every render keeps it current; closed, 150 rows a keypress
+  // would be built for nobody.
+  if ($("#log-dialog").open) renderLog();
   renderGameActions();
   renderShare();
 }

@@ -333,7 +333,8 @@ test.describe("the wire format", () => {
         // exactly the trap: the lookup would hand back the 2/2, not the copy.
         const printed = Object.assign(
           window.__horde.cardFromEntry({ name: "Diregraf Ghoul" }), {
-            key: "c_printed", scryfallId: "0000-printed", imageUri: "https://img/ghoul.jpg",
+            key: "c_printed", scryfallId: "0000-printed",
+            imageUri: "https://cards.scryfall.io/normal/front/0/0/ghoul.jpg",
             typeLine: "Creature — Zombie", power: "2", toughness: "2", resolved: true,
           });
         const copy = buildCopyToken(printed, { power: "4", toughness: "4" });
@@ -367,8 +368,25 @@ test.describe("the wire format", () => {
       // The copy still points at the printed card's art, so a watching phone
       // sees the same picture the table does.
       expect(out.art).toBe("0000-printed");
-      expect(out.image).toBe("https://img/ghoul.jpg");
+      expect(out.image).toBe("https://cards.scryfall.io/normal/front/0/0/ghoul.jpg");
     });
+
+  test("an inline card's art is only fetched from Scryfall", async ({ app }) => {
+    /* The room code is all that guards the wire, so a viewer must not be made
+       to fetch whatever URL a snapshot names. Anything else is dropped and the
+       card gets a text face. */
+    const images = await app.evaluate(() => {
+      const row = (uri) => ["x0", "Ghoul", "Creature — Zombie", "", "2", "2", 0, 0, 0, "B", "common",
+        "", 1, 0, 1, "0000-printed", uri];
+      return [
+        "https://cards.scryfall.io/normal/front/0/0/ghoul.jpg",
+        "https://img.example.com/ghoul.jpg",
+        "http://cards.scryfall.io/normal/front/0/0/ghoul.jpg",
+        "https://cards.scryfall.io.example.com/ghoul.jpg",
+      ].map((uri) => window.__horde.cardFromInline(row(uri)).imageUri);
+    });
+    expect(images).toEqual(["https://cards.scryfall.io/normal/front/0/0/ghoul.jpg", null, null, null]);
+  });
 });
 
 test.describe("viewer mode", () => {
