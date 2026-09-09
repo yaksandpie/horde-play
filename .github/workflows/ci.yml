@@ -42,11 +42,27 @@ jobs:
       - name: Check the built site
         run: node tests/check-static.mjs
 
+  # A few seconds of building that would ride on the job above for free —
+  # but the ruleset on main requires a check by this name, so the job stays
+  # until that list is edited. Fold it into "Static checks" once it is.
+  cache-version:
+    name: Service worker cache version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install the build
+        run: npm ci
+
       # Nobody bumps CACHE_VERSION by hand any more — the build hashes the
       # shell's own bytes. This checks that derivation is really wired up, by
-      # perturbing a copy of the shell and watching the version move. A few
-      # seconds of building, so it rides on this job's checkout and install
-      # rather than paying for its own.
+      # perturbing a copy of the shell and watching the version move.
       - name: Prove the cache version tracks the app shell
         run: node tests/check-cache-version.mjs
 
