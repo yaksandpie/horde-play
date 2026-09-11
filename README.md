@@ -344,6 +344,11 @@ origin (service workers and IndexedDB don't work over `file://`).
 - `build.mjs` — assembles `_site/`, the site Pages serves
 - `src/index.html` — the markup, with `<!-- build:styles -->` and
   `<!-- build:script -->` where the build inlines the rest
+- `src/partials/*.html` — markup the page uses more than once. A
+  `<!-- build:partial pad mill-pad -->` in `src/index.html` inlines
+  `src/partials/pad.html` with `__ID__` replaced by `mill-pad`. The numeric
+  keypad is the only one so far — the same eleven buttons in the damage sheet,
+  the life sheet and the token quantity step
 - `src/styles/*.css` — the stylesheet, one file per section. CSS is
   order-dependent, so the numeric prefix *is* the cascade order
 - `src/app/*.js` — the app as ES modules, cut at the seams the one-file
@@ -353,6 +358,10 @@ origin (service workers and IndexedDB don't work over `file://`).
 - `src/decks/*.json` — one horde deck per file; `src/decks.js` lists them in
   the order they appear on the decks screen
 - `src/manifest.json`, `src/icon-*.png` — manifest and app icons
+- `src/fonts/*.woff2` — Cinzel and Karla, latin-subset and served from the same
+  origin rather than a font CDN, so an installed copy has them offline. The
+  build copies whatever is in the directory and the service worker precaches it:
+  adding a face is a file plus an `@font-face` rule, with no list to update
 - `src/sw.js` — service worker template (network-first on page loads,
   cache-first on assets). The build fills in `CACHE_VERSION` and `APP_SHELL`
 - `tests/` — the checks CI runs
