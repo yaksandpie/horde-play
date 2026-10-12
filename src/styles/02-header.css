@@ -3,7 +3,11 @@
 header.app {
   position: sticky; top: 0; z-index: 30;
   background: linear-gradient(var(--bg) 72%, transparent);
-  padding: 12px 0 10px;
+  /* Installed to the home screen the page runs edge to edge under a
+     translucent status bar (viewport-fit=cover, black-translucent), so the
+     header pads itself below the notch or Dynamic Island. The inset is 0 in
+     a browser tab, leaving the 12px as it was. */
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 0 10px;
 }
 .bar { display: flex; align-items: center; gap: 12px; }
 .brand {

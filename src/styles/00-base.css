@@ -130,7 +130,11 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
-.wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px 150px; }
+.wrap {
+  max-width: 1100px; margin: 0 auto;
+  /* Clear the notch on whichever side it sits when a phone is turned. */
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 150px max(16px, env(safe-area-inset-left, 0px));
+}
 .screen { display: none; }
 .screen.active { display: block; }
 .hidden { display: none !important; }
